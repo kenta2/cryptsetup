@@ -86,6 +86,7 @@ override_dh_fixperms-arch:
 	chmod 0755 debian/cryptsetup/lib/cryptsetup/scripts/decrypt_*
 	chmod 0755 debian/cryptsetup-udeb/lib/cryptsetup/checks/*
 	chmod 0755 debian/cryptsetup-udeb/lib/cryptsetup/scripts/decrypt_*
+	chmod 0755 debian/cryptsetup-udeb/lib/cryptsetup/scripts/cryptroot-suspend
 
 override_dh_fixperms-indep:
 	dh_fixperms

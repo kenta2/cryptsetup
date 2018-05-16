@@ -1,0 +1,25 @@
+#!/bin/sh
+
+#set -x
+set -u
+
+cryptname="${1}"
+
+# Start udev from initramfs
+/lib/systemd/systemd-udevd --daemon --resolve-names=never
+
+# Synchronize filesystems before luksSuspend
+sync
+
+# Suspend root device
+[ -z "${cryptname}" ] || cryptsetup luksSuspend "${cryptname}"
+
+# Suspend the system
+echo mem >/sys/power/state
+
+# Resume root device
+[ -z "${cryptname}" ] ||
+    while ! cryptsetup luksResume "${cryptname}"; do sleep 2; done
+
+# Stop udev from initramfs, as the real daemon from rootfs will be restarted
+udevadm control --exit
