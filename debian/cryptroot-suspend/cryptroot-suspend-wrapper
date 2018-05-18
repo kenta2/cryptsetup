@@ -1,0 +1,85 @@
+#!/bin/sh
+
+set -e
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+export PATH
+
+DESTDIR="$(mktemp -d --tmpdir=/run/shm)"
+DESTDIR="$(readlink -f "$DESTDIR")"
+
+# use ramfs to avoid swapping out: https://wiki.debian.org/ramfs
+mount -t ramfs -o mode=0755 none "$DESTDIR"
+mkdir -m0755 "$DESTDIR/dev" "$DESTDIR/proc" "$DESTDIR/run" "$DESTDIR/sys"
+
+# XXX need to inline copy_exec if we don't want to depend on initramfs-tools
+. /usr/share/initramfs-tools/hook-functions
+copy_exec /sbin/cryptsetup
+copy_exec /bin/sh
+copy_exec /lib/cryptsetup/scripts/cryptroot-suspend
+
+mount -t devtmpfs -o nosuid,mode=0755    udev  "$DESTDIR/dev"
+mount -t proc     -o nodev,noexec,nosuid proc  "$DESTDIR/proc"
+mount -t sysfs    -o nodev,noexec,nosuid sysfs "$DESTDIR/sys"
+mkdir -p "$DESTDIR/dev/pts"
+mount -t devpts -o noexec,nosuid,gid=5,mode=0620 devpts "$DESTDIR/dev/pts"
+
+CRYPTNAME=
+get_cryptroot() {
+    local device="$(readlink -f "$1")" s name
+    [ "${device#/dev/dm-}" != "$device" ] || return
+    device="${device#/dev/}"
+
+    name=$(cat "/sys/block/$device/dm/name")
+    if dmsetup table "$name" | grep -Eq '^([0-9]+\s+){2}crypt\s'; then
+        #XXX can have multiple devices
+        CRYPTNAME="$name"
+    else
+        for s in "/sys/block/$device/slaves"/*; do
+            get_cryptroot "/dev/${s#/sys/block/$device/slaves/}"
+        done
+    fi
+}
+
+BARRIER=
+while read device mountpoint type options; do
+    if [ "$mountpoint" = / ]; then
+        if [ -z "${type#ext[2-4]}" ] && \
+                ! printf '%s' "$options" | tr , '\n' | \
+                    grep -qFx -e barrier=0 -e nobarrier; then
+            mount -o remount,nobarrier "$mountpoint"
+            BARRIER="$mountpoint"
+        fi
+        get_cryptroot "$device"
+        break
+    fi
+done </proc/mounts
+
+#renice -20 -p $$ >/dev/null
+#
+#excl_pid=$(ps -o ppid= --pid $$) # XXX when used in openvt
+#excl_pid=$(pgrep -f /bin/login | head -n 1) # XXX
+#PIDLIST=
+#PIDLIST2=1
+#while :; do
+#    PIDLIST2="$(ps -o pid= --ppid $PIDLIST2 | grep -v "^\s*$excl_pid\s*$")" || break
+#    PIDLIST="$PIDLIST $PIDLIST2"
+#    PIDLIST2=$(printf '%s' "$PIDLIST2" | sed -nr ':x; s/\s*//; 1h; 1!H; $!{n;bx}; x; y/\n/,/; p')
+#done
+#
+#kill -STOP $PIDLIST
+
+chroot "$DESTDIR" /bin/sh -c "
+    /lib/cryptsetup/scripts/cryptroot-suspend $CRYPTNAME
+    cryptsetup luksResume $CRYPTNAME
+"
+
+if [ -n "$BARRIER" ]; then
+    mount -o remount,barrier "$BARRIER"
+fi
+
+#kill -CONT $PIDLIST
+
+awk -vm="$DESTDIR/" 'index($2, m) == 1 {print $2}' /proc/mounts \
+    | sort -r | xargs -r umount
+umount "$DESTDIR"
+rmdir "$DESTDIR"

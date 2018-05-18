@@ -2,8 +2,9 @@ debian/askpass                          /lib/cryptsetup/
 debian/bash_completion/cryptdisks_start /usr/share/bash-completion/completions/
 debian/checks/*                         /lib/cryptsetup/checks/
 debian/cryptdisks-functions             /lib/cryptsetup/
-debian/cryptroot-suspend/systemd_cryptroot-suspend.conf /lib/systemd/system/systemd-suspend
-+debian/cryptroot-suspend/cryptroot-suspend /lib/cryptsetup/scripts/
+debian/cryptroot-suspend/systemd_cryptroot-suspend.conf /lib/systemd/system/systemd-suspend.service.d/
+debian/cryptroot-suspend/cryptroot-suspend /lib/cryptsetup/scripts/
+debian/cryptroot-suspend/cryptroot-suspend-wrapper /lib/cryptsetup/scripts/
 debian/functions                        /lib/cryptsetup/
 debian/scripts/cryptdisks_*             /sbin/
 debian/scripts/decrypt_*                /lib/cryptsetup/scripts/
