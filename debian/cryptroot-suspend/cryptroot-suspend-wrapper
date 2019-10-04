@@ -4,24 +4,37 @@ set -e
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
 export PATH
 
-DESTDIR="$(mktemp -d --tmpdir=/run/shm)"
-DESTDIR="$(readlink -f "$DESTDIR")"
+INITRAMFS_DIR="$(mktemp -d --tmpdir=/run/shm)"
+INITRAMFS_DIR="$(readlink -f "$INITRAMFS_DIR")"
+BIND_PATHS="/sys /proc /dev /run"
 
-# use ramfs to avoid swapping out: https://wiki.debian.org/ramfs
-mount -t ramfs -o mode=0755 none "$DESTDIR"
-mkdir -m0755 "$DESTDIR/dev" "$DESTDIR/proc" "$DESTDIR/run" "$DESTDIR/sys"
+mount_initramfs() {
+    local INITRAMFS=`sed -n 's/.*BOOT_IMAGE=.*vmlinuz-\([^: ]*\).*$/\/boot\/initrd.img-\1/p' /proc/cmdline`
+    mkdir -p  ${INITRAMFS_DIR}
+    mount -t tmpfs -o size=512m tmpfs ${INITRAMFS_DIR}
 
-# XXX need to inline copy_exec if we don't want to depend on initramfs-tools
-. /usr/share/initramfs-tools/hook-functions
-copy_exec /sbin/cryptsetup
-copy_exec /bin/sh
-copy_exec /lib/cryptsetup/scripts/cryptroot-suspend
+    if file -L ${INITRAMFS} | grep -q "ASCII cpio archive"; then
+        # extract hybrid initrd.img to initramfs dir
+        (cd ${INITRAMFS_DIR} && dd if="${INITRAMFS}" of="${INITRAMFS_DIR}/initrd.img.gz" bs=512 skip=$(cpio -id < "${INITRAMFS}" 2>&1 | grep blocks | cut -d" " -f1) ; zcat "${INITRAMFS_DIR}/initrd.img.gz" | cpio -id ; rm "${INITRAMFS_DIR}/initrd.img.gz")
+    else
+        # extract plain initrd.img to initramfs dir
+        cd ${INITRAMFS_DIR} &&  zcat ${INITRAMFS} | cpio -id
+    fi
 
-mount -t devtmpfs -o nosuid,mode=0755    udev  "$DESTDIR/dev"
-mount -t proc     -o nodev,noexec,nosuid proc  "$DESTDIR/proc"
-mount -t sysfs    -o nodev,noexec,nosuid sysfs "$DESTDIR/sys"
-mkdir -p "$DESTDIR/dev/pts"
-mount -t devpts -o noexec,nosuid,gid=5,mode=0620 devpts "$DESTDIR/dev/pts"
+    for p in ${BIND_PATHS}; do
+        mkdir -p "${INITRAMFS_DIR}${p}"
+        mount -o bind ${p} "${INITRAMFS_DIR}${p}"
+    done
+}
+
+umount_initramfs() {
+    local p
+    for p in ${BIND_PATHS}; do
+        ! mountpoint -q "${INITRAMFS_DIR}${p}" || (umount "${INITRAMFS_DIR}${p}" && rmdir "${INITRAMFS_DIR}${p}")
+    done
+    umount -R "${INITRAMFS_DIR}"
+    rmdir "${INITRAMFS_DIR}"
+}
 
 CRYPTNAME=
 get_cryptroot() {
@@ -40,6 +53,19 @@ get_cryptroot() {
     fi
 }
 
+## Main script
+# always remove initramfs at the end of the script
+trap umount_initramfs EXIT
+
+# extract temporary filesystem to switch to
+mount_initramfs
+
+# copy our binary to ramdisk
+cp /lib/cryptsetup/scripts/cryptroot-suspend ${INITRAMFS_DIR}/bin/cryptroot-suspend
+
+# Journalled ext4 filesystems in kernel versions 3.11+ will block suspend
+# if mounted with `barrier=1`, which is the default. Temporarily remount with
+# `barrier=0` if this is true of the crypt fs.
 BARRIER=
 while read device mountpoint type options; do
     if [ "$mountpoint" = / ]; then
@@ -68,18 +94,15 @@ done </proc/mounts
 #
 #kill -STOP $PIDLIST
 
-chroot "$DESTDIR" /bin/sh -c "
-    /lib/cryptsetup/scripts/cryptroot-suspend $CRYPTNAME
+# change into ramdisk
+chroot "$INITRAMFS_DIR" /bin/sh -c "
+    # suspend
+    /bin/cryptroot-suspend $CRYPTNAME
+    # continue here after suspend and re-open cryptroot
     cryptsetup luksResume $CRYPTNAME
 "
 
+# restore original barrier mount options
 if [ -n "$BARRIER" ]; then
     mount -o remount,barrier "$BARRIER"
 fi
-
-#kill -CONT $PIDLIST
-
-awk -vm="$DESTDIR/" 'index($2, m) == 1 {print $2}' /proc/mounts \
-    | sort -r | xargs -r umount
-umount "$DESTDIR"
-rmdir "$DESTDIR"
