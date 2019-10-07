@@ -25,7 +25,7 @@ mount_initramfs() {
             rm "$INITRAMFS_DIR/initrd.img.gz")
     else
         # extract plain initrd.img to initramfs dir
-        (cd $INITRAMFS_DIR &&  zcat $INITRAMFS | cpio -id --quiet)
+        (cd "$INITRAMFS_DIR" && zcat "$INITRAMFS" | cpio -id --quiet)
     fi
 
     for p in $BIND_PATHS; do
@@ -86,24 +86,24 @@ done </proc/mounts
 
 #renice -20 -p $$ >/dev/null
 #
-#excl_pid=$(ps -o ppid= --pid $$) # XXX when used in openvt
-#excl_pid=$(pgrep -f /bin/login | head -n 1) # XXX
+#excl_pid="$(ps -o ppid= --pid $$)" # XXX when used in openvt
+#excl_pid="$(pgrep -f /bin/login | head -n 1)" # XXX
 #PIDLIST=
 #PIDLIST2=1
 #while :; do
-#    PIDLIST2="$(ps -o pid= --ppid $PIDLIST2 | grep -v "^\s*$excl_pid\s*$")" || break
+#    PIDLIST2="$(ps -o pid= --ppid "$PIDLIST2" | grep -v "^\s*$excl_pid\s*$")" || break
 #    PIDLIST="$PIDLIST $PIDLIST2"
-#    PIDLIST2=$(printf '%s' "$PIDLIST2" | sed -nr ':x; s/\s*//; 1h; 1!H; $!{n;bx}; x; y/\n/,/; p')
+#    PIDLIST2="$(printf '%s' "$PIDLIST2" | sed -nr ':x; s/\s*//; 1h; 1!H; $!{n;bx}; x; y/\n/,/; p')"
 #done
 #
-#kill -STOP $PIDLIST
+#kill -STOP "$PIDLIST"
 
 # change into ramdisk
 chroot "$INITRAMFS_DIR" /bin/sh -c "
     # suspend
-    /bin/cryptroot-suspend $CRYPTNAME
+    /bin/cryptroot-suspend "$CRYPTNAME"
     # continue here after suspend and re-open cryptroot
-    cryptsetup luksResume $CRYPTNAME
+    cryptsetup luksResume "$CRYPTNAME"
 "
 
 # restore original barrier mount options
@@ -111,4 +111,4 @@ if [ -n "$BARRIER" ]; then
     mount -o remount,barrier "$BARRIER"
 fi
 
-#kill -CONT $PIDLIST
+#kill -CONT "$PIDLIST"
