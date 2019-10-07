@@ -28,10 +28,8 @@ mount_initramfs() {
 }
 
 umount_initramfs() {
-    local p
-    for p in ${BIND_PATHS}; do
-        ! mountpoint -q "${INITRAMFS_DIR}${p}" || (umount "${INITRAMFS_DIR}${p}" && rmdir "${INITRAMFS_DIR}${p}")
-    done
+    # change to outside dir and recursively unmount
+    cd /dev/shm
     umount -R "${INITRAMFS_DIR}"
     rmdir "${INITRAMFS_DIR}"
 }
