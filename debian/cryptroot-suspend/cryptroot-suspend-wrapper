@@ -10,32 +10,34 @@ BIND_PATHS="/sys /proc /dev /run"
 
 mount_initramfs() {
     local INITRAMFS=`sed -n 's/.*BOOT_IMAGE=.*vmlinuz-\([^: ]*\).*$/\/boot\/initrd.img-\1/p' /proc/cmdline`
-    mkdir -p  ${INITRAMFS_DIR}
-    mount -t tmpfs -o size=512m tmpfs ${INITRAMFS_DIR}
+    if [ ! -f "$INITRAMFS" ]; then
+        echo "Error: No initramfs found at $INITRAMFS" >&1
+        exit 1
+    fi
+    mount -t tmpfs -o mode=0755,size=512m tmpfs "$INITRAMFS_DIR"
 
-    if file -L ${INITRAMFS} | grep -q "ASCII cpio archive"; then
+    if file -L "$INITRAMFS" | grep -q "ASCII cpio archive"; then
         # extract hybrid initrd.img to initramfs dir
-        (cd ${INITRAMFS_DIR} &&
-            SKIP_BLOCKS=$(cpio -id < "${INITRAMFS}" 2>&1 | grep blocks | cut -d" " -f1) &&
-            dd status=none if="${INITRAMFS}" of="${INITRAMFS_DIR}/initrd.img.gz" bs=512 skip=$SKIP_BLOCKS
-            zcat "${INITRAMFS_DIR}/initrd.img.gz" | cpio -id --quiet
-            rm "${INITRAMFS_DIR}/initrd.img.gz")
+        (cd "$INITRAMFS_DIR" &&
+            SKIP_BLOCKS=$(cpio -id < "$INITRAMFS" 2>&1 | grep blocks | cut -d" " -f1) &&
+            dd status=none if="$INITRAMFS" of="$INITRAMFS_DIR/initrd.img.gz" bs=512 skip="$SKIP_BLOCKS"
+            zcat "$INITRAMFS_DIR/initrd.img.gz" | cpio -id --quiet
+            rm "$INITRAMFS_DIR/initrd.img.gz")
     else
         # extract plain initrd.img to initramfs dir
-        (cd ${INITRAMFS_DIR} &&  zcat ${INITRAMFS} | cpio -id --quiet)
+        (cd $INITRAMFS_DIR &&  zcat $INITRAMFS | cpio -id --quiet)
     fi
 
-    for p in ${BIND_PATHS}; do
-        mkdir -p "${INITRAMFS_DIR}${p}"
-        mount -o bind ${p} "${INITRAMFS_DIR}${p}"
+    for p in $BIND_PATHS; do
+        mkdir -p -m 0755 "$INITRAMFS_DIR$p"
+        mount -o bind $p "$INITRAMFS_DIR$p"
     done
 }
 
 umount_initramfs() {
-    # change to outside dir and recursively unmount
-    cd /dev/shm
-    umount -R "${INITRAMFS_DIR}"
-    rmdir "${INITRAMFS_DIR}"
+    # recursively unmount
+    umount -R "$INITRAMFS_DIR"
+    rmdir "$INITRAMFS_DIR"
 }
 
 CRYPTNAME=
@@ -63,7 +65,7 @@ trap umount_initramfs EXIT
 mount_initramfs
 
 # copy our binary to ramdisk
-cp /lib/cryptsetup/scripts/cryptroot-suspend ${INITRAMFS_DIR}/bin/cryptroot-suspend
+cp /lib/cryptsetup/scripts/cryptroot-suspend "$INITRAMFS_DIR/bin/cryptroot-suspend"
 
 # Journalled ext4 filesystems in kernel versions 3.11+ will block suspend
 # if mounted with `barrier=1`, which is the default. Temporarily remount with
@@ -82,6 +84,20 @@ while read device mountpoint type options; do
     fi
 done </proc/mounts
 
+#renice -20 -p $$ >/dev/null
+#
+#excl_pid=$(ps -o ppid= --pid $$) # XXX when used in openvt
+#excl_pid=$(pgrep -f /bin/login | head -n 1) # XXX
+#PIDLIST=
+#PIDLIST2=1
+#while :; do
+#    PIDLIST2="$(ps -o pid= --ppid $PIDLIST2 | grep -v "^\s*$excl_pid\s*$")" || break
+#    PIDLIST="$PIDLIST $PIDLIST2"
+#    PIDLIST2=$(printf '%s' "$PIDLIST2" | sed -nr ':x; s/\s*//; 1h; 1!H; $!{n;bx}; x; y/\n/,/; p')
+#done
+#
+#kill -STOP $PIDLIST
+
 # change into ramdisk
 chroot "$INITRAMFS_DIR" /bin/sh -c "
     # suspend
@@ -94,3 +110,5 @@ chroot "$INITRAMFS_DIR" /bin/sh -c "
 if [ -n "$BARRIER" ]; then
     mount -o remount,barrier "$BARRIER"
 fi
+
+#kill -CONT $PIDLIST
