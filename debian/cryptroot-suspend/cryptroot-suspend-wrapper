@@ -15,6 +15,9 @@ mount_initramfs() {
         exit 1
     fi
 
+    # disable swap, so tmpfs is in RAM
+    swapoff -a
+
     # Limit tmpfs size to 512m if system has more than 1G memory
     if [ "$(sed -ne 's/^MemTotal:\s\+\([0-9]\+\)\s\+kB/\1/p' /proc/meminfo)" -ge 1048576 ]; then
         local TMPFS_OPTS="mode=0755,size=512m"
@@ -36,6 +39,8 @@ umount_initramfs() {
     # recursively unmount
     umount -R "$INITRAMFS_DIR"
     rmdir "$INITRAMFS_DIR"
+    # re-enable swap
+    swapon -a
 }
 
 CRYPTNAME=
