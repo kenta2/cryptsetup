@@ -23,17 +23,8 @@ mount_initramfs() {
     fi
     mount -t tmpfs -o "$TMPFS_OPTS" tmpfs "$INITRAMFS_DIR"
 
-    if file -L "$INITRAMFS" | grep -q "ASCII cpio archive"; then
-        # extract hybrid initrd.img to initramfs dir
-        (cd "$INITRAMFS_DIR" &&
-            SKIP_BLOCKS=$(cpio -id < "$INITRAMFS" 2>&1 | grep blocks | cut -d" " -f1) &&
-            dd status=none if="$INITRAMFS" of="$INITRAMFS_DIR/initrd.img.gz" bs=512 skip="$SKIP_BLOCKS"
-            zcat "$INITRAMFS_DIR/initrd.img.gz" | cpio -id --quiet
-            rm "$INITRAMFS_DIR/initrd.img.gz")
-    else
-        # extract plain initrd.img to initramfs dir
-        (cd "$INITRAMFS_DIR" && zcat "$INITRAMFS" | cpio -id --quiet)
-    fi
+    # extract initrd.img to initramfs dir
+    unmkinitramfs "${INITRAMFS}" "${INITRAMFS_DIR}"
 
     for p in $BIND_PATHS; do
         mkdir -p -m 0755 "$INITRAMFS_DIR$p"
