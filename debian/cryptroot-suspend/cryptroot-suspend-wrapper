@@ -104,7 +104,8 @@ chroot "$INITRAMFS_DIR" /bin/sh -c "
     # suspend
     /bin/cryptroot-suspend "$CRYPTNAME"
     # continue here after suspend and re-open cryptroot
-    cryptsetup status "$CRYPTNAME" | grep -q 'key location: keyring' || cryptsetup luksResume "$CRYPTNAME"
+    #cryptsetup status "$CRYPTNAME" | grep -q 'key location: keyring' || cryptsetup luksResume "$CRYPTNAME"
+    cryptsetup luksResume "$CRYPTNAME"
 "
 
 # restore original barrier mount options
