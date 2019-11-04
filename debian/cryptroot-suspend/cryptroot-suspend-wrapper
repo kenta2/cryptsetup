@@ -9,7 +9,7 @@ INITRAMFS_DIR="$(readlink -f "$INITRAMFS_DIR")"
 BIND_PATHS="/sys /proc /dev /run"
 
 mount_initramfs() {
-    local INITRAMFS=`sed -n 's/.*BOOT_IMAGE=.*vmlinuz-\([^: ]*\).*$/\/boot\/initrd.img-\1/p' /proc/cmdline`
+    local INITRAMFS=$(sed -n 's/.*BOOT_IMAGE=.*vmlinuz-\([^: ]*\).*$/\/boot\/initrd.img-\1/p' /proc/cmdline)
     if [ ! -f "$INITRAMFS" ]; then
         echo "Error: No initramfs found at $INITRAMFS" >&1
         exit 1
@@ -38,6 +38,40 @@ umount_initramfs() {
     swapon -a
 }
 
+CGROUP_FREEZER=
+freeze_cgroups() {
+    # add all machines/containers and user cgroups
+    CGROUPS="/sys/fs/cgroup/unified/machine.slice/cgroup.freeze \
+        /sys/fs/cgroup/unified/user.slice/cgroup.freeze"
+
+    # add all system cgroups but us
+    CGROUPS_SYSTEM=$(find /sys/fs/cgroup/unified/system.slice/ -mindepth 2 -maxdepth 2 -name cgroup.freeze)
+
+    # freeze all unfrozen cgroups
+    for c in $CGROUPS $CGROUPS_SYSTEM; do
+        local val=1
+        if [ -f "$c" ]; then
+            val=$(cat "$c")
+        fi
+
+        # get my second level cgroup
+        MY_CGROUP=$(cat /proc/self/cgroup | grep "0::" | awk -F "/" '{print $3}')
+
+        # dont freeze our cgroup, systemd-suspend/udevd or frozen cgroups
+        # freezing udevd blocks luksResume
+        if echo -n "$c" | grep -qvE "systemd-suspend|systemd-udev|$MY_CGROUP" && [ 0 -eq "$val" ]; then
+            echo 1 > "$c"
+            CGROUP_FREEZER="$c $CGROUP_FREEZER"
+        fi
+    done
+}
+
+thaw_cgroups() {
+    for c in $CGROUP_FREEZER; do
+       echo 0 > "$c"
+    done
+}
+
 CRYPTNAME=
 get_cryptroot() {
     local device="$(readlink -f "$1")" s name
@@ -56,6 +90,20 @@ get_cryptroot() {
 }
 
 ## Main script
+
+# check unified cgroups hierarchy
+if [ ! -d /sys/fs/cgroup/unified/system.slice/ ]; then
+    echo "Error: No unified cgroups hierarchy" >&1
+    exit 1
+fi
+
+# check that not run as user
+# XXX: We should catch also cases where libpam-systemd is not installed
+if cat /proc/self/cgroup | grep -q "user.slice"; then
+    echo "Error: Don't run this script as user" >&1
+    exit 1
+fi
+
 # always remove initramfs at the end of the script
 trap umount_initramfs EXIT
 
@@ -82,19 +130,8 @@ while read device mountpoint type options; do
     fi
 done </proc/mounts
 
-#renice -20 -p $$ >/dev/null
-#
-#excl_pid="$(ps -o ppid= --pid $$)" # XXX when used in openvt
-#excl_pid="$(pgrep -f /bin/login | head -n 1)" # XXX
-#PIDLIST=
-#PIDLIST2=1
-#while :; do
-#    PIDLIST2="$(ps -o pid= --ppid "$PIDLIST2" | grep -v "^\s*$excl_pid\s*$")" || break
-#    PIDLIST="$PIDLIST $PIDLIST2"
-#    PIDLIST2="$(printf '%s' "$PIDLIST2" | sed -nr ':x; s/\s*//; 1h; 1!H; $!{n;bx}; x; y/\n/,/; p')"
-#done
-#
-#kill -STOP "$PIDLIST"
+# freeze all cgroups but us
+freeze_cgroups
 
 # change into ramdisk
 chroot "$INITRAMFS_DIR" /bin/sh -c "
@@ -105,9 +142,10 @@ chroot "$INITRAMFS_DIR" /bin/sh -c "
     cryptsetup luksResume "$CRYPTNAME"
 "
 
+# thaw all frozen cgroups
+thaw_cgroups
+
 # restore original barrier mount options
 if [ -n "$BARRIER" ]; then
     mount -o remount,barrier "$BARRIER"
 fi
-
-#kill -CONT "$PIDLIST"
