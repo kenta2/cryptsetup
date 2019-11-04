@@ -59,9 +59,6 @@ get_cryptroot() {
 # always remove initramfs at the end of the script
 trap umount_initramfs EXIT
 
-# oom-killer must not kill this script and it's children
-echo "-999" > /proc/self/oom_score_adj
-
 # extract temporary filesystem to switch to
 mount_initramfs
 
