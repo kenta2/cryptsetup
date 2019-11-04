@@ -89,6 +89,15 @@ get_cryptroot() {
     fi
 }
 
+# Stop udev service and prevent it to be autostarted.
+# Otherwise, luksResume will hang waiting for udev, which is itself waiting
+# for I/O on the root device.
+udev_service() {
+    systemctl "$1" systemd-udevd-control.socket
+    systemctl "$1" systemd-udevd-kernel.socket
+    systemctl "$1" systemd-udevd.service
+}
+
 ## Main script
 
 # check unified cgroups hierarchy
@@ -112,6 +121,9 @@ mount_initramfs
 
 # copy our binary to ramdisk
 cp /lib/cryptsetup/scripts/cryptroot-suspend "$INITRAMFS_DIR/bin/cryptroot-suspend"
+
+# freezing of udevd was not possible, but it still blocks sometimes
+udev_service stop
 
 # Journalled ext4 filesystems in kernel versions 3.11+ will block suspend
 # if mounted with `barrier=1`, which is the default. Temporarily remount with
@@ -149,3 +161,5 @@ thaw_cgroups
 if [ -n "$BARRIER" ]; then
     mount -o remount,barrier "$BARRIER"
 fi
+
+udev_service start
