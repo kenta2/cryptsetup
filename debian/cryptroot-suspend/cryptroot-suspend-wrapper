@@ -34,6 +34,7 @@ umount_initramfs() {
     # recursively unmount
     umount -R "$INITRAMFS_DIR"
     rmdir "$INITRAMFS_DIR"
+
     # re-enable swap
     swapon -a
 }
@@ -98,6 +99,21 @@ udev_service() {
     systemctl "$1" systemd-udevd.service
 }
 
+clean_up() {
+    # thaw all frozen cgroups
+    thaw_cgroups
+
+    # restore original barrier mount options
+    if [ -n "$BARRIER" ]; then
+        mount -o remount,barrier "$BARRIER"
+    fi
+
+    # restart systemd-udevd
+    udev_service start
+
+    umount_initramfs
+}
+
 ## Main script
 
 # check unified cgroups hierarchy
@@ -113,8 +129,8 @@ if cat /proc/self/cgroup | grep -q "user.slice"; then
     exit 1
 fi
 
-# always remove initramfs at the end of the script
-trap umount_initramfs EXIT
+# always thaw cgroups, re-mount filesystems and remove initramfs at the end of the script
+trap clean_up EXIT
 
 # extract temporary filesystem to switch to
 mount_initramfs
@@ -153,13 +169,3 @@ chroot "$INITRAMFS_DIR" /bin/sh -c "
     #cryptsetup status "$CRYPTNAME" | grep -q 'key location: keyring' || cryptsetup luksResume "$CRYPTNAME"
     cryptsetup luksResume "$CRYPTNAME"
 "
-
-# thaw all frozen cgroups
-thaw_cgroups
-
-# restore original barrier mount options
-if [ -n "$BARRIER" ]; then
-    mount -o remount,barrier "$BARRIER"
-fi
-
-udev_service start
