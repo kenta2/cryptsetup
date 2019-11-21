@@ -165,7 +165,13 @@ freeze_cgroups
 chroot "$INITRAMFS_DIR" /bin/sh -c "
     # suspend
     /bin/cryptroot-suspend "$CRYPTNAME"
-    # continue here after suspend and re-open cryptroot
-    #cryptsetup status "$CRYPTNAME" | grep -q 'key location: keyring' || cryptsetup luksResume "$CRYPTNAME"
-    cryptsetup luksResume "$CRYPTNAME"
+    # continue here after suspend
+    # check if device is really suspended
+    if dmsetup info "$CRYPTNAME" | grep 'State:' | grep -q ACTIVE; then
+        echo ERROR: Device was not suspendend successfully
+        sleep 5
+        exit
+    fi
+    # retry eternally to re-open cryptroot
+    while ! cryptsetup luksResume "$CRYPTNAME"; do sleep 1; done
 "
