@@ -1,5 +1,5 @@
 debian/askpass
 debian/doc/*.[0-9]
 debian/doc/variables.xml
-debian/scripts/cryptroot-suspend
 debian/scripts/passdev
+debian/scripts/suspend/cryptsetup-suspend

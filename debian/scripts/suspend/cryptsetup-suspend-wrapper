@@ -7,6 +7,14 @@ export PATH
 INITRAMFS_DIR="$(mktemp -d --tmpdir=/run/shm)"
 INITRAMFS_DIR="$(readlink -f "$INITRAMFS_DIR")"
 BIND_PATHS="/sys /proc /dev /run"
+SYSTEM_SLEEP_PATH=/lib/systemd/system-sleep
+
+# run_dir ARGS...
+# Run all executable scripts in directory SYSTEM_SLEEP_PATH with arguments ARGS
+# mimic systemd behavior
+run_dir() {
+    find "$SYSTEM_SLEEP_PATH" -type f -executable -exec "{}" "$@" ";"
+}
 
 mount_initramfs() {
     local INITRAMFS=$(sed -n 's/.*BOOT_IMAGE=.*vmlinuz-\([^: ]*\).*$/\/boot\/initrd.img-\1/p' /proc/cmdline)
@@ -111,6 +119,9 @@ clean_up() {
     # restart systemd-udevd
     udev_service start
 
+    # Run post-suspend scripts
+    run_dir post suspend
+
     umount_initramfs
 }
 
@@ -136,7 +147,10 @@ trap clean_up EXIT
 mount_initramfs
 
 # copy our binary to ramdisk
-cp /lib/cryptsetup/scripts/cryptroot-suspend "$INITRAMFS_DIR/bin/cryptroot-suspend"
+cp /lib/cryptsetup/scripts/cryptsetup-suspend "$INITRAMFS_DIR/bin/cryptsetup-suspend"
+
+# Run pre-suspend scripts
+run_dir pre suspend
 
 # freezing of udevd was not possible, but it still blocks sometimes
 udev_service stop
@@ -164,7 +178,7 @@ freeze_cgroups
 # change into ramdisk
 chroot "$INITRAMFS_DIR" /bin/sh -c "
     # suspend
-    /bin/cryptroot-suspend \"$CRYPTNAME\"
+    /bin/cryptsetup-suspend \"$CRYPTNAME\"
     # continue here after suspend
     # check if device is really suspended
     if dmsetup info \"$CRYPTNAME\" | grep 'State:' | grep -q ACTIVE; then

@@ -34,8 +34,8 @@ override_dh_auto_build:
 	$(CC) -o debian/askpass debian/askpass.c $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -pedantic
 	$(CC) -o debian/scripts/passdev debian/scripts/passdev.c $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -pedantic
 
-	# build cryptroot-suspend
-	$(CC) -o debian/cryptroot-suspend/cryptroot-suspend debian/cryptroot-suspend/cryptroot-suspend.c $(CFLAGS) $(CPPFLAGS) -I$(CURDIR)/lib $(LDFLAGS) -L$(CURDIR)/.libs -lcryptsetup -pedantic
+	# build suspend binary
+	$(CC) -o debian/scripts/suspend/cryptsetup-suspend debian/scripts/suspend/cryptsetup-suspend.c $(CFLAGS) $(CPPFLAGS) -I$(CURDIR)/lib $(LDFLAGS) -L$(CURDIR)/.libs -lcryptsetup -pedantic
 
 	# generate manpages
 	sed 's/VERSION/$(DEB_VERSION)/;s/DATE/$(DEB_DATE)/' \
@@ -87,7 +87,7 @@ override_dh_fixperms-arch:
 	dh_fixperms
 	chmod 0755 debian/cryptsetup/lib/cryptsetup/checks/*
 	chmod 0755 debian/cryptsetup/lib/cryptsetup/scripts/decrypt_*
-	chmod 0755 debian/cryptsetup/lib/cryptsetup/scripts/cryptroot-suspend-wrapper
+	chmod 0755 debian/cryptsetup/lib/cryptsetup/scripts/cryptsetup-suspend-wrapper
 	chmod 0755 debian/cryptsetup-udeb/lib/cryptsetup/checks/*
 	chmod 0755 debian/cryptsetup-udeb/lib/cryptsetup/scripts/decrypt_*
 
