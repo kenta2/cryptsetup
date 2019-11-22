@@ -81,8 +81,11 @@ freeze_cgroups() {
     # add all system cgroups but us
     CGROUPS_SYSTEM="$(find /sys/fs/cgroup/unified/system.slice/ -mindepth 2 -maxdepth 2 -name cgroup.freeze)"
 
+    # add systemd itself
+    CGROUP_SYSTEMD="/sys/fs/cgroup/unified/init.scope/cgroup.freeze"
+
     # freeze all unfrozen cgroups
-    for c in $CGROUPS $CGROUPS_SYSTEM; do
+    for c in $CGROUPS $CGROUPS_SYSTEM "$CGROUP_SYSTEMD"; do
         local val=1
         if [ -f "$c" ]; then
             val="$(cat "$c")"
