@@ -4,6 +4,10 @@ set -e
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
 export PATH
 
+# import cryptsetup shell functions
+[ -f /lib/cryptsetup/functions ] || return 0
+. /lib/cryptsetup/functions
+
 INITRAMFS_DIR="$(mktemp -d --tmpdir=/run/shm)"
 INITRAMFS_DIR="$(readlink -f "$INITRAMFS_DIR")"
 BIND_PATHS="/sys /proc /dev /run"
@@ -19,7 +23,7 @@ run_dir() {
 mount_initramfs() {
     local INITRAMFS=$(sed -n 's/.*BOOT_IMAGE=.*vmlinuz-\([^: ]*\).*$/\/boot\/initrd.img-\1/p' /proc/cmdline)
     if [ ! -f "$INITRAMFS" ]; then
-        echo "Error: No initramfs found at $INITRAMFS" >&1
+        echo "ERROR: No initramfs found at $INITRAMFS" >&2
         exit 1
     fi
 
@@ -81,21 +85,18 @@ thaw_cgroups() {
     done
 }
 
-CRYPTNAME=
-get_cryptroot() {
-    local device="$(readlink -f "$1")" s name
-    [ "${device#/dev/dm-}" != "$device" ] || return
-    device="${device#/dev/}"
-
-    name=$(cat "/sys/block/$device/dm/name")
-    if dmsetup table "$name" | grep -Eq '^([0-9]+\s+){2}crypt\s'; then
-        #XXX can have multiple devices
-        CRYPTNAME="$name"
-    else
-        for s in "/sys/block/$device/slaves"/*; do
-            get_cryptroot "/dev/${s#/sys/block/$device/slaves/}"
-        done
-    fi
+get_active_devices() {
+    for m in $dm_devices; do
+        [ "x$m" = "x$CRYPTTAB_NAME" ] || continue
+        crypttab_parse_options --quiet
+        get_crypt_type
+        if [ "$CRYPTTAB_TYPE" != "luks" ]; then
+            cryptsetup_message "WARNING: $CRYPTTAB_NAME: unable to suspend non-luks device"
+            continue
+        fi
+        echo -n "$m "
+        break
+    done
 }
 
 # Stop udev service and prevent it to be autostarted.
@@ -129,14 +130,14 @@ clean_up() {
 
 # check unified cgroups hierarchy
 if [ ! -d /sys/fs/cgroup/unified/system.slice/ ]; then
-    echo "Error: No unified cgroups hierarchy" >&1
+    echo "ERROR: No unified cgroups hierarchy" >&2
     exit 1
 fi
 
 # check that not run as user
 # XXX: We should catch also cases where libpam-systemd is not installed
 if cat /proc/self/cgroup | grep -q "user.slice"; then
-    echo "Error: Don't run this script as user" >&1
+    echo "ERROR: Don't run this script as user" >&2
     exit 1
 fi
 
@@ -155,6 +156,11 @@ run_dir pre suspend
 # freezing of udevd was not possible, but it still blocks sometimes
 udev_service stop
 
+# get list of active crypt devices
+dm_devices="$(dm_active_crypt_devices)"
+devices="$(crypttab_foreach_entry get_active_devices)"
+devices_reversed="$(printf '%s\n' $devices | tac | tr '\n' ' ')"
+
 # Journalled ext4 filesystems in kernel versions 3.11+ will block suspend
 # if mounted with `barrier=1`, which is the default. Temporarily remount with
 # `barrier=0` if this is true of the crypt fs.
@@ -167,7 +173,6 @@ while read device mountpoint type options; do
             mount -o remount,nobarrier "$mountpoint"
             BARRIER="$mountpoint"
         fi
-        get_cryptroot "$device"
         break
     fi
 done </proc/mounts
@@ -176,16 +181,39 @@ done </proc/mounts
 freeze_cgroups
 
 # change into ramdisk
-chroot "$INITRAMFS_DIR" /bin/sh -c "
-    # suspend
-    /bin/cryptsetup-suspend \"$CRYPTNAME\"
-    # continue here after suspend
-    # check if device is really suspended
-    if dmsetup info \"$CRYPTNAME\" | grep 'State:' | grep -q ACTIVE; then
-        echo ERROR: Device was not suspendend successfully
-        sleep 5
-        exit
+devices_remaining="$(chroot "$INITRAMFS_DIR" /bin/sh -c "
+    # suspend active luks devices (in reverse order) and system
+    /bin/cryptsetup-suspend $devices_reversed
+
+    # resume active luks devices (only initramfs devices)
+    TABFILE=\"/cryptroot/crypttab\"
+    . /lib/cryptsetup/functions
+    for dev in $devices; do
+        unset -v CRYPTTAB_NAME \
+                 CRYPTTAB_SOURCE \
+                 CRYPTTAB_KEY \
+                 CRYPTTAB_OPTIONS
+
+        crypttab_find_entry --quiet \$dev
+        if [ -n \"\$CRYPTTAB_SOURCE\" ]; then
+            resume_device \$dev || true
+        else
+            echo -n \"\$dev \"
+        fi
+    done
+")"
+
+# resume remaining active luks devices (non-initramfs devices)
+for dev in $devices_remaining; do
+    unset -v CRYPTTAB_NAME \
+             CRYPTTAB_SOURCE \
+             CRYPTTAB_KEY \
+             CRYPTTAB_OPTIONS
+
+    crypttab_find_entry --quiet $dev
+    if [ -n "$CRYPTTAB_SOURCE" ]; then
+        resume_device $dev || true
+    else
+        echo "ERROR: '$dev' not found in /etc/crypttab" >&2
     fi
-    # retry eternally to re-open cryptroot
-    while ! cryptsetup luksResume \"$CRYPTNAME\"; do sleep 1; done
-"
+done

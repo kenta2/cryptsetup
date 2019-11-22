@@ -19,10 +19,14 @@
 # 'keyscript=' option.  In that case, the field is not treated as a file
 # name but given as argument to the keyscript.
 #
-# WARNING: If the initramfs image is to include private key material,
-# you'll want to create it with a restrictive umask in order to keep
-# non-privileged users at bay.  For instance, set UMASK=0077 in
-# /etc/initramfs-tools/initramfs.conf
+# WARNING:
+# * If the initramfs image is to include private key material, you'll
+#   want to create it with a restrictive umask in order to keep
+#   non-privileged users at bay.  For instance, set UMASK=0077 in
+#   /etc/initramfs-tools/initramfs.conf
+# * If you use cryptsetup-suspend, private key material inside the
+#   initramfs will be in memory during suspend period, defeating the
+#   purpose of cryptseutp-suspend.
 #
 
 #KEYFILE_PATTERN=
