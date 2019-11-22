@@ -61,10 +61,10 @@ int main(int argc, char *argv[]) {
     int rv = 0;
     for (int i = 1; i < argc; i++) {
         struct crypt_device *cd = NULL;
-        if (crypt_init_by_name(&cd, argv[i]) || crypt_suspend(cd, argv[i]))
+        if (crypt_init_by_name(&cd, argv[i]) || crypt_suspend(cd, argv[i])) {
             warnx("couldn't suspend LUKS device %s", argv[i]);
-        else
             rv = EXIT_FAILURE;
+        }
         crypt_free(cd);
     }
 
