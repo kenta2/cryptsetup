@@ -1,3 +1,5 @@
 cryptsetup: init.d-script-does-not-implement-optional-option etc/init.d/cryptdisks status
 cryptsetup: init.d-script-does-not-implement-optional-option etc/init.d/cryptdisks-early status
 cryptsetup: no-debconf-config
+# we provide init scripts, the following are false positives
+cryptsetup: package-supports-alternative-init-but-no-init.d-script
