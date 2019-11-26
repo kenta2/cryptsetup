@@ -112,11 +112,6 @@ clean_up() {
     # thaw all frozen cgroups
     thaw_cgroups
 
-    # restore original barrier mount options
-    if [ -n "$BARRIER" ]; then
-        mount -o remount,barrier "$BARRIER"
-    fi
-
     # restart systemd-udevd
     udev_service start
 
@@ -160,22 +155,6 @@ udev_service stop
 dm_devices="$(dm_active_crypt_devices)"
 devices="$(crypttab_foreach_entry get_active_devices)"
 devices_reversed="$(printf '%s\n' $devices | tac | tr '\n' ' ')"
-
-# Journalled ext4 filesystems in kernel versions 3.11+ will block suspend
-# if mounted with `barrier=1`, which is the default. Temporarily remount with
-# `barrier=0` if this is true of the crypt fs.
-BARRIER=
-while read device mountpoint type options; do
-    if [ "$mountpoint" = / ]; then
-        if [ -z "${type#ext[2-4]}" ] && \
-                ! printf '%s' "$options" | tr , '\n' | \
-                    grep -qFx -e barrier=0 -e nobarrier; then
-            mount -o remount,nobarrier "$mountpoint"
-            BARRIER="$mountpoint"
-        fi
-        break
-    fi
-done </proc/mounts
 
 # freeze all cgroups but us
 freeze_cgroups
