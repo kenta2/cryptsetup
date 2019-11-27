@@ -13,14 +13,48 @@
 #include <err.h>
 #include <errno.h>
 #include <unistd.h>
+#include <string.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 
 #include <libcryptsetup.h>
 
+void usage() {
+    printf("Usage: cryptsetup-suspend [-r|--reverse] <blkdev> [<blkdev> ...]\n"
+           "      -r, --reverse             process luks devices in reverse order\n\n");
+    exit(1);
+}
+
 int main(int argc, char *argv[]) {
+    bool reverse = 0;
+    int d_size;
     bool sync_on_suspend_reset = 0;
     FILE *sos = NULL;
+
+    /* Process commandline arguments */
+    if (argc < 2) {
+        usage();
+    } else if ((strcmp(argv[1], "-r") == 0) || (strcmp(argv[1], "--reverse") == 0)) {
+        if (argc < 3)
+            usage();
+
+        reverse = 1;
+        d_size = argc-2;
+    } else {
+        d_size = argc-1;
+    }
+
+    /* Read in devices */
+    const char *devices[d_size];
+    if (!reverse) {
+        for (int i = 0; i < d_size; i++) {
+            devices[i] = argv[i+1];
+        }
+    } else {
+        for (int i = 0; i < d_size; i++) {
+            devices[i] = argv[argc-i-1];
+        }
+    }
 
     /* Not available in Linux Kernel yet */
     if (access("/sys/power/sync_on_suspend", W_OK) < 0) {
@@ -59,10 +93,10 @@ int main(int argc, char *argv[]) {
     sync();
 
     int rv = 0;
-    for (int i = 1; i < argc; i++) {
+    for (int i = 0; i < d_size; i++) {
         struct crypt_device *cd = NULL;
-        if (crypt_init_by_name(&cd, argv[i]) || crypt_suspend(cd, argv[i])) {
-            warnx("couldn't suspend LUKS device %s", argv[i]);
+        if (crypt_init_by_name(&cd, devices[i]) || crypt_suspend(cd, devices[i])) {
+            warnx("couldn't suspend LUKS device %s", devices[i]);
             rv = EXIT_FAILURE;
         }
         crypt_free(cd);

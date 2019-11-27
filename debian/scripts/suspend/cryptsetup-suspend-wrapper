@@ -154,7 +154,6 @@ udev_service stop
 # get list of active crypt devices
 dm_devices="$(dm_active_crypt_devices)"
 devices="$(crypttab_foreach_entry get_active_devices)"
-devices_reversed="$(printf '%s\n' $devices | tac | tr '\n' ' ')"
 
 # freeze all cgroups but us
 freeze_cgroups
@@ -162,7 +161,7 @@ freeze_cgroups
 # change into ramdisk
 devices_remaining="$(chroot "$INITRAMFS_DIR" /bin/sh -c "
     # suspend active luks devices (in reverse order) and system
-    /bin/cryptsetup-suspend $devices_reversed
+    /bin/cryptsetup-suspend --reverse $devices
 
     # resume active luks devices (only initramfs devices)
     TABFILE=\"/cryptroot/crypttab\"
