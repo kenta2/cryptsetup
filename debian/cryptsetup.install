@@ -7,6 +7,3 @@ debian/scripts/cryptdisks_*             /sbin/
 debian/scripts/decrypt_*                /lib/cryptsetup/scripts/
 debian/scripts/luksformat               /usr/sbin/
 debian/scripts/passdev                  /lib/cryptsetup/scripts/
-debian/scripts/suspend/systemd_cryptsetup-suspend.conf /lib/systemd/system/systemd-suspend.service.d/
-debian/scripts/suspend/cryptsetup-suspend /lib/cryptsetup/scripts/
-debian/scripts/suspend/cryptsetup-suspend-wrapper /lib/cryptsetup/scripts/

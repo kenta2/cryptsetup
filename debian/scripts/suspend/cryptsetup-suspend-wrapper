@@ -143,7 +143,7 @@ trap clean_up EXIT
 mount_initramfs
 
 # copy our binary to ramdisk
-cp /lib/cryptsetup/scripts/cryptsetup-suspend "$INITRAMFS_DIR/bin/cryptsetup-suspend"
+cp /lib/cryptsetup/scripts/suspend/cryptsetup-suspend "$INITRAMFS_DIR/bin/cryptsetup-suspend"
 
 # Run pre-suspend scripts
 run_dir pre suspend
@@ -163,9 +163,10 @@ devices_remaining="$(chroot "$INITRAMFS_DIR" /bin/sh -c "
     # suspend active luks devices (in reverse order) and system
     /bin/cryptsetup-suspend --reverse $devices
 
-    # resume active luks devices (only initramfs devices)
     TABFILE=\"/cryptroot/crypttab\"
     . /lib/cryptsetup/functions
+
+    # resume active luks devices (only initramfs devices)
     for dev in $devices; do
         unset -v CRYPTTAB_NAME \
                  CRYPTTAB_SOURCE \
@@ -176,6 +177,7 @@ devices_remaining="$(chroot "$INITRAMFS_DIR" /bin/sh -c "
         if [ -n \"\$CRYPTTAB_SOURCE\" ]; then
             resume_device \$dev || true
         else
+            # write remaining devices to stdout
             echo -n \"\$dev \"
         fi
     done

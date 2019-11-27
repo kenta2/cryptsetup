@@ -91,6 +91,25 @@ Description: disk encryption support - initramfs integration
  .
  This package provides initramfs integration for cryptsetup.
 
+Package: cryptsetup-suspend
+Architecture: linux-any
+Multi-Arch: foreign
+Depends: cryptsetup-initramfs,
+         systemd,
+         ${misc:Depends},
+         ${shlibs:Depends}
+Description: disk encryption support - suspend mode integration
+ Cryptsetup provides an interface for configuring encryption on block
+ devices (such as /home or swap partitions), using the Linux kernel
+ device mapper target dm-crypt. It features integrated Linux Unified Key
+ Setup (LUKS) support.
+ .
+ This package provides suspend mode integration for cryptsetup. It takes
+ care of removing LUKS master key from memory before system suspend.
+ .
+ Please note that the supsend mode integration is limited to LUKS devices
+ and requires systemd.
+
 Package: cryptsetup-run
 Section: oldlibs
 Architecture: all
