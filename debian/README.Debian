@@ -15,7 +15,8 @@ Table of Contents
 *  9. Backup the LUKS header
 * 10. Changing the boot order of cryptdisks init scripts
 * 11. Unlocking LUKS devices from GRUB
-* 12. Credits
+* 12. Suspend LUKS devices on system suspend
+* 13. Credits
 
 
 1. Introduction into Cryptsetup for Debian
@@ -296,14 +297,14 @@ debian-devel] for further information.
 11. Unlocking LUKS devices from GRUB
 ------------------------------------
 
-GRUB has been able to unlock LUKS1 devices since early in Jessie's
+ GRUB has been able to unlock LUKS1 devices since early in Jessie's
 release cycle.  This feature removes the need for a separate cleartext
 `/boot` partition, hence enables "real" full disk encryption.  However
 cryptsetup >=2.1 uses LUKS version 2 by default, which GRUB 2.02 doesn't
 support.  In other words, as of Buster it is not possible to unlock from
 GRUB new LUKS devices formatted with the default parameters.
 
-Neither Jessie nor Stretch's installers natively support unlocking from
+ Neither Jessie nor Stretch's installers natively support unlocking from
 GRUB, hence users already had to implement various workarounds to enable
 it.  **Former workarounds won't work anymore with LUKS2**.  Integration
 between LUKS and GRUB is documented at
@@ -312,7 +313,16 @@ including recipes to enable the feature starting from the usual
 "encrypted LVM" partitioning method of the Debian Installer -- both with
 LUKS1 (pre-Buster) and LUKS2 (Buster and later) devices.
 
-12. Credits
+
+12. Suspend LUKS devices on system suspend
+------------------------------------------
+
+The 'cryptsetup-suspend' package brings support to automatically suspend
+your LUKS devices before system suspend. Please see the corresponding
+cryptsetup-suspend(7) manpage for further information.
+
+
+13. Credits
 -----------
 
  People who contributed to the Debian cryptsetup package:

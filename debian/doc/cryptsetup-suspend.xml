@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN" "/usr/share/xml/docbook/schema/dtd/4.2/docbookx.dtd">
+
+<refentry id="overview.cryptsetup-suspend">
+
+ <xi:include href="variables.xml"
+	     xpointer="xpointer(/refentry/refentryinfo)"
+	     xmlns:xi="http://www.w3.org/2001/XInclude"/>
+
+ <refmeta>
+  <refentrytitle>cryptsetup-suspend</refentrytitle>
+  <manvolnum>7</manvolnum>
+  <xi:include href="variables.xml"
+	      xpointer="xpointer(/refentry/refmeta/*)"
+	      xmlns:xi="http://www.w3.org/2001/XInclude"/>
+ </refmeta>
+
+ <refnamediv>
+  <refname>cryptsetup-suspend</refname>
+  <refpurpose>automatically suspend LUKS devices on system suspend</refpurpose>
+ </refnamediv>
+
+ <refsect1 id="cryptsetup-suspend.description">
+  <title>DESCRIPTION</title>
+  <simpara>
+   <emphasis>cryptsetup-suspend</emphasis> brings support to automatically
+   suspend LUKS devices before system suspend. Devices will be unlocked at
+   system resume time, asking for passwords if required.
+  </simpara>
+  <simpara>
+   <emphasis>cryptsetup-suspend</emphasis> supports all setups that are
+   supported by the Debian <name>cryptsetup</name> packages.
+   To do so, it depends on the initramfs scripts from <name>Debian</name>
+   package <name>cryptsetup-initramfs</name>. See the
+   <reference>INTERNALS</reference> section about details on how it works.
+  </simpara>
+ </refsect1>
+
+ <refsect1 id="cryptsetup-suspend.security-aspects">
+  <title>SECURITY ASPECTS</title>
+  <simpara>
+   Suspending LUKS devices basically means to remove the corresponding
+   encryption keys from system memory. This protects against all sort of
+   attacks that try to read out the memory, e.g. cold-boot attacks.
+  </simpara>
+ </refsect1>
+
+ <refsect1 id="cryptsetup-suspend.internals">
+  <title>INTERNALS</title>
+  <simpara>
+   <emphasis>cryptsetup-suspend</emphasis> consists of three parts:
+   <simplelist type="inline">
+    <member>
+     <command>cryptsetup-suspend</command>: A c program that takes a list
+     of luks devices as arguments, luksSuspends them and suspends the
+     system afterwards.
+    </member>
+    <member>
+     <command>cryptsetup-suspend-wrapper</command>: A shell wrapper script
+     that does the following:
+     <simplelist type="inline">
+      <member>1. Extract the initramfs into a ramfs (the chroot)</member>
+      <member>2. Run (systemd) pre-suspend scripts, stop udev, freeze cgroups</member>
+      <member>3. run cryptsetup-suspend in chroot</member>
+      <member>4. resume initramfs devices inside chroot after resume</member>
+      <member>5. resume non-initramfs devices outside chroot</member>
+      <member>6. thaw groups, start udev, run (systemd) post-suspend scripts</member>
+     </simplelist>
+    </member>
+    <member>
+     A systemd unit drop-in file that overrides <file>systemd-suspend.service</file>
+     and makes it invoke the script <command>cryptsetup-suspend-wrapper</command>.
+    </member>
+   </simplelist>
+  </simpara>
+ </refsect1>
+
+ <refsect1 id="cryptsetup-suspend.see_also">
+  <title>SEE ALSO</title>
+  <simpara>
+   <emphasis>cryptsetup</emphasis>(8), <emphasis>crypttab</emphasis>(5)
+  </simpara>
+ </refsect1>
+
+ <refsect1 id="cryptsetup-suspend.author">
+  <title>AUTHOR</title><simpara>This manual page was written by Jonas Meurer
+   &lt;jonas@freesources.org&gt; in December 2019.
+  </simpara>
+ </refsect1>
+
+</refentry>
