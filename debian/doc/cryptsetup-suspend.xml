@@ -24,14 +24,14 @@
   <title>DESCRIPTION</title>
   <simpara>
    <emphasis>cryptsetup-suspend</emphasis> brings support to automatically
-   suspend LUKS devices before system suspend. Devices will be unlocked at
-   system resume time, asking for passwords if required.
+   suspend LUKS devices before entering system suspend mode. Devices will be
+   unlocked at system resume time, asking for passwords if required.
   </simpara>
   <simpara>
    <emphasis>cryptsetup-suspend</emphasis> supports all setups that are
-   supported by the Debian <name>cryptsetup</name> packages.
-   To do so, it depends on the initramfs scripts from <name>Debian</name>
-   package <name>cryptsetup-initramfs</name>. See the
+   supported by the <command moreinfo="refentry">cryptsetup</command> packages.
+   To do so, it depends on the scripts from the package
+   <emphasis>cryptsetup-initramfs</emphasis>. See the
    <reference>INTERNALS</reference> section about details on how it works.
   </simpara>
  </refsect1>
@@ -52,24 +52,26 @@
    <simplelist type="inline">
     <member>
      <command>cryptsetup-suspend</command>: A c program that takes a list
-     of luks devices as arguments, luksSuspends them and suspends the
-     system afterwards.
+     of luks devices as arguments, suspends them via luksSuspends and suspends
+     the system afterwards.
     </member>
     <member>
      <command>cryptsetup-suspend-wrapper</command>: A shell wrapper script
-     that does the following:
+     which work in the following way:
      <simplelist type="inline">
-      <member>1. Extract the initramfs into a ramfs (the chroot)</member>
+      <member>1. Disable swap and extract the initramfs into a tmpfs (the chroot)</member>
       <member>2. Run (systemd) pre-suspend scripts, stop udev, freeze cgroups</member>
       <member>3. run cryptsetup-suspend in chroot</member>
       <member>4. resume initramfs devices inside chroot after resume</member>
       <member>5. resume non-initramfs devices outside chroot</member>
       <member>6. thaw groups, start udev, run (systemd) post-suspend scripts</member>
+      <member>7. Unmount the tmpfs and re-enable swap</member>
      </simplelist>
     </member>
     <member>
-     A systemd unit drop-in file that overrides <file>systemd-suspend.service</file>
-     and makes it invoke the script <command>cryptsetup-suspend-wrapper</command>.
+     A systemd unit drop-in file that overrides the Exec property of
+     <filename class="devicefile">systemd-suspend.service</filename> so that
+     it invoke the script <command>cryptsetup-suspend-wrapper</command>.
     </member>
    </simplelist>
   </simpara>
