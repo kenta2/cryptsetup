@@ -29,8 +29,8 @@
   </simpara>
   <simpara>
    <emphasis>cryptsetup-suspend</emphasis> supports all setups that are
-   supported by the <command moreinfo="refentry">cryptsetup</command> packages.
-   To do so, it depends on the scripts from the package
+   supported by the <emphasis>cryptsetup</emphasis> packages. To do so,
+   it depends on scripts from the Debian package
    <emphasis>cryptsetup-initramfs</emphasis>. See the
    <reference>INTERNALS</reference> section about details on how it works.
   </simpara>
@@ -52,12 +52,12 @@
    <simplelist type="inline">
     <member>
      <command>cryptsetup-suspend</command>: A c program that takes a list
-     of luks devices as arguments, suspends them via luksSuspends and suspends
-     the system afterwards.
+     of LUKS devices as arguments, suspends them via
+     <emphasis>luksSuspend</emphasis> and suspends the system afterwards.
     </member>
     <member>
      <command>cryptsetup-suspend-wrapper</command>: A shell wrapper script
-     which work in the following way:
+     which works the following way:
      <simplelist type="inline">
       <member>1. Disable swap and extract the initramfs into a tmpfs (the chroot)</member>
       <member>2. Run (systemd) pre-suspend scripts, stop udev, freeze cgroups</member>
@@ -71,7 +71,7 @@
     <member>
      A systemd unit drop-in file that overrides the Exec property of
      <filename class="devicefile">systemd-suspend.service</filename> so that
-     it invoke the script <command>cryptsetup-suspend-wrapper</command>.
+     it invokes the script <command>cryptsetup-suspend-wrapper</command>.
     </member>
    </simplelist>
   </simpara>
