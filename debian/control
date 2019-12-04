@@ -94,7 +94,7 @@ Description: disk encryption support - initramfs integration
 Package: cryptsetup-suspend
 Architecture: linux-any
 Multi-Arch: foreign
-Depends: cryptsetup-initramfs,
+Depends: cryptsetup-initramfs (>= 2:2.2.2-2~),
          systemd,
          ${misc:Depends},
          ${shlibs:Depends}
