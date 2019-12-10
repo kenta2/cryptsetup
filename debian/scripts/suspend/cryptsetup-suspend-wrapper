@@ -48,7 +48,8 @@ mount_initramfs() {
 
     for p in $BIND_PATHS; do
         mkdir -p -m 0755 "$INITRAMFS_DIR$p"
-        mount -o bind $p "$INITRAMFS_DIR$p"
+        mount --rbind $p "$INITRAMFS_DIR$p"
+        mount --make-rslave "$INITRAMFS_DIR$p"
     done
 }
 
