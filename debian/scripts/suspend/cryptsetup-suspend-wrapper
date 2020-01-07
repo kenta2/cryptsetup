@@ -41,16 +41,11 @@ mount_initramfs() {
     mount -t ramfs -o mode=0755 ramfs "$INITRAMFS_DIR"
 
     # extract initrd.img to initramfs dir
-    if file -L "$INITRAMFS" | grep -q "ASCII cpio archive"; then
-        # hybrid initrd.img
-        (cd "$INITRAMFS_DIR" &&
-            SKIP_BLOCKS=$(cpio -id < "$INITRAMFS" 2>&1 | grep blocks | cut -d" " -f1) &&
-            dd status=none if="$INITRAMFS" of="$INITRAMFS_DIR/initrd.img.gz" bs=512 skip="$SKIP_BLOCKS"
-            zcat "$INITRAMFS_DIR/initrd.img.gz" | cpio -id --quiet
-            rm "$INITRAMFS_DIR/initrd.img.gz")
-    else
-        # plain initrd.img
-        (cd "$INITRAMFS_DIR" && zcat "$INITRAMFS" | cpio -id --quiet)
+    unmkinitramfs "${INITRAMFS}" "${INITRAMFS_DIR}"
+
+    # unmkinitramfs extracts microcode into folders "early*" and the actual initramfs into "main"
+    if [ -d "${INITRAMFS_DIR}/main" ]; then
+        INITRAMFS_DIR=${INITRAMFS_DIR}/main
     fi
 
     for p in $BIND_PATHS; do
