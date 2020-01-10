@@ -26,11 +26,14 @@
    <emphasis>cryptsetup-suspend</emphasis> brings support to automatically
    suspend LUKS devices before entering system suspend mode. Devices will be
    unlocked at system resume time, asking for passwords if required.
+   The feature is enabled automatically by installing the
+   <emphasis>cryptsetup-suspend</emphasis> package. No further configuration
+   is required.
   </simpara>
   <simpara>
-   <emphasis>cryptsetup-suspend</emphasis> supports all setups that are
-   supported by the <emphasis>cryptsetup</emphasis> packages. To do so,
-   it depends on scripts from the Debian package
+   <emphasis>cryptsetup-suspend</emphasis> supports all setups of LUKS
+   devices that are supported by the <emphasis>cryptsetup</emphasis>
+   packages. To do so, it depends on scripts from the Debian package
    <emphasis>cryptsetup-initramfs</emphasis>. See the
    <reference>INTERNALS</reference> section about details on how it works.
   </simpara>
@@ -41,7 +44,25 @@
   <simpara>
    Suspending LUKS devices basically means to remove the corresponding
    encryption keys from system memory. This protects against all sort of
-   attacks that try to read out the memory, e.g. cold-boot attacks.
+   attacks that try to read out the memory from a suspended system, like
+   for example cold-boot attacks.
+  </simpara>
+  <simpara>
+   <emphasis>cryptsetup-suspend</emphasis> protects <emphasis>only</emphasis>
+   the encryption keys of your LUKS devices against being read from the
+   memory. Most likely there's more sensitive data in system memory, be
+   it other kinds of private keys (e.g. OpenPGP, OpenSSH) or any kind
+   of documents with sensitive content.
+  </simpara>
+ </refsect1>
+
+
+ <refsect1 id="cryptsetup-suspend.limitations">
+  <title>LIMITATIONS</title>
+  <simpara>
+   The <emphasis>cryptsetup-suspend</emphasis> feature is limited to LUKS
+   devices and doesn't work with <emphasis>plain dm-crypt</emphasis> or
+   <emphasis>tcrypt</emphasis> devices.
   </simpara>
  </refsect1>
 
