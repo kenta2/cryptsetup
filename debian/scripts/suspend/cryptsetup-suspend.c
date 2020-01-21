@@ -1,5 +1,5 @@
 /*
- * Small program to luksSuspend devices before system suspend
+ * Small program to LUKS suspend devices before system suspend
  *
  * License: GNU GPLv3
  * Copyright: (c) 2017 Guilhem Moulin <guilhem@debian.org>
@@ -56,7 +56,9 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    /* Not available in Linux Kernel yet */
+    /* Disable sync_on_suspend in Linux kernel
+     *
+     * Only available in Linux kernel >= 5.6 */
     if (access("/sys/power/sync_on_suspend", W_OK) < 0) {
         if (errno == ENOENT)
             warn("kernel too old, can't disable sync on suspend");
@@ -82,14 +84,17 @@ int main(int argc, char *argv[]) {
         fclose(sos);
     }
 
-    /* change process priority to -20 (highest) to avoid races between
-     * the LUKS suspend(s) and the suspend-on-ram */
+    /* Change process priority to -20 (highest) to avoid races between
+     * the LUKS suspend(s) and the suspend-on-ram. */
     if (setpriority(PRIO_PROCESS, 0, -20) == -1)
         warn("can't lower process priority to -20");
 
-    /* XXX no need to sync everything, should be enough to syncfd(dirfd)
-	 * where dird = open(filepath, O_DIRECTORY|O_RDONLY) and filepath is
-	 * /dev/mapper/argv[i]'s first mountpoint */
+    /* Do the final filesystem sync since we disabled sync_on_suspend in
+     * Linux kernel.
+     *
+     * XXX: probably no need to sync everything, should be enough to
+     * syncfd(dirfd) where dird = open(filepath, O_DIRECTORY|O_RDONLY)
+     * and filepath is /dev/mapper/argv[i]'s first mountpoint */
     sync();
 
     int rv = 0;
@@ -108,7 +113,7 @@ int main(int argc, char *argv[]) {
         err(EXIT_FAILURE, "couldn't suspend");
     fclose(s);
 
-    /* restore original sync_on_suspend value */
+    /* Restore original sync_on_suspend value */
     if (sync_on_suspend_reset) {
         sos = fopen("/sys/power/sync_on_suspend", "w");
         if (!sos)
