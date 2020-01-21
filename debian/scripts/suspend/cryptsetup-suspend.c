@@ -14,6 +14,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 
@@ -26,6 +27,7 @@ void usage() {
 }
 
 int main(int argc, char *argv[]) {
+    int rv = 0;
     bool reverse = 0;
     int d_size;
     bool sync_on_suspend_reset = 0;
@@ -89,6 +91,31 @@ int main(int argc, char *argv[]) {
     if (setpriority(PRIO_PROCESS, 0, -20) == -1)
         warn("can't lower process priority to -20");
 
+    /* Detect maximum memory usage by argon2i PBKDF on LUKS devices */
+    const struct crypt_pbkdf_type *pbkdf = crypt_get_pbkdf_type_params(CRYPT_KDF_ARGON2I);
+    int argon2i_mem_size = 0;
+    if (!pbkdf) {
+        err(EXIT_FAILURE, "couldn't get PBKDF parameters for %s", CRYPT_KDF_ARGON2I);
+    } else {
+        argon2i_mem_size = pbkdf->max_memory_kb * 1024;
+    }
+
+    /* Allocate and lock memory for later usage by LUKS resume in order to
+     * prevent swapping out after LUKS devices (which might include swap
+     * storage) have been suspended. */
+    //argon2i_mem_size = 1024 * 1024 * 1024; // 1GB
+    char *mem;
+    if (!(mem = malloc(argon2i_mem_size)))
+        err(EXIT_FAILURE, "couldn't allocate enough memory");
+    if (mlock(mem, argon2i_mem_size) == -1)
+        err(EXIT_FAILURE, "couldn't lock enough memory");
+    /* Fill the allocated memory to make sure it's really reserved even if
+     * memory pages are copy-on-write. */
+    size_t i;
+    size_t page_size = getpagesize();
+    for (i = 0; i < argon2i_mem_size; i += page_size)
+        mem[i] = 0;
+
     /* Do the final filesystem sync since we disabled sync_on_suspend in
      * Linux kernel.
      *
@@ -97,7 +124,6 @@ int main(int argc, char *argv[]) {
      * and filepath is /dev/mapper/argv[i]'s first mountpoint */
     sync();
 
-    int rv = 0;
     for (int i = 0; i < d_size; i++) {
         struct crypt_device *cd = NULL;
         if (crypt_init_by_name(&cd, devices[i]) || crypt_suspend(cd, devices[i])) {
