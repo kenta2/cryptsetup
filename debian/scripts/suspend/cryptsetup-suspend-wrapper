@@ -29,9 +29,9 @@ mount_initramfs() {
 
     # Compare size of initramfs and available memory
     # https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=34e431b0ae398fc54ea69ff85ec700722c9da773
-    local MEM_AVAILABLE=`grep MemAvailable /proc/meminfo | awk '{print $2}'`
-    local MEM_SIZE=`expr "$MEM_AVAILABLE" \* 512`  # x * 1024 (byte)/ 2 (double space)
-    local INITRAMFS_SIZE=`gunzip -l "$INITRAMFS" | tail -n 1 | awk '{print $2}'`
+    local MEM_AVAILABLE="$(grep MemAvailable /proc/meminfo | awk '{print $2}')"
+    local MEM_SIZE="$(expr "$MEM_AVAILABLE" \* 512)" # x * 1024 (byte)/ 2 (double space)
+    local INITRAMFS_SIZE="$(gunzip -l "$INITRAMFS" | tail -n 1 | awk '{print $2}')"
 
     if [ "$INITRAMFS_SIZE" -ge "$MEM_SIZE" ]; then
         echo "Error: Not enough RAM" >&1
@@ -41,11 +41,11 @@ mount_initramfs() {
     mount -t ramfs -o mode=0755 ramfs "$INITRAMFS_DIR"
 
     # extract initrd.img to initramfs dir
-    unmkinitramfs "${INITRAMFS}" "${INITRAMFS_DIR}"
+    unmkinitramfs "$INITRAMFS" "$INITRAMFS_DIR"
 
     # unmkinitramfs extracts microcode into folders "early*" and the actual initramfs into "main"
-    if [ -d "${INITRAMFS_DIR}/main" ]; then
-        INITRAMFS_DIR=${INITRAMFS_DIR}/main
+    if [ -d "$INITRAMFS_DIR/main" ]; then
+        INITRAMFS_DIR=$INITRAMFS_DIR/main
     fi
 
     for p in $BIND_PATHS; do
