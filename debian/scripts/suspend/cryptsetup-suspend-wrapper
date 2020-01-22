@@ -8,8 +8,8 @@ export PATH
 [ -f /lib/cryptsetup/functions ] || return 0
 . /lib/cryptsetup/functions
 
-INITRAMFS_DIR="$(mktemp -d --tmpdir=/run/shm)"
-INITRAMFS_DIR="$(readlink -f "$INITRAMFS_DIR")"
+INITRAMFS_MNT="$(mktemp -d --tmpdir=/tmp)"
+INITRAMFS_MNT="$(readlink -f "$INITRAMFS_MNT")"
 BIND_PATHS="/sys /proc /dev /run"
 SYSTEM_SLEEP_PATH=/lib/systemd/system-sleep
 
@@ -27,14 +27,16 @@ mount_initramfs() {
         exit 1
     fi
 
-    mount -t ramfs -o mode=0755 ramfs "$INITRAMFS_DIR"
+    mount -t ramfs -o mode=0755 ramfs "$INITRAMFS_MNT"
 
     # extract initrd.img to initramfs dir
-    unmkinitramfs "$INITRAMFS" "$INITRAMFS_DIR"
+    unmkinitramfs "$INITRAMFS" "$INITRAMFS_MNT"
 
     # unmkinitramfs extracts microcode into folders "early*" and the actual initramfs into "main"
-    if [ -d "$INITRAMFS_DIR/main" ]; then
-        INITRAMFS_DIR=$INITRAMFS_DIR/main
+    if [ -d "$INITRAMFS_MNT/main" ]; then
+        INITRAMFS_DIR="$INITRAMFS_MNT/main"
+    else
+        INITRAMFS_DIR="$INITRAMFS_MNT"
     fi
 
     for p in $BIND_PATHS; do
@@ -46,8 +48,8 @@ mount_initramfs() {
 
 umount_initramfs() {
     # recursively unmount
-    umount -R "$INITRAMFS_DIR"
-    rmdir "$INITRAMFS_DIR"
+    umount -R "$INITRAMFS_MNT"
+    rmdir "$INITRAMFS_MNT"
 }
 
 CGROUP_FREEZER=
