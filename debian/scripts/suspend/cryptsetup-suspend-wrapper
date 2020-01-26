@@ -33,6 +33,15 @@ mount_initramfs() {
         exit 1
     fi
 
+    # we need at about 300 MB on ubuntu, 200 on debian
+    # https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=34e431b0ae398fc54ea69ff85ec700722c9da773
+    # XXX: Maybe we can improve this in the future by checking for available swap too
+    local MEM_AVAILABLE="$(grep MemAvailable /proc/meminfo | awk '{print $2}')"
+    if [ "307200" -gt "$MEM_SIZE" ]; then
+        log_error "Not enough RAM available"
+        exit 1
+    fi
+
     mount -t ramfs -o mode=0755 ramfs "$INITRAMFS_MNT"
 
     # extract initrd.img to initramfs dir
