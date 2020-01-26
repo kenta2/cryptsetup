@@ -37,7 +37,7 @@ mount_initramfs() {
     # https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=34e431b0ae398fc54ea69ff85ec700722c9da773
     # XXX: Maybe we can improve this in the future by checking for available swap too
     local MEM_AVAILABLE="$(grep MemAvailable /proc/meminfo | awk '{print $2}')"
-    if [ "307200" -gt "$MEM_SIZE" ]; then
+    if [ "307200" -gt "$MEM_AVAILABLE" ]; then
         log_error "Not enough RAM available"
         exit 1
     fi
