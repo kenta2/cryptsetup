@@ -20,10 +20,16 @@ run_dir() {
     find "$SYSTEM_SLEEP_PATH" -type f -executable -exec "{}" "$@" ";"
 }
 
+log_error() {
+    # arg1 should be message
+    echo "$1" | systemd-cat -t cryptsetup-suspend -p err
+    echo "$1" >&2
+}
+
 mount_initramfs() {
     local INITRAMFS=$(sed -n 's/.*BOOT_IMAGE=.*vmlinuz-\([^: ]*\).*$/\/boot\/initrd.img-\1/p' /proc/cmdline)
     if [ ! -f "$INITRAMFS" ]; then
-        echo "ERROR: No initramfs found at $INITRAMFS" >&2
+        log_error "No initramfs found at $INITRAMFS"
         exit 1
     fi
 
@@ -126,14 +132,14 @@ clean_up() {
 
 # check unified cgroups hierarchy
 if [ ! -d /sys/fs/cgroup/unified/system.slice/ ]; then
-    echo "ERROR: No unified cgroups hierarchy" >&2
+    log_error "No unified cgroups hierarchy"
     exit 1
 fi
 
 # check that not run as user
 # XXX: We should catch also cases where libpam-systemd is not installed
 if cat /proc/self/cgroup | grep -q "user.slice"; then
-    echo "ERROR: Don't run this script as user" >&2
+    log_error "Don't run this script as user"
     exit 1
 fi
 
@@ -195,6 +201,6 @@ for dev in $devices_remaining; do
     if [ -n "$CRYPTTAB_SOURCE" ]; then
         resume_device $dev || true
     else
-        echo "ERROR: '$dev' not found in /etc/crypttab" >&2
+        log_error "'$dev' not found in /etc/crypttab"
     fi
 done
