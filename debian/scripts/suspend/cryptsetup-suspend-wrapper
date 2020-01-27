@@ -22,8 +22,8 @@ run_dir() {
 
 log_error() {
     # arg1 should be message
-    echo "$1" | systemd-cat -t cryptsetup-suspend -p err
-    echo "$1" >&2
+    echo "Error: $1" | systemd-cat -t cryptsetup-suspend -p err
+    echo "Error: $1" >&2
 }
 
 mount_initramfs() {
