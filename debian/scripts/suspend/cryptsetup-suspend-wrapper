@@ -57,13 +57,18 @@ mount_initramfs() {
 
     for p in $BIND_PATHS; do
         mkdir -p -m 0755 "$INITRAMFS_DIR$p"
-        mount --rbind $p "$INITRAMFS_DIR$p"
-        mount --make-rslave "$INITRAMFS_DIR$p"
+        if [ "$p" = "/proc" ]; then
+            mount -t proc /proc "$INITRAMFS_DIR/proc"
+        else
+            mount --rbind $p "$INITRAMFS_DIR$p"
+            mount --make-rslave "$INITRAMFS_DIR$p"
+        fi
     done
 }
 
 umount_initramfs() {
     # recursively unmount
+    mount --make-rprivate /tmp/cryptsetup.*
     umount -R /tmp/cryptsetup.*
     rmdir /tmp/cryptsetup.*
 }
