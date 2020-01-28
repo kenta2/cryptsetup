@@ -131,6 +131,9 @@ udev_service() {
 }
 
 clean_up() {
+    # we always want to run through the whole cleanup
+    set +e
+
     # thaw all frozen cgroups
     thaw_cgroups
 
