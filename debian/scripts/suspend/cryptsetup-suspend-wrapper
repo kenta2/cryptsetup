@@ -35,10 +35,11 @@ mount_initramfs() {
 
     # we need at about 300 MB on ubuntu, 200 on debian
     # https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=34e431b0ae398fc54ea69ff85ec700722c9da773
-    # XXX: Maybe we can improve this in the future by checking for available swap too
-    local MEM_AVAILABLE="$(grep MemAvailable /proc/meminfo | awk '{print $2}')"
-    if [ "307200" -gt "$MEM_AVAILABLE" ]; then
-        log_error "Not enough RAM available"
+    local MemAvailable="$(grep MemAvailable /proc/meminfo | awk '{print $2}')"
+    local SwapFree="$(grep SwapFree /proc/meminfo | awk '{print $2}')"
+    let mem="$MemAvailable + $SwapFree"
+    if [ "307200" -gt "$mem" ]; then
+        log_error "Not enough memory available. Please close some programs or add swap space to supend sucessfully."
         exit 1
     fi
 
