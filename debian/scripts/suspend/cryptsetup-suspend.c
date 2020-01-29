@@ -27,7 +27,7 @@ void usage() {
 }
 
 /* Calculate free memory (MemAvailable + SwapFree) from /proc/meminfo */
-unsigned long get_mem_swap_avail() {
+uint32_t get_mem_swap_avail_kb() {
     FILE *meminfo = fopen("/proc/meminfo", "r");
     if (meminfo == NULL)
         err(EXIT_FAILURE, "couldn't open /proc/meminfo");
@@ -46,11 +46,11 @@ unsigned long get_mem_swap_avail() {
     }
     fclose(meminfo);
 
-    unsigned long mem_swap_avail = (mem_avail_kb + swap_free_kb) * 1024;
-    if (mem_swap_avail == 0)
+    uint32_t mem_swap_avail_kb = mem_avail_kb + swap_free_kb;
+    if (mem_swap_avail_kb == 0)
        errx(EXIT_FAILURE, "error reading available memory and swap from /proc/meminfo");
 
-    return mem_swap_avail;
+    return mem_swap_avail_kb;
 }
 
 int main(int argc, char *argv[]) {
@@ -101,7 +101,7 @@ int main(int argc, char *argv[]) {
             err(EXIT_FAILURE, "couldn't read from file");
 
         if (sos_c == '0') {
-            /* already disabled */
+            /* Already disabled */
         } else if (sos_c == '1') {
             sync_on_suspend_reset = 1;
             if (fputs("0", sos) <= 0)
@@ -118,37 +118,62 @@ int main(int argc, char *argv[]) {
     if (setpriority(PRIO_PROCESS, 0, -20) == -1)
         warn("can't lower process priority to -20");
 
-    /* Get compiled-in maximum memory usage by argon2i PBKDF on LUKS2 devices */
-    const struct crypt_pbkdf_type *pbkdf = crypt_get_pbkdf_type_params(CRYPT_KDF_ARGON2I);
-    unsigned long argon2i_mem_size = 0;
-    if (!pbkdf) {
-        err(EXIT_FAILURE, "couldn't get PBKDF parameters for %s", CRYPT_KDF_ARGON2I);
-    } else {
-        argon2i_mem_size = pbkdf->max_memory_kb * 1024;
+    /* Get memory settings of keyslots from processed LUKS2 devices */
+    uint32_t argon2i_max_memory_kb = 0;
+    for (int i = 0; i < d_size; i++) {
+        struct crypt_device *cd = NULL;
+        if (crypt_init_by_name(&cd, devices[i])) {
+            warnx("couldn't init LUKS device %s", devices[i]);
+            rv = EXIT_FAILURE;
+        } else {
+            /* Only LUKS2 devices may use argon2i PBKDF */
+            if (strcmp(crypt_get_type(cd), CRYPT_LUKS2) != 0)
+                continue;
+            int ks_max = crypt_keyslot_max(crypt_get_type(cd));
+            for (int j = 0; j < ks_max; j++) {
+                crypt_keyslot_info ki = crypt_keyslot_status(cd, j);
+                /* Only look at active keyslots */
+                if (ki != CRYPT_SLOT_ACTIVE && ki != CRYPT_SLOT_ACTIVE_LAST)
+                    continue;
+                struct crypt_pbkdf_type pbkdf_ki;
+                if (crypt_keyslot_get_pbkdf(cd, j, &pbkdf_ki) < 0) {
+                    warn("couldn't get PBKDF for keyslot %d of device %s", j, devices[i]);
+                    rv = EXIT_FAILURE;
+                } else {
+                    if (pbkdf_ki.max_memory_kb > argon2i_max_memory_kb)
+                        argon2i_max_memory_kb = pbkdf_ki.max_memory_kb;
+                }
+            }
+        }
+        crypt_free(cd);
     }
+
+    /* Add some more memory to be on the save side
+     * TODO: find a reasonable value */
+    argon2i_max_memory_kb += 2 * 1024; // 2MB
 
     /* Check if we have enough memory available to prevent mlock() from
      * triggering the OOM killer. */
-    unsigned long mem_swap_avail = get_mem_swap_avail();
-    if (argon2i_mem_size > mem_swap_avail) {
-        errx(EXIT_FAILURE, "Error: Available memory (%ld kb) less than required (%ld kb)",
-                        mem_swap_avail / 1024, argon2i_mem_size / 1024);
+    uint32_t mem_swap_avail_kb = get_mem_swap_avail_kb();
+    if (argon2i_max_memory_kb > mem_swap_avail_kb) {
+        errx(EXIT_FAILURE, "Error: Available memory (%d kb) less than required (%d kb)",
+                        mem_swap_avail_kb, argon2i_max_memory_kb);
     }
 
     /* Allocate and lock memory for later usage by LUKS resume in order to
      * prevent swapping out after LUKS devices (which might include swap
      * storage) have been suspended. */
-    //argon2i_mem_size = 1024 * 1024 * 1024; // 1GB
+    fprintf(stderr, "Allocating and mlocking memory: %d kb\n", argon2i_max_memory_kb);
     char *mem;
-    if (!(mem = malloc(argon2i_mem_size)))
+    if (!(mem = malloc(argon2i_max_memory_kb)))
         err(EXIT_FAILURE, "couldn't allocate enough memory");
-    if (mlock(mem, argon2i_mem_size) == -1)
+    if (mlock(mem, argon2i_max_memory_kb) == -1)
         err(EXIT_FAILURE, "couldn't lock enough memory");
     /* Fill the allocated memory to make sure it's really reserved even if
      * memory pages are copy-on-write. */
     size_t i;
     size_t page_size = getpagesize();
-    for (i = 0; i < argon2i_mem_size; i += page_size)
+    for (i = 0; i < argon2i_max_memory_kb; i += page_size)
         mem[i] = 0;
 
     /* Do the final filesystem sync since we disabled sync_on_suspend in
@@ -183,5 +208,6 @@ int main(int argc, char *argv[]) {
             err(EXIT_FAILURE, "couldn't write to file");
     }
 
+    fprintf(stderr, "Resuming...\n");
     return rv;
 }
