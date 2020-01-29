@@ -1,6 +1,5 @@
 #!/bin/sh
 
-set -e
 PATH="/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
 
@@ -135,9 +134,6 @@ udev_service() {
 }
 
 clean_up() {
-    # we always want to run through the whole cleanup
-    set +e
-
     # thaw all frozen cgroups
     thaw_cgroups > /dev/null 2>&1
 
