@@ -68,6 +68,10 @@ mount_initramfs() {
 
 umount_initramfs() {
     # recursively unmount
+    # TODO: only umount *our* mounts, don't try to clean up cruft from earlier
+    #mount --make-rprivate "$INITRAMFS_MNT"
+    #umount -R "$INITRAMFS_MNT"
+    #rmdir "$INITRAMFS_MNT"
     mount --make-rprivate /tmp/cryptsetup.*
     umount -R /tmp/cryptsetup.*
     rmdir /tmp/cryptsetup.*
