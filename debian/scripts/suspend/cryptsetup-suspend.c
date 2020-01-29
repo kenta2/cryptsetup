@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
      * Only available in Linux kernel >= 5.6 */
     if (access("/sys/power/sync_on_suspend", W_OK) < 0) {
         if (errno == ENOENT)
-            warn("kernel too old, can't disable sync on suspend");
+            warnx("kernel too old, can't disable sync on suspend");
     } else {
         sos = fopen("/sys/power/sync_on_suspend", "r+");
         if (!sos)
@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
             if (fputs("0", sos) <= 0)
                 err(EXIT_FAILURE, "couldn't write to file");
         } else {
-            err(EXIT_FAILURE, "unexpected value from /sys/power/sync_on_suspend");
+            errx(EXIT_FAILURE, "unexpected value from /sys/power/sync_on_suspend");
         }
 
         fclose(sos);
@@ -91,7 +91,7 @@ int main(int argc, char *argv[]) {
     if (setpriority(PRIO_PROCESS, 0, -20) == -1)
         warn("can't lower process priority to -20");
 
-    /* Detect maximum memory usage by argon2i PBKDF on LUKS devices */
+    /* Get compiled-in maximum memory usage by argon2i PBKDF on LUKS2 devices */
     const struct crypt_pbkdf_type *pbkdf = crypt_get_pbkdf_type_params(CRYPT_KDF_ARGON2I);
     int argon2i_mem_size = 0;
     if (!pbkdf) {
