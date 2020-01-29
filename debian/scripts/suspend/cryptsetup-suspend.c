@@ -26,6 +26,33 @@ void usage() {
     exit(1);
 }
 
+/* Calculate free memory (MemAvailable + SwapFree) from /proc/meminfo */
+unsigned long get_mem_swap_avail() {
+    FILE *meminfo = fopen("/proc/meminfo", "r");
+    if (meminfo == NULL)
+        err(EXIT_FAILURE, "couldn't open /proc/meminfo");
+
+    int mem_avail_kb, swap_free_kb = 0;
+    char line[256];
+    char *head;
+    while (fgets(line, sizeof(line), meminfo)) {
+        if (strncmp(line, "MemAvailable", strlen("MemAvailable")) == 0) {
+            if (sscanf(line, "MemAvailable: %d kB", &mem_avail_kb) != 1)
+                err(EXIT_FAILURE, "couldn't read MemAvailable from /proc/meminfo");
+        } else if (strncmp(line, "SwapFree", strlen("SwapFree")) == 0) {
+            if (sscanf(line, "SwapFree: %d kB", &swap_free_kb) != 1)
+                err(EXIT_FAILURE, "couldn't read SwapFree from /proc/meminfo");
+        }
+    }
+    fclose(meminfo);
+
+    unsigned long mem_swap_avail = (mem_avail_kb + swap_free_kb) * 1024;
+    if (mem_swap_avail == 0)
+       errx(EXIT_FAILURE, "error reading available memory and swap from /proc/meminfo");
+
+    return mem_swap_avail;
+}
+
 int main(int argc, char *argv[]) {
     int rv = 0;
     bool reverse = 0;
@@ -93,11 +120,19 @@ int main(int argc, char *argv[]) {
 
     /* Get compiled-in maximum memory usage by argon2i PBKDF on LUKS2 devices */
     const struct crypt_pbkdf_type *pbkdf = crypt_get_pbkdf_type_params(CRYPT_KDF_ARGON2I);
-    int argon2i_mem_size = 0;
+    unsigned long argon2i_mem_size = 0;
     if (!pbkdf) {
         err(EXIT_FAILURE, "couldn't get PBKDF parameters for %s", CRYPT_KDF_ARGON2I);
     } else {
         argon2i_mem_size = pbkdf->max_memory_kb * 1024;
+    }
+
+    /* Check if we have enough memory available to prevent mlock() from
+     * triggering the OOM killer. */
+    unsigned long mem_swap_avail = get_mem_swap_avail();
+    if (argon2i_mem_size > mem_swap_avail) {
+        errx(EXIT_FAILURE, "Error: Available memory (%ld kb) less than required (%ld kb)",
+                        mem_swap_avail / 1024, argon2i_mem_size / 1024);
     }
 
     /* Allocate and lock memory for later usage by LUKS resume in order to
