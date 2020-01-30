@@ -183,6 +183,9 @@ devices="$(crypttab_foreach_entry get_active_devices)"
 # freeze all cgroups but us
 freeze_cgroups
 
+# No longer fail in case of errors
+set +e
+
 # change into ramdisk
 devices_remaining="$(chroot "$INITRAMFS_DIR" /bin/sh -c "
     # suspend active luks devices (in reverse order) and system
