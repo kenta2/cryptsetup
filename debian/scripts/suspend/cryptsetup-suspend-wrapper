@@ -61,14 +61,13 @@ mount_initramfs() {
             mount -t proc /proc "$INITRAMFS_DIR/proc"
         else
             mount --rbind $p "$INITRAMFS_DIR$p"
-            mount --make-rslave "$INITRAMFS_DIR$p"
         fi
     done
+    mount --make-rprivate "$INITRAMFS_MNT"
 }
 
 umount_initramfs() {
     # recursively unmount
-    mount --make-rprivate "$INITRAMFS_MNT"
     umount -R "$INITRAMFS_MNT"
     rmdir "$INITRAMFS_MNT"
 }
