@@ -75,14 +75,17 @@ umount_initramfs() {
 CGROUP_FREEZER=
 freeze_cgroups() {
     # add all machines/containers and user cgroups
-    CGROUPS="/sys/fs/cgroup/unified/machine.slice/cgroup.freeze \
-        /sys/fs/cgroup/unified/user.slice/cgroup.freeze"
+    CGROUPS="$hierarchy/machine.slice/cgroup.freeze \
+        $hierarchy/user.slice/cgroup.freeze"
 
     # add all system cgroups but us
-    CGROUPS_SYSTEM="$(find /sys/fs/cgroup/unified/system.slice/ -mindepth 2 -maxdepth 2 -name cgroup.freeze)"
+    CGROUPS_SYSTEM="$(find $hierarchy/system.slice/ -mindepth 2 -maxdepth 2 -name cgroup.freeze)"
 
     # add systemd itself
-    CGROUP_SYSTEMD="/sys/fs/cgroup/unified/init.scope/cgroup.freeze"
+    CGROUP_SYSTEMD="$hierarchy/init.scope/cgroup.freeze"
+
+    # get my second level cgroup
+    MY_CGROUP="$(cat /proc/self/cgroup | grep "0::" | awk -F "/" '{print $3}')"
 
     # freeze all unfrozen cgroups
     for c in $CGROUPS $CGROUPS_SYSTEM "$CGROUP_SYSTEMD"; do
@@ -90,9 +93,6 @@ freeze_cgroups() {
         if [ -f "$c" ]; then
             val="$(cat "$c")"
         fi
-
-        # get my second level cgroup
-        MY_CGROUP="$(cat /proc/self/cgroup | grep "0::" | awk -F "/" '{print $3}')"
 
         # dont freeze our cgroup, systemd-suspend/udevd or frozen cgroups
         # freezing udevd blocks luksResume
@@ -151,7 +151,13 @@ clean_up() {
 ## Main script
 
 # check unified cgroups hierarchy
-if [ ! -d /sys/fs/cgroup/unified/system.slice/ ]; then
+# https://github.com/systemd/systemd/blob/master/docs/CGROUP_DELEGATION.md
+if [ -d /sys/fs/cgroup/system.slice/ ]; then
+    hierarchy="/sys/fs/cgroup/"
+elif [ -d /sys/fs/cgroup/unified/system.slice/ ]; then
+    # hybrid cgroup hierarchy
+    hierarchy="/sys/fs/cgroup/unified"
+else
     log_error "No unified cgroups hierarchy"
     exit 1
 fi
