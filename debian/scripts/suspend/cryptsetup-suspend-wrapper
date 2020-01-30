@@ -12,6 +12,17 @@ INITRAMFS_MNT="$(mktemp -d --tmpdir=/tmp cryptsetup.XXXXXXXXXX)"
 INITRAMFS_MNT="$(readlink -f "$INITRAMFS_MNT")"
 BIND_PATHS="/sys /proc /dev /run"
 SYSTEM_SLEEP_PATH="/lib/systemd/system-sleep"
+CONFIG_FILE="/etc/cryptsetup/suspend.conf"
+
+read_config() {
+    # define defaults
+    export UNLOCK_SESSIONS="false"
+
+    # optionally read config if owned by root
+    if [ -f "$CONFIG_FILE" ]; then
+        . "$CONFIG_FILE"
+    fi
+}
 
 # run_dir ARGS...
 # Run all executable scripts in directory SYSTEM_SLEEP_PATH with arguments ARGS
@@ -146,6 +157,11 @@ clean_up() {
     run_dir post suspend
 
     umount_initramfs
+
+    # unlock sessions
+    if [ "$UNLOCK_SESSIONS" = "true" ]; then
+        loginctl unlock-sessions
+    fi
 }
 
 ## Main script
@@ -171,6 +187,8 @@ fi
 
 # always thaw cgroups, re-mount filesystems and remove initramfs at the end of the script
 trap clean_up EXIT
+
+read_config
 
 # extract temporary filesystem to switch to
 mount_initramfs

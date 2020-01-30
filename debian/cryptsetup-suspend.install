@@ -1,3 +1,4 @@
 debian/scripts/suspend/systemd_cryptsetup-suspend.conf /lib/systemd/system/systemd-suspend.service.d/
 debian/scripts/suspend/cryptsetup-suspend /lib/cryptsetup/scripts/suspend/
 debian/scripts/suspend/cryptsetup-suspend-wrapper /lib/cryptsetup/scripts/suspend/
+debian/scripts/suspend/suspend.conf /etc/cryptsetup/
