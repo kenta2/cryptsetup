@@ -134,15 +134,15 @@ clean_up() {
     set +e
 
     # thaw all frozen cgroups
-    thaw_cgroups > /dev/null 2>&1
+    thaw_cgroups
 
     # restart systemd-udevd
-    udev_service start > /dev/null 2>&1
+    udev_service start
 
     # Run post-suspend scripts
-    run_dir post suspend > /dev/null 2>&1
+    run_dir post suspend
 
-    umount_initramfs > /dev/null 2>&1
+    umount_initramfs
 }
 
 ## Main script
