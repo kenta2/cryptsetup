@@ -8,8 +8,7 @@ export PATH
 [ -f /lib/cryptsetup/functions ] || return 0
 . /lib/cryptsetup/functions
 
-INITRAMFS_MNT="$(mktemp -d --tmpdir=/tmp cryptsetup.XXXXXXXXXX)"
-INITRAMFS_MNT="$(readlink -f "$INITRAMFS_MNT")"
+INITRAMFS_MNT="/run/cryptsetup/cryptsetup-suspend-initramfs"
 BIND_PATHS="/sys /proc /dev /run"
 SYSTEM_SLEEP_PATH="/lib/systemd/system-sleep"
 CONFIG_FILE="/etc/cryptsetup/suspend.conf"
@@ -17,6 +16,7 @@ CONFIG_FILE="/etc/cryptsetup/suspend.conf"
 read_config() {
     # define defaults
     export UNLOCK_SESSIONS="false"
+    export KEEP_INITRAMFS="false"
 
     # optionally read config if owned by root
     if [ -f "$CONFIG_FILE" ]; then
@@ -44,20 +44,23 @@ mount_initramfs() {
         exit 1
     fi
 
-    # we need at about 300 MB on ubuntu, 200 on debian
-    # https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=34e431b0ae398fc54ea69ff85ec700722c9da773
-    local MemAvailable="$(grep MemAvailable /proc/meminfo | awk '{print $2}')"
-    local SwapFree="$(grep SwapFree /proc/meminfo | awk '{print $2}')"
-    local mem=$(expr "$MemAvailable" \+ "$SwapFree")
-    if [ "307200" -gt "$mem" ]; then
-        log_error "Not enough memory available. Please close some programs or add swap space to suspend successfully."
-        exit 1
+    if [ ! -d "$INITRAMFS_MNT" ]; then
+        # we need at about 300 MB on ubuntu, 200 on debian
+        # https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=34e431b0ae398fc54ea69ff85ec700722c9da773
+        local MemAvailable="$(grep MemAvailable /proc/meminfo | awk '{print $2}')"
+        local SwapFree="$(grep SwapFree /proc/meminfo | awk '{print $2}')"
+        local mem=$(expr "$MemAvailable" \+ "$SwapFree")
+        if [ "307200" -gt "$mem" ]; then
+            log_error "Not enough memory available. Please close some programs or add swap space to suspend successfully."
+            exit 1
+        fi
+
+        mkdir "$INITRAMFS_MNT"
+        mount -t ramfs -o mode=0755 ramfs "$INITRAMFS_MNT"
+
+        # extract initrd.img to initramfs dir
+        unmkinitramfs "$INITRAMFS" "$INITRAMFS_MNT"
     fi
-
-    mount -t ramfs -o mode=0755 ramfs "$INITRAMFS_MNT"
-
-    # extract initrd.img to initramfs dir
-    unmkinitramfs "$INITRAMFS" "$INITRAMFS_MNT"
 
     # unmkinitramfs extracts microcode into folders "early*" and the actual initramfs into "main"
     if [ -d "$INITRAMFS_MNT/main" ]; then
@@ -78,9 +81,16 @@ mount_initramfs() {
 }
 
 umount_initramfs() {
-    # recursively unmount
-    umount -R "$INITRAMFS_MNT"
-    rmdir "$INITRAMFS_MNT"
+    if [ "$KEEP_INITRAMFS" = "true" ]; then
+        # recursively unmount bind mounts, but keep initramfs
+        for p in $BIND_PATHS; do
+            umount -R "$INITRAMFS_DIR$p"
+        done
+    else
+        # recursively unmount everything
+        umount -R "$INITRAMFS_MNT"
+        rmdir "$INITRAMFS_MNT"
+    fi
 }
 
 CGROUP_FREEZER=
