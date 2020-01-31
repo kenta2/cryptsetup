@@ -18,10 +18,8 @@ read_config() {
     export UNLOCK_SESSIONS="false"
     export KEEP_INITRAMFS="false"
 
-    # optionally read config if owned by root
-    if [ -f "$CONFIG_FILE" ]; then
-        . "$CONFIG_FILE"
-    fi
+    # read config file if it exists
+    [ -f "$CONFIG_FILE" ] && . "$CONFIG_FILE"
 }
 
 # run_dir ARGS...
