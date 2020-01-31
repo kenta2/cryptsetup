@@ -177,11 +177,7 @@ int main(int argc, char *argv[]) {
         mem[i] = 0;
 
     /* Do the final filesystem sync since we disabled sync_on_suspend in
-     * Linux kernel.
-     *
-     * XXX: probably no need to sync everything, should be enough to
-     * syncfd(dirfd) where dird = open(filepath, O_DIRECTORY|O_RDONLY)
-     * and filepath is /dev/mapper/argv[i]'s first mountpoint */
+     * Linux kernel. */
     sync();
 
     for (int i = 0; i < d_size; i++) {
