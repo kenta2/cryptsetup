@@ -20,7 +20,7 @@ read_config() {
     export KEEP_INITRAMFS="false"
 
     # read config file if it exists
-    [ -f "$CONFIG_FILE" ] && . "$CONFIG_FILE"
+    [ -f "$CONFIG_FILE" ] && . "$CONFIG_FILE" || true
 }
 
 # run_dir ARGS...
