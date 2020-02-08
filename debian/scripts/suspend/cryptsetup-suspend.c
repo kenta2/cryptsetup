@@ -194,6 +194,7 @@ int main(int argc, char *argv[]) {
     if (!s || fputs("mem", s) <= 0)
         err(EXIT_FAILURE, "couldn't suspend");
     fclose(s);
+    fprintf(stderr, "Resuming...\n");
 
     /* Restore original sync_on_suspend value */
     if (sync_on_suspend_reset) {
@@ -204,6 +205,5 @@ int main(int argc, char *argv[]) {
             err(EXIT_FAILURE, "couldn't write to file");
     }
 
-    fprintf(stderr, "Resuming...\n");
     return rv;
 }
