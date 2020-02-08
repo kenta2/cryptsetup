@@ -107,14 +107,15 @@ freeze_cgroups() {
 
     # freeze all unfrozen cgroups
     for c in $CGROUPS $CGROUPS_SYSTEM "$CGROUP_SYSTEMD"; do
-        local val=1
-        if [ -f "$c" ]; then
-            val="$(cat "$c")"
-        fi
+        [ ! -f "$c" ] && continue
+        local val="$(cat "$c")"
+        echo -n "$c" | grep -qE "systemd-suspend|systemd-udev|$MY_CGROUP" && continue
 
         # dont freeze our cgroup, systemd-suspend/udevd or frozen cgroups
         # freezing udevd blocks luksResume
-        if echo -n "$c" | grep -qvE "systemd-suspend|systemd-udev|$MY_CGROUP" && [ 0 -eq "$val" ]; then
+        echo -n "$c" | grep -qE "systemd-suspend|systemd-udev|$MY_CGROUP" && continue
+
+        if [ 0 -eq "$val" ]; then
             echo 1 > "$c"
             CGROUP_FREEZER="$c $CGROUP_FREEZER"
         fi
