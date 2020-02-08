@@ -9,6 +9,7 @@ export PATH
 . /lib/cryptsetup/functions
 
 INITRAMFS_MNT="/run/cryptsetup/cryptsetup-suspend-initramfs"
+INITRAMFS_DIR="$INITRAMFS_MNT"
 BIND_PATHS="/sys /proc /dev /run"
 SYSTEM_SLEEP_PATH="/lib/systemd/system-sleep"
 CONFIG_FILE="/etc/cryptsetup/suspend.conf"
@@ -63,8 +64,6 @@ mount_initramfs() {
     # unmkinitramfs extracts microcode into folders "early*" and the actual initramfs into "main"
     if [ -d "$INITRAMFS_MNT/main" ]; then
         INITRAMFS_DIR="$INITRAMFS_MNT/main"
-    else
-        INITRAMFS_DIR="$INITRAMFS_MNT"
     fi
 
     for p in $BIND_PATHS; do
