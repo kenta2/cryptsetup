@@ -190,8 +190,10 @@ int main(int argc, char *argv[]) {
 
     fprintf(stderr, "Sleeping...\n");
     FILE *s = fopen("/sys/power/state", "w");
-    if (!s || fputs("mem", s) <= 0)
-        err(EXIT_FAILURE, "couldn't suspend");
+    if (!s)
+        err(EXIT_FAILURE, "failed to open /sys/power/state");
+    if (fputs("mem", s) <= 0)
+        err(EXIT_FAILURE, "couldn't write to /sys/power/state");
     fclose(s);
     fprintf(stderr, "Resuming...\n");
 
