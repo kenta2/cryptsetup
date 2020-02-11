@@ -106,7 +106,7 @@ int main(int argc, char *argv[]) {
             /* Already disabled */
         } else if (sos_c == '1') {
             sync_on_suspend_reset = 1;
-            if (fputs("0", sos) <= 0)
+            if (fputc('0', sos) <= 0)
                 err(EXIT_FAILURE, "couldn't write to file");
         } else {
             errx(EXIT_FAILURE, "unexpected value from %s", SYSFS_POWER_SYNC_ON_SUSPEND);
@@ -205,7 +205,7 @@ int main(int argc, char *argv[]) {
         sos = fopen(SYSFS_POWER_SYNC_ON_SUSPEND, "w");
         if (!sos)
             err(EXIT_FAILURE, "couldn't open sysfs file");
-        if (fputs("1", sos) <= 0)
+        if (fputc('1', sos) <= 0)
             err(EXIT_FAILURE, "couldn't write to file");
     }
 
