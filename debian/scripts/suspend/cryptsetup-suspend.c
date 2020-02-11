@@ -19,6 +19,9 @@
 
 #include <libcryptsetup.h>
 
+#define SYSFS_POWER_SYNC_ON_SUSPEND "/sys/power/sync_on_suspend"
+#define SYSFS_POWER_STATE           "/sys/power/state"
+
 void usage() {
     printf("Usage: cryptsetup-suspend [-r|--reverse] <blkdev> [<blkdev> ...]\n"
            "      -r, --reverse             process luks devices in reverse order\n\n");
@@ -87,11 +90,11 @@ int main(int argc, char *argv[]) {
     /* Disable sync_on_suspend in Linux kernel
      *
      * Only available in Linux kernel >= 5.6 */
-    if (access("/sys/power/sync_on_suspend", W_OK) < 0) {
+    if (access(SYSFS_POWER_SYNC_ON_SUSPEND, W_OK) < 0) {
         if (errno == ENOENT)
             warnx("kernel too old, can't disable sync on suspend");
     } else {
-        sos = fopen("/sys/power/sync_on_suspend", "r+");
+        sos = fopen(SYSFS_POWER_SYNC_ON_SUSPEND, "r+");
         if (!sos)
             err(EXIT_FAILURE, "couldn't open sysfs file");
 
@@ -106,7 +109,7 @@ int main(int argc, char *argv[]) {
             if (fputs("0", sos) <= 0)
                 err(EXIT_FAILURE, "couldn't write to file");
         } else {
-            errx(EXIT_FAILURE, "unexpected value from /sys/power/sync_on_suspend");
+            errx(EXIT_FAILURE, "unexpected value from %s", SYSFS_POWER_SYNC_ON_SUSPEND);
         }
 
         fclose(sos);
@@ -189,17 +192,17 @@ int main(int argc, char *argv[]) {
     }
 
     fprintf(stderr, "Sleeping...\n");
-    FILE *s = fopen("/sys/power/state", "w");
+    FILE *s = fopen(SYSFS_POWER_STATE, "w");
     if (!s)
-        err(EXIT_FAILURE, "failed to open /sys/power/state");
+        err(EXIT_FAILURE, "failed to open %s", SYSFS_POWER_STATE);
     if (fputs("mem", s) <= 0)
-        err(EXIT_FAILURE, "couldn't write to /sys/power/state");
+        err(EXIT_FAILURE, "couldn't write to %s", SYSFS_POWER_STATE);
     fclose(s);
     fprintf(stderr, "Resuming...\n");
 
     /* Restore original sync_on_suspend value */
     if (sync_on_suspend_reset) {
-        sos = fopen("/sys/power/sync_on_suspend", "w");
+        sos = fopen(SYSFS_POWER_SYNC_ON_SUSPEND, "w");
         if (!sos)
             err(EXIT_FAILURE, "couldn't open sysfs file");
         if (fputs("1", sos) <= 0)
