@@ -66,6 +66,11 @@ mount_initramfs() {
         INITRAMFS_DIR="$INITRAMFS_MNT/main"
     fi
 
+    # copy all firmware files to ramdisk to prevent dead-lock
+    # see https://salsa.debian.org/mejo/cryptsetup-suspend/issues/38)
+    rm -r "${INITRAMFS_DIR:-nonexistent}/lib/firmware"
+    cp -r /lib/firmware "$INITRAMFS_DIR/lib/firmware"
+
     for p in $BIND_PATHS; do
         mkdir -p -m 0755 "$INITRAMFS_DIR$p"
         if [ "$p" = "/proc" ]; then
