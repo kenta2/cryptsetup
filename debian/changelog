@@ -1,3 +1,9 @@
+cryptsetup (2:2.3.2-1) UNRELEASED; urgency=medium
+
+  * New upstream release.
+
+ -- Guilhem Moulin <guilhem@debian.org>  Sat, 02 May 2020 19:28:21 +0200
+
 cryptsetup (2:2.3.1-1) unstable; urgency=medium
 
   * New upstream release.
