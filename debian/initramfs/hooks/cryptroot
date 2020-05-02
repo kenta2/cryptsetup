@@ -310,6 +310,9 @@ fi
 # detect whether the host CPU has AES-NI support
 if grep -Eq '^flags\s*:(.*\s)?aes(\s.*)?$' /proc/cpuinfo; then
     CRYPTO_MODULES="${CRYPTO_MODULES:+$CRYPTO_MODULES }aesni"
+else
+    # workaround for #883595/#901884 (xts depends on ecb)
+    CRYPTO_MODULES="${CRYPTO_MODULES:+$CRYPTO_MODULES }ecb"
 fi
 
 # add userspace crypto module (only required for opening LUKS2 devices

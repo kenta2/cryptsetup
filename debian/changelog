@@ -2,6 +2,10 @@ cryptsetup (2:2.3.2-1) UNRELEASED; urgency=medium
 
   * New upstream release.
   * debian/control: Set 'Rules-Requires-Root: no'.
+  * d/initramfs/hooks/cryptroot: Unconditionally copy 'ecb' kernel module
+    when the host CPU lacks AES-NI support.  On such systems XTS needs ECB.
+    This is a work around for #883595 on kernels 4.10 and later.
+    (Closes: #901884)
 
  -- Guilhem Moulin <guilhem@debian.org>  Sat, 02 May 2020 19:28:21 +0200
 
