@@ -4,6 +4,7 @@ Priority: optional
 Maintainer: Debian Cryptsetup Team <pkg-cryptsetup-devel@alioth-lists.debian.net>
 Uploaders: Jonas Meurer <jonas@freesources.org>,
            Guilhem Moulin <guilhem@debian.org>
+Rules-Requires-Root: no
 Build-Depends: autoconf,
                automake (>= 1:1.12),
                autopoint,

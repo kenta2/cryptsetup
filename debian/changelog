@@ -1,6 +1,7 @@
 cryptsetup (2:2.3.2-1) UNRELEASED; urgency=medium
 
   * New upstream release.
+  * debian/control: Set 'Rules-Requires-Root: no'.
 
  -- Guilhem Moulin <guilhem@debian.org>  Sat, 02 May 2020 19:28:21 +0200
 
