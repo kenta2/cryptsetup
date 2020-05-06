@@ -137,7 +137,7 @@ get_active_devices() {
     for m in $dm_devices; do
         [ "x$m" = "x$CRYPTTAB_NAME" ] || continue
         crypttab_parse_options --quiet
-        get_crypt_type
+        _get_crypt_type
         if [ "$CRYPTTAB_TYPE" != "luks" ]; then
             cryptsetup_message "WARNING: $CRYPTTAB_NAME: unable to suspend non-luks device"
             continue
