@@ -1,4 +1,4 @@
-cryptsetup (2:2.3.2-1) UNRELEASED; urgency=medium
+cryptsetup (2:2.3.2-1) unstable; urgency=medium
 
   * New upstream release.
   * debian/control: Set 'Rules-Requires-Root: no'.
@@ -7,7 +7,7 @@ cryptsetup (2:2.3.2-1) UNRELEASED; urgency=medium
     This is a work around for #883595 on kernels 4.10 and later.
     (Closes: #901884)
 
- -- Guilhem Moulin <guilhem@debian.org>  Sat, 02 May 2020 19:28:21 +0200
+ -- Guilhem Moulin <guilhem@debian.org>  Wed, 06 May 2020 16:22:01 +0200
 
 cryptsetup (2:2.3.1-1) unstable; urgency=medium
 
