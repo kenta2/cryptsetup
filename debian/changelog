@@ -5,7 +5,7 @@ cryptsetup (2:2.3.2-1) unstable; urgency=medium
   * d/initramfs/hooks/cryptroot: Unconditionally copy 'ecb' kernel module
     when the host CPU lacks AES-NI support.  On such systems XTS needs ECB.
     This is a work around for #883595 on kernels 4.10 and later.
-    (Closes: #901884)
+    (Closes: #959423)
 
  -- Guilhem Moulin <guilhem@debian.org>  Wed, 06 May 2020 16:22:01 +0200
 
