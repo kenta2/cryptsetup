@@ -20,6 +20,7 @@ read_config() {
     export KEEP_INITRAMFS="false"
 
     # read config file if it exists
+    # shellcheck source=/etc/cryptsetup/suspend.conf
     [ -f "$CONFIG_FILE" ] && . "$CONFIG_FILE" || true
 }
 
@@ -37,7 +38,7 @@ log_error() {
 }
 
 mount_initramfs() {
-    local INITRAMFS="$(sed -n 's/.*BOOT_IMAGE=.*vmlinuz-\([^: ]*\).*$/\/boot\/initrd.img-\1/p' /proc/cmdline)"
+    INITRAMFS="$(sed -n 's/.*BOOT_IMAGE=.*vmlinuz-\([^: ]*\).*$/\/boot\/initrd.img-\1/p' /proc/cmdline)"
     if [ ! -f "$INITRAMFS" ]; then
         log_error "No initramfs found at $INITRAMFS"
         exit 1
@@ -46,9 +47,9 @@ mount_initramfs() {
     if [ ! -d "$INITRAMFS_MNT" ]; then
         # we need at about 300 MB on ubuntu, 200 on debian
         # https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=34e431b0ae398fc54ea69ff85ec700722c9da773
-        local MemAvailable="$(grep MemAvailable /proc/meminfo | awk '{print $2}')"
-        local SwapFree="$(grep SwapFree /proc/meminfo | awk '{print $2}')"
-        local mem=$(expr "$MemAvailable" \+ "$SwapFree")
+        MemAvailable="$(grep MemAvailable /proc/meminfo | awk '{print $2}')"
+        SwapFree="$(grep SwapFree /proc/meminfo | awk '{print $2}')"
+        mem=$((MemAvailable+SwapFree))
         if [ "307200" -gt "$mem" ]; then
             log_error "Not enough memory available. Please close some programs or add swap space to suspend successfully."
             exit 1
@@ -76,7 +77,7 @@ mount_initramfs() {
         if [ "$p" = "/proc" ]; then
             mount -t proc /proc "$INITRAMFS_DIR/proc"
         else
-            mount --rbind $p "$INITRAMFS_DIR$p"
+            mount --rbind "$p" "$INITRAMFS_DIR$p"
         fi
     done
     mount --make-rprivate "$INITRAMFS_MNT"
@@ -102,23 +103,23 @@ freeze_cgroups() {
         $hierarchy/user.slice/cgroup.freeze"
 
     # add all system cgroups but us
-    CGROUPS_SYSTEM="$(find $hierarchy/system.slice/ -mindepth 2 -maxdepth 2 -name cgroup.freeze)"
+    CGROUPS_SYSTEM="$(find "$hierarchy"/system.slice/ -mindepth 2 -maxdepth 2 -name cgroup.freeze)"
 
     # add systemd itself
     CGROUP_SYSTEMD="$hierarchy/init.scope/cgroup.freeze"
 
     # get my second level cgroup
-    MY_CGROUP="$(cat /proc/self/cgroup | grep "0::" | awk -F "/" '{print $3}')"
+    MY_CGROUP="$(grep "0::" < /proc/self/cgroup | awk -F "/" '{print $3}')"
 
     # freeze all unfrozen cgroups
     for c in $CGROUPS $CGROUPS_SYSTEM "$CGROUP_SYSTEMD"; do
         [ ! -f "$c" ] && continue
-        local val="$(cat "$c")"
-        echo -n "$c" | grep -qE "systemd-suspend|systemd-udev|$MY_CGROUP" && continue
+        val="$(cat "$c")"
+        printf "$c" | grep -qE "systemd-suspend|systemd-udev|$MY_CGROUP" && continue
 
         # dont freeze our cgroup, systemd-suspend/udevd or frozen cgroups
         # freezing udevd blocks luksResume
-        echo -n "$c" | grep -qE "systemd-suspend|systemd-udev|$MY_CGROUP" && continue
+        printf "$c" | grep -qE "systemd-suspend|systemd-udev|$MY_CGROUP" && continue
 
         if [ 0 -eq "$val" ]; then
             echo 1 > "$c"
@@ -142,7 +143,7 @@ get_active_devices() {
             cryptsetup_message "WARNING: $CRYPTTAB_NAME: unable to suspend non-luks device"
             continue
         fi
-        echo -n "$m "
+        printf "%s " "$m"
         break
     done
 }
@@ -193,7 +194,7 @@ fi
 
 # check that not run as user
 # XXX: We should catch also cases where libpam-systemd is not installed
-if cat /proc/self/cgroup | grep -q "user.slice"; then
+if grep -q "user.slice" < /proc/self/cgroup; then
     log_error "Don't run this script as user"
     exit 1
 fi
@@ -245,7 +246,7 @@ devices_remaining="$(chroot "$INITRAMFS_DIR" /bin/sh -c "
             resume_device \$dev || true
         else
             # write remaining devices to stdout
-            echo -n \"\$dev \"
+            printf \"\%s \" \$dev
         fi
     done
 ")"
@@ -257,9 +258,9 @@ for dev in $devices_remaining; do
              CRYPTTAB_KEY \
              CRYPTTAB_OPTIONS
 
-    crypttab_find_entry --quiet $dev
+    crypttab_find_entry --quiet "$dev"
     if [ -n "$CRYPTTAB_SOURCE" ]; then
-        resume_device $dev || true
+        resume_device "$dev" || true
     else
         log_error "'$dev' not found in /etc/crypttab"
     fi
