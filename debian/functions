@@ -463,7 +463,8 @@ dm_blkdevname() {
 # dm_active_crypt_devices()
 #   Print list of active dm-crypt devices.
 dm_active_crypt_devices() {
-    dmsetup ls --target crypt | sed -e 's/\s.*$//'
+    # XXX: that's not robust wrt udev mangling of special characters such as blank or colons
+    dmsetup table --target crypt | sed -n 's/:.*//p'
 }
 
 # crypttab_find_entry([--quiet], $target)
