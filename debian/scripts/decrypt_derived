@@ -19,7 +19,7 @@ count="$(printf '%s' "$keys" | wc -l)"
 
 if [ -n "$keys" ] && [ $count -le 1 ]; then
     if [ "${keys#:}" = "$keys" ]; then
-        printf '%s' "$keys" | tr -d '\n'
+        printf '%s' "$keys"
         exit 0
     else
         echo "$0: device $1 uses the kernel keyring" >&2

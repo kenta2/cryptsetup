@@ -2,6 +2,7 @@ cryptsetup (2:2.3.3-1) UNRELEASED; urgency=medium
 
   [ Guilhem Moulin ]
   * New upstream bugfix release.
+  * d/scripts/decrypt_derived: Remove useless call to `| tr -d '\n'`.
 
   [ Rob Pilling ]
   * d/scripts/decrypt_derived:
