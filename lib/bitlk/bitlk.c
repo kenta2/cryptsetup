@@ -111,6 +111,7 @@ struct segment {
 struct bitlk_signature {
 	uint8_t boot_code[3];
 	uint8_t signature[8];
+	uint16_t sector_size;
 } __attribute__ ((packed));
 
 struct bitlk_superblock {
@@ -414,6 +415,7 @@ void BITLK_bitlk_fvek_free(struct bitlk_fvek *fvek)
 		return;
 
 	crypt_free_volume_key(fvek->vk);
+	free(fvek);
 }
 
 void BITLK_bitlk_vmk_free(struct bitlk_vmk *vmk)
@@ -499,6 +501,13 @@ int BITLK_read_sb(struct crypt_device *cd, struct bitlk_metadata *params)
 		fve_offset = BITLK_HEADER_METADATA_OFFSET_TOGO;
 	} else {
 		log_err(cd, _("Invalid or unknown signature for BITLK device."));
+		r = -EINVAL;
+		goto out;
+	}
+
+	params->sector_size = le16_to_cpu(sig.sector_size);
+	if (!(params->sector_size == 512 || params->sector_size == 4096)) {
+		log_err(cd, _("Unsupported sector size %" PRIu16 "."), params->sector_size);
 		r = -EINVAL;
 		goto out;
 	}
@@ -721,6 +730,7 @@ int BITLK_dump(struct crypt_device *cd, struct device *device, struct bitlk_meta
 	log_std(cd, "Info for BITLK%s device %s.\n", params->togo ? " To Go" : "", device_path(device));
 	log_std(cd, "Version:      \t%u\n", params->metadata_version);
 	log_std(cd, "GUID:         \t%s\n", params->guid);
+	log_std(cd, "Sector size:  \t%u [bytes]\n", params->sector_size);
 	log_std(cd, "Created:      \t%s", ctime((time_t *)&(params->creation_time)));
 	log_std(cd, "Description:  \t%s\n", params->description);
 	log_std(cd, "Cipher name:  \t%s\n", params->cipher);
@@ -1155,6 +1165,9 @@ int BITLK_activate(struct crypt_device *cd,
 		}
 	}
 
+	if (params->sector_size != SECTOR_SIZE)
+		dmd.flags |= CRYPT_ACTIVATE_IV_LARGE_SECTORS;
+
 	r = dm_targets_allocate(&dmd.segment, num_segments);
 	if (r)
 		goto out;
@@ -1175,7 +1188,7 @@ int BITLK_activate(struct crypt_device *cd,
 						segments[i].iv_offset,
 						segments[i].iv_offset,
 						NULL, 0,
-						SECTOR_SIZE);
+						params->sector_size);
 		if (r)
 			goto out;
 
