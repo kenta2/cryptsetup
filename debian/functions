@@ -360,6 +360,51 @@ unlock_mapping() {
         open -- "$CRYPTTAB_SOURCE" "$CRYPTTAB_NAME"
 }
 
+# resume_mapping([$keyfile])
+#   Run cryptsetup(8) with suitable options and arguments to resume
+#   $CRYPTTAB_NAME.
+resume_mapping() {
+    local keyfile="${1:--}"
+
+    if [ "$CRYPTTAB_TYPE" != "luks" ]; then
+        cryptsetup_message "ERROR: $CRYPTTAB_NAME: unable to resume non-luks device"
+        return 1
+    fi
+
+    /sbin/cryptsetup -T1 \
+        ${CRYPTTAB_OPTION_header:+--header="$CRYPTTAB_OPTION_header"} \
+        ${CRYPTTAB_OPTION_keyslot:+--key-slot="$CRYPTTAB_OPTION_keyslot"} \
+        ${CRYPTTAB_OPTION_keyfile_size:+--keyfile-size="$CRYPTTAB_OPTION_keyfile_size"} \
+        ${CRYPTTAB_OPTION_keyfile_offset:+--keyfile-offset="$CRYPTTAB_OPTION_keyfile_offset"} \
+        --type="$CRYPTTAB_TYPE" --key-file="$keyfile" \
+        luksResume "$CRYPTTAB_NAME"
+}
+
+# resume_device($device)
+#   Resume $device with endless retries. Used by cryptsetup-suspend-wrapper.
+resume_device() {
+    local device="$1"
+    # check if device is really suspended
+    if dmsetup info -c --noheadings -o suspended -- "$device" 2>/dev/null | grep -Fxq "Active"; then
+        cryptsetup_message "ERROR: $CRYPTTAB_NAME: device was not suspendend"
+        sleep 5
+        return 1
+    fi
+
+    crypttab_find_entry "$device"
+    crypttab_parse_options --quiet
+    _get_crypt_type
+
+    # Loop endlessly until the resume command succeeded
+    while true; do
+        if [ "$CRYPTTAB_KEY" != "none" ]; then
+            resume_mapping "$CRYPTTAB_KEY" && break || true
+        else
+            run_keyscript "$CRYPTTAB_KEY" 1 | resume_mapping && break || true
+        fi
+    done
+}
+
 # crypttab_key_check()
 #   Sanity checks for keyfile $CRYPTTAB_KEY.  CRYPTTAB_NAME and
 #   CRYPTTAB_OPTION_<option> must be set appropriately.
@@ -413,6 +458,12 @@ dm_blkdevname() {
     else
         return 1
     fi
+}
+
+# dm_active_crypt_devices()
+#   Print list of active dm-crypt devices.
+dm_active_crypt_devices() {
+    dmsetup ls --target crypt | sed -e 's/\s.*$//'
 }
 
 # crypttab_find_entry([--quiet], $target)
