@@ -1,4 +1,4 @@
-cryptsetup (2:2.3.3-1) UNRELEASED; urgency=medium
+cryptsetup (2:2.3.3-1) unstable; urgency=medium
 
   [ Guilhem Moulin ]
   * New upstream bugfix release.
@@ -13,7 +13,7 @@ cryptsetup (2:2.3.3-1) UNRELEASED; urgency=medium
       a key
     + exit with a success code when successful
 
- -- Guilhem Moulin <guilhem@debian.org>  Mon, 01 Jun 2020 18:30:41 +0200
+ -- Guilhem Moulin <guilhem@debian.org>  Thu, 04 Jun 2020 01:41:44 +0200
 
 cryptsetup (2:2.3.2-1) unstable; urgency=medium
 
