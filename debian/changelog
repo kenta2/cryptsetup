@@ -3,6 +3,9 @@ cryptsetup (2:2.3.3-1) UNRELEASED; urgency=medium
   [ Guilhem Moulin ]
   * New upstream bugfix release.
   * d/scripts/decrypt_derived: Remove useless call to `| tr -d '\n'`.
+  * d/control: Bump debhelper compatibility level to 13.  Remove
+    debian/tmp/lib/$DEB_HOST_MULTIARCH/libcryptsetup.la as we don't install it
+    anywhere.
 
   [ Rob Pilling ]
   * d/scripts/decrypt_derived:

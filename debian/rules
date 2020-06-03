@@ -53,6 +53,7 @@ override_dh_auto_install:
 
 override_dh_install:
 	dh_install
+	rm -f $(CURDIR)/debian/tmp/lib/$(DEB_HOST_MULTIARCH)/libcryptsetup.la # not installed to anywhere
 	# install apport files when building on Ubuntu
 ifeq ($(shell dpkg-vendor --is Ubuntu && echo yes),yes)
 	mkdir -p $(CURDIR)/debian/cryptsetup/usr/share/apport/package-hooks
