@@ -2,8 +2,8 @@
  * Small program to LUKS suspend devices before system suspend
  *
  * License: GNU GPLv3
- * Copyright: (c) 2017      Guilhem Moulin <guilhem@debian.org>
- *            (c) 2017-2020 Jonas Meurer <jonas@freesources.org>
+ * Copyright: (c) 2018      Guilhem Moulin <guilhem@debian.org>
+ *            (c) 2018-2020 Jonas Meurer <jonas@freesources.org>
  */
 
 #include <stdlib.h>
