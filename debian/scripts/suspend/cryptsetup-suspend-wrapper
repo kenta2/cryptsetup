@@ -246,7 +246,7 @@ devices_remaining="$(chroot "$INITRAMFS_DIR" /bin/sh -c "
             resume_device \$dev || true
         else
             # write remaining devices to stdout
-            printf \"\%s \" \$dev
+            printf \"%s \" \$dev
         fi
     done
 ")"
