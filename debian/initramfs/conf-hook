@@ -26,7 +26,7 @@
 #   /etc/initramfs-tools/initramfs.conf
 # * If you use cryptsetup-suspend, private key material inside the
 #   initramfs will be in memory during suspend period, defeating the
-#   purpose of cryptseutp-suspend.
+#   purpose of cryptsetup-suspend.
 #
 
 #KEYFILE_PATTERN=
