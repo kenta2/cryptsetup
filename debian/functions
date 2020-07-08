@@ -9,6 +9,8 @@ else
     TABFILE="${TABFILE-/etc/crypttab}"
 fi
 export DM_DEFAULT_NAME_MANGLING_MODE=hex # for dmsetup(8)
+export CRYPTR_LOCAL_BLOCK="/run/cryptroot.local-block"
+export CRYPTR_CNT_FILE="/run/cryptroot.initrd.cnt"
 
 # Logging helpers. Send the argument list to plymouth(1), or fold it
 # and print it to the standard error.
