@@ -3,6 +3,12 @@ cryptsetup (2:2.3.3-2) UNRELEASED; urgency=medium
   [ Helmut Grohne ]
   * d/control: Annotate Build-Depends with <!nocheck>. (Closes: #964092)
 
+  [ Guilhem Moulin ]
+  * d/rules: Build with `--with-tmpfilesdir` to force installing
+    usr/lib/tmpfiles.d/cryptsetup.conf instead of picking the source from
+    scripts/cryptsetup.conf.  This fixes FTBS in environments containing
+    systemd. (Closes: #968250)
+
  -- Guilhem Moulin <guilhem@debian.org>  Wed, 01 Jul 2020 18:56:28 +0200
 
 cryptsetup (2:2.3.3-1) unstable; urgency=medium

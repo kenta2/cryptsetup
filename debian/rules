@@ -22,6 +22,7 @@ override_dh_auto_configure:
 	dh_auto_configure -- $(CONFFLAGS) \
 		--libdir=/lib/$(DEB_HOST_MULTIARCH) \
 		--sbindir=/sbin \
+		--with-tmpfilesdir=/usr/lib/tmpfiles.d \
 		--enable-libargon2 \
 		--enable-shared \
 		--enable-cryptsetup-reencrypt
