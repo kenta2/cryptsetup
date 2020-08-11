@@ -8,6 +8,8 @@ cryptsetup (2:2.3.3-2) UNRELEASED; urgency=medium
     usr/lib/tmpfiles.d/cryptsetup.conf instead of picking the source from
     scripts/cryptsetup.conf.  This fixes FTBS in environments containing
     systemd. (Closes: #968250)
+  * Add 'bitlk' flag in crypttab(5) to force detection of Windows BitLocker
+    volumes. (Closes: #967853)
 
  -- Guilhem Moulin <guilhem@debian.org>  Wed, 01 Jul 2020 18:56:28 +0200
 

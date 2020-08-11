@@ -65,6 +65,7 @@ crypttab_parse_options() {
              CRYPTTAB_OPTION_luks \
              CRYPTTAB_OPTION_tcrypt \
              CRYPTTAB_OPTION_veracrypt \
+             CRYPTTAB_OPTION_bitlk \
              CRYPTTAB_OPTION_swap \
              CRYPTTAB_OPTION_tmp \
              CRYPTTAB_OPTION_check \
@@ -228,6 +229,7 @@ crypttab_validate_option() {
         tcrypt) ;;
         veracrypt) ;;
         tcrypthidden) ;;
+        bitlk) ;;
         *)
             if [ "${quiet:-n}" = "n" ]; then
                 cryptsetup_message "WARNING: $CRYPTTAB_NAME: ignoring unknown option '$o'";
@@ -292,6 +294,8 @@ _get_crypt_type() {
         t="tcrypt"
     elif [ "${CRYPTTAB_OPTION_plain-}" = "yes" ]; then
         t="plain"
+    elif [ "${CRYPTTAB_OPTION_bitlk-}" = "yes" ]; then
+        t="bitlk"
     elif [ -n "${CRYPTTAB_OPTION_header+x}" ]; then
         # detached headers are only supported for LUKS devices
         if [ -e "$CRYPTTAB_OPTION_header" ] && /sbin/cryptsetup isLuks -- "$CRYPTTAB_OPTION_header"; then
