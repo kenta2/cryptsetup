@@ -40,10 +40,10 @@ uint32_t get_mem_swap_avail_kb() {
     while (fgets(line, sizeof(line), meminfo)) {
         if (strncmp(line, "MemAvailable", strlen("MemAvailable")) == 0) {
             if (sscanf(line, "MemAvailable: %d kB", &mem_avail_kb) != 1)
-                err(EXIT_FAILURE, "couldn't read MemAvailable from /proc/meminfo");
+                errx(EXIT_FAILURE, "couldn't read MemAvailable from /proc/meminfo");
         } else if (strncmp(line, "SwapFree", strlen("SwapFree")) == 0) {
             if (sscanf(line, "SwapFree: %d kB", &swap_free_kb) != 1)
-                err(EXIT_FAILURE, "couldn't read SwapFree from /proc/meminfo");
+                errx(EXIT_FAILURE, "couldn't read SwapFree from /proc/meminfo");
         }
     }
     fclose(meminfo);
