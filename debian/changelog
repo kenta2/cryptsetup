@@ -1,3 +1,11 @@
+cryptsetup (2:2.3.3-3+exp1) experimental; urgency=medium
+
+  * Add new binary package 'crypsetup-suspend', which implements support
+    to luksSuspend LUKS devices before ACPI S3 system suspend.
+    + See the cryptsetup-suspend(7) manpage for further information.
+
+ -- Jonas Meurer <jonas@freesources.org>  Wed, 12 Aug 2020 21:29:31 +0200
+
 cryptsetup (2:2.3.3-2) unstable; urgency=medium
 
   [ Helmut Grohne ]
