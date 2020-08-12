@@ -69,7 +69,7 @@ mount_initramfs() {
 
     # copy all firmware files to ramdisk to prevent dead-lock
     # see https://salsa.debian.org/mejo/cryptsetup-suspend/issues/38)
-    rm -r "${INITRAMFS_DIR:-nonexistent}/lib/firmware"
+    rm -r "${INITRAMFS_DIR:-/nonexistent}/lib/firmware"
     cp -r /lib/firmware "$INITRAMFS_DIR/lib/firmware"
 
     for p in $BIND_PATHS; do
@@ -194,7 +194,7 @@ fi
 
 # check that not run as user
 # XXX: We should catch also cases where libpam-systemd is not installed
-if grep -q "user.slice" < /proc/self/cgroup; then
+if grep -q "user.slice" /proc/self/cgroup; then
     log_error "Don't run this script as user"
     exit 1
 fi
