@@ -207,6 +207,7 @@ int main(int argc, char *argv[]) {
             err(EXIT_FAILURE, "couldn't open sysfs file");
         if (fputc('1', sos) <= 0)
             err(EXIT_FAILURE, "couldn't write to file");
+        fclose(sos);
     }
 
     return rv;
