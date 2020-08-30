@@ -13,6 +13,8 @@ cryptsetup (2:2.3.3-3+exp2) UNRELEASED; urgency=medium
       relative to the boot's loader viewpoint, which might differ from that of
       the main system.
     + run_dir(): Prefer find(1)'s -execdir option over -exec.
+    + Conditionally remove/copy firware into the initramfs image.
+      (Closes: #969270)
   * d/rules: Build our scripts with `-Wall -Werror`.
 
  -- Guilhem Moulin <guilhem@debian.org>  Wed, 26 Aug 2020 23:44:48 +0200

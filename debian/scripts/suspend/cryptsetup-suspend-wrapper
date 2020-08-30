@@ -41,7 +41,7 @@ mount_initramfs() {
     local k v u IFS MemAvailable=0 SwapFree=0
     # update-initramfs(8) hardcodes /boot also: there is a `-b bootdir`
     # option but no config file to put it to
-    local INITRAMFS="/boot/initrd.img-$(uname -r)"
+    local INITRAMFS="/boot/initrd.img-$(uname -r)" p
     if [ ! -f "$INITRAMFS" ]; then
         log_error "No initramfs found at $INITRAMFS"
         exit 1
@@ -81,8 +81,12 @@ mount_initramfs() {
 
     # copy all firmware files to ramdisk to prevent dead-lock
     # see https://salsa.debian.org/mejo/cryptsetup-suspend/issues/38)
-    rm -r "${INITRAMFS_DIR:-/nonexistent}/lib/firmware"
-    cp -r /lib/firmware "$INITRAMFS_DIR/lib/firmware"
+    # XXX we should probably identify which firmwares need to be loaded
+    # and only copy those
+    if [ -d /lib/firmware ]; then
+        rm -rf -- "$INITRAMFS_DIR/lib/firmware"
+        cp -rT -- /lib/firmware "$INITRAMFS_DIR/lib/firmware"
+    fi
 
     for p in $BIND_PATHS; do
         mkdir -p -m 0755 "$INITRAMFS_DIR$p"
