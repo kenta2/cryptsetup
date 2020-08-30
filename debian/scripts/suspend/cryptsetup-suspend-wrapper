@@ -39,7 +39,9 @@ log_error() {
 
 mount_initramfs() {
     local k v u IFS MemAvailable=0 SwapFree=0
-    local INITRAMFS="$(sed -n 's/.*BOOT_IMAGE=.*vmlinuz-\([^: ]*\).*$/\/boot\/initrd.img-\1/p' /proc/cmdline)"
+    # update-initramfs(8) hardcodes /boot also: there is a `-b bootdir`
+    # option but no config file to put it to
+    local INITRAMFS="/boot/initrd.img-$(uname -r)"
     if [ ! -f "$INITRAMFS" ]; then
         log_error "No initramfs found at $INITRAMFS"
         exit 1
