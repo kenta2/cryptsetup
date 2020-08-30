@@ -16,6 +16,9 @@ cryptsetup (2:2.3.3-3+exp2) UNRELEASED; urgency=medium
     + Conditionally remove/copy firware into the initramfs image.
       (Closes: #969270)
   * d/rules: Build our scripts with `-Wall -Werror`.
+  * d/cryptsetup-suspend.{postinst,postrm}: Call `systemctl daemon-reload`,
+    which appears to be needed on upgrades.  (dh_installsystemd(1) doesn't
+    support overrides so we manually copy snippet it would add.)
 
  -- Guilhem Moulin <guilhem@debian.org>  Wed, 26 Aug 2020 23:44:48 +0200
 
