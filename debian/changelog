@@ -2,6 +2,9 @@ cryptsetup (2:2.3.3-3+exp3) UNRELEASED; urgency=medium
 
   * d/control: Make cryptsetup-suspend explicitly depend on
     initramfs-tools-core as we use unmkinitramfs(8) in the wrapper.
+  * systemd-suspend.service override: Set OOMScoreAdjust to -1000 to
+    disable OOM killing of processes of the unit.  Thanks, ಚಿರಾಗ್.
+    (Closes: #968569)
 
  -- Guilhem Moulin <guilhem@debian.org>  Sun, 30 Aug 2020 23:00:17 +0200
 
