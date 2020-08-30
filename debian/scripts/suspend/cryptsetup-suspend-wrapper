@@ -38,6 +38,7 @@ log_error() {
 }
 
 mount_initramfs() {
+    local k v u IFS MemAvailable=0 SwapFree=0
     local INITRAMFS="$(sed -n 's/.*BOOT_IMAGE=.*vmlinuz-\([^: ]*\).*$/\/boot\/initrd.img-\1/p' /proc/cmdline)"
     if [ ! -f "$INITRAMFS" ]; then
         log_error "No initramfs found at $INITRAMFS"
@@ -45,12 +46,21 @@ mount_initramfs() {
     fi
 
     if [ ! -d "$INITRAMFS_MNT" ]; then
-        # we need at about 300 MB on ubuntu, 200 on debian
+        # we need at about 300 MiB on ubuntu, 200 on debian
         # https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=34e431b0ae398fc54ea69ff85ec700722c9da773
-        local MemAvailable="$(awk '$1 == "MemAvailable:" {print $2}' /proc/meminfo)"
-        local SwapFree="$(awk '$1 == "SwapFree:" {print $2}' /proc/meminfo)"
-        local mem=$((MemAvailable+SwapFree))
-        if [ "307200" -gt "${mem:-0}" ]; then
+        while IFS=" 	" read -r k v u; do
+            # /proc/meminfo format is documented in proc(5)
+            case "$u" in
+                MB) u=1048576;;
+                kB) u=1024;;
+                *)  u=1;;
+            esac
+            case "$k" in
+                "MemAvailable:") MemAvailable=$((v*u));;
+                "SwapFree:") SwapFree=$((v*u));;
+            esac
+        done </proc/meminfo
+        if [ $((MemAvailable+SwapFree)) -lt $((300*1024*1024)) ]; then
             log_error "Not enough memory available. Please close some programs or add swap space to suspend successfully."
             exit 1
         fi
