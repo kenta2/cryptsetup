@@ -5,6 +5,8 @@ cryptsetup (2:2.3.3-3+exp3) UNRELEASED; urgency=medium
   * systemd-suspend.service override: Set OOMScoreAdjust to -1000 to
     disable OOM killing of processes of the unit.  Thanks, ಚಿರಾಗ್.
     (Closes: #968569)
+  * d/doc/cryptsetup-suspend.xml: Document that key material included in the
+    initramfs image will remain unencrypted (see #969286).
 
  -- Guilhem Moulin <guilhem@debian.org>  Sun, 30 Aug 2020 23:00:17 +0200
 

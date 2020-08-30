@@ -54,6 +54,12 @@
    it other kinds of private keys (e.g. OpenPGP, OpenSSH) or any kind
    of documents with sensitive content.
   </simpara>
+  <simpara>
+   The initramfs image is extracted in memory and left unencrypted (see the
+   <reference>INTERNALS</reference> section) so all key material it might
+   include, for instance key files copied using the hooks'
+   <emphasis>KEYFILE_PATTERN=</emphasis> option, will remain unprotected.
+  </simpara>
  </refsect1>
 
 
