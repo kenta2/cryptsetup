@@ -95,6 +95,7 @@ Package: cryptsetup-suspend
 Architecture: linux-any
 Multi-Arch: foreign
 Depends: cryptsetup-initramfs (>= 2:2.3.3-1~),
+         kbd,
          systemd,
          ${misc:Depends},
          ${shlibs:Depends}
