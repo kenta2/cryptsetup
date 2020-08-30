@@ -1,4 +1,4 @@
-cryptsetup (2:2.3.3-3+exp3) UNRELEASED; urgency=medium
+cryptsetup (2:2.3.3-3+exp3) experimental; urgency=medium
 
   * d/control: Make cryptsetup-suspend explicitly depend on
     initramfs-tools-core as we use unmkinitramfs(8) in the wrapper.
@@ -8,7 +8,7 @@ cryptsetup (2:2.3.3-3+exp3) UNRELEASED; urgency=medium
   * d/doc/cryptsetup-suspend.xml: Document that key material included in the
     initramfs image will remain unencrypted (see #969286).
 
- -- Guilhem Moulin <guilhem@debian.org>  Sun, 30 Aug 2020 23:00:17 +0200
+ -- Guilhem Moulin <guilhem@debian.org>  Mon, 31 Aug 2020 00:09:10 +0200
 
 cryptsetup (2:2.3.3-3+exp2) experimental; urgency=medium
 
