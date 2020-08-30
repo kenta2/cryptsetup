@@ -36,7 +36,6 @@ uint32_t get_mem_swap_avail_kb() {
 
     int mem_avail_kb, swap_free_kb = 0;
     char line[256];
-    char *head;
     while (fgets(line, sizeof(line), meminfo)) {
         if (strncmp(line, "MemAvailable", strlen("MemAvailable")) == 0) {
             if (sscanf(line, "MemAvailable: %d kB", &mem_avail_kb) != 1)

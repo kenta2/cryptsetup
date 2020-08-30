@@ -31,11 +31,12 @@ override_dh_auto_build:
 	dh_auto_build
 
 	# build askpass and passdev keyscripts
-	$(CC) -o debian/askpass debian/askpass.c $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -pedantic
-	$(CC) -o debian/scripts/passdev debian/scripts/passdev.c $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -pedantic
+	$(CC) -o debian/askpass debian/askpass.c -Wall -Werror $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -pedantic
+	$(CC) -o debian/scripts/passdev debian/scripts/passdev.c -Wall -Werror $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -pedantic
 
 	# build suspend binary
-	$(CC) -o debian/scripts/suspend/cryptsetup-suspend debian/scripts/suspend/cryptsetup-suspend.c $(CFLAGS) $(CPPFLAGS) -I$(CURDIR)/lib $(LDFLAGS) -L$(CURDIR)/.libs -lcryptsetup -pedantic
+	$(CC) -o debian/scripts/suspend/cryptsetup-suspend debian/scripts/suspend/cryptsetup-suspend.c \
+		 -Wall -Werror $(CFLAGS) $(CPPFLAGS) -I$(CURDIR)/lib $(LDFLAGS) -L$(CURDIR)/.libs -lcryptsetup -pedantic
 
 	# generate manpages
 	sed 's/VERSION/$(DEB_VERSION)/;s/DATE/$(DEB_DATE)/' \
