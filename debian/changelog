@@ -13,12 +13,12 @@ cryptsetup (2:2.3.3-3+exp2) experimental; urgency=medium
       relative to the boot's loader viewpoint, which might differ from that of
       the main system.
     + run_dir(): Prefer find(1)'s -execdir option over -exec.
-    + Conditionally remove/copy firware into the initramfs image.
+    + Conditionally remove/copy firmware into the initramfs image.
       (Closes: #969270)
   * d/rules: Build our scripts with `-Wall -Werror`.
   * d/cryptsetup-suspend.{postinst,postrm}: Call `systemctl daemon-reload`,
     which appears to be needed on upgrades.  (dh_installsystemd(1) doesn't
-    support overrides so we manually copy snippet it would add.)
+    support overrides so we manually copy the snippet it would add.)
 
  -- Guilhem Moulin <guilhem@debian.org>  Sun, 30 Aug 2020 18:01:49 +0200
 
