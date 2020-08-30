@@ -1,4 +1,4 @@
-cryptsetup (2:2.3.3-3+exp2) UNRELEASED; urgency=medium
+cryptsetup (2:2.3.3-3+exp2) experimental; urgency=medium
 
   * d/control: Typofix in cryptsetup-suspend's long description.
     (Closes: #968455)
@@ -20,7 +20,7 @@ cryptsetup (2:2.3.3-3+exp2) UNRELEASED; urgency=medium
     which appears to be needed on upgrades.  (dh_installsystemd(1) doesn't
     support overrides so we manually copy snippet it would add.)
 
- -- Guilhem Moulin <guilhem@debian.org>  Wed, 26 Aug 2020 23:44:48 +0200
+ -- Guilhem Moulin <guilhem@debian.org>  Sun, 30 Aug 2020 18:01:49 +0200
 
 cryptsetup (2:2.3.3-3+exp1) experimental; urgency=medium
 
