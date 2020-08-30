@@ -28,7 +28,7 @@ read_config() {
 # Run all executable scripts in directory SYSTEM_SLEEP_PATH with arguments ARGS
 # mimic systemd behavior
 run_dir() {
-    find "$SYSTEM_SLEEP_PATH" -type f -executable -exec "{}" "$@" ";"
+    find "$SYSTEM_SLEEP_PATH" -type f -executable -execdir {} "$@" \;
 }
 
 log_error() {
