@@ -1,3 +1,9 @@
+cryptsetup (2:2.3.4-1+exp1) experimental; urgency=medium
+
+  * Upload to experimental.
+
+ -- Guilhem Moulin <guilhem@debian.org>  Fri, 04 Sep 2020 00:55:41 +0200
+
 cryptsetup (2:2.3.4-1) unstable; urgency=high
 
   * New upstream bugfix release, including fix for CVE-2020-14382:
