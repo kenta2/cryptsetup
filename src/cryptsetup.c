@@ -64,6 +64,8 @@ static int opt_shared = 0;
 static int opt_allow_discards = 0;
 static int opt_perf_same_cpu_crypt = 0;
 static int opt_perf_submit_from_crypt_cpus = 0;
+static int opt_perf_no_read_workqueue = 0;
+static int opt_perf_no_write_workqueue = 0;
 static int opt_test_passphrase = 0;
 static int opt_tcrypt_hidden = 0;
 static int opt_tcrypt_system = 0;
@@ -181,6 +183,12 @@ static void _set_activation_flags(uint32_t *flags)
 
 	if (opt_perf_submit_from_crypt_cpus)
 		*flags |= CRYPT_ACTIVATE_SUBMIT_FROM_CRYPT_CPUS;
+
+	if (opt_perf_no_read_workqueue)
+		*flags |= CRYPT_ACTIVATE_NO_READ_WORKQUEUE;
+
+	if (opt_perf_no_write_workqueue)
+		*flags |= CRYPT_ACTIVATE_NO_WRITE_WORKQUEUE;
 
 	if (opt_integrity_nojournal)
 		*flags |= CRYPT_ACTIVATE_NO_JOURNAL;
@@ -815,11 +823,15 @@ static int action_status(void)
 					   (cad.flags & CRYPT_ACTIVATE_SUSPENDED) ? " (suspended)" : "");
 		if (cad.flags & (CRYPT_ACTIVATE_ALLOW_DISCARDS|
 				 CRYPT_ACTIVATE_SAME_CPU_CRYPT|
-				 CRYPT_ACTIVATE_SUBMIT_FROM_CRYPT_CPUS))
-			log_std("  flags:   %s%s%s\n",
+				 CRYPT_ACTIVATE_SUBMIT_FROM_CRYPT_CPUS|
+				 CRYPT_ACTIVATE_NO_READ_WORKQUEUE|
+				 CRYPT_ACTIVATE_NO_WRITE_WORKQUEUE))
+			log_std("  flags:   %s%s%s%s%s\n",
 				(cad.flags & CRYPT_ACTIVATE_ALLOW_DISCARDS) ? "discards " : "",
 				(cad.flags & CRYPT_ACTIVATE_SAME_CPU_CRYPT) ? "same_cpu_crypt " : "",
-				(cad.flags & CRYPT_ACTIVATE_SUBMIT_FROM_CRYPT_CPUS) ? "submit_from_crypt_cpus" : "");
+				(cad.flags & CRYPT_ACTIVATE_SUBMIT_FROM_CRYPT_CPUS) ? "submit_from_crypt_cpus " : "",
+				(cad.flags & CRYPT_ACTIVATE_NO_READ_WORKQUEUE) ? "no_read_workqueue " : "",
+				(cad.flags & CRYPT_ACTIVATE_NO_WRITE_WORKQUEUE) ? "no_write_workqueue" : "");
 	}
 out:
 	crypt_free(cd);
@@ -3119,7 +3131,7 @@ static int action_reencrypt_luks2(struct crypt_device *cd)
 {
 	size_t i, vk_size, kp_size;
 	int r, keyslot_old = CRYPT_ANY_SLOT, keyslot_new = CRYPT_ANY_SLOT, key_size;
-	char dm_name[PATH_MAX], cipher [MAX_CIPHER_LEN], mode[MAX_CIPHER_LEN], *vk;
+	char dm_name[PATH_MAX], cipher [MAX_CIPHER_LEN], mode[MAX_CIPHER_LEN], *vk = NULL;
 	const char *active_name = NULL;
 	struct keyslot_passwords *kp;
 	struct crypt_params_luks2 luks2_params = {};
@@ -3161,6 +3173,7 @@ static int action_reencrypt_luks2(struct crypt_device *cd)
 
 	if (!key_size)
 		return -EINVAL;
+	vk_size = key_size;
 
 	r = crypt_keyslot_max(CRYPT_LUKS2);
 	if (r < 0)
@@ -3175,11 +3188,11 @@ static int action_reencrypt_luks2(struct crypt_device *cd)
 	if (r)
 		goto err;
 
-	vk_size = key_size;
-	vk = crypt_safe_alloc(vk_size);
-	if (!vk) {
-		r = -ENOMEM;
-		goto err;
+	if (opt_master_key_file) {
+		r = tools_read_mk(opt_master_key_file, &vk, key_size);
+
+		if (r < 0)
+			goto err;
 	}
 
 	r = -ENOENT;
@@ -3189,7 +3202,7 @@ static int action_reencrypt_luks2(struct crypt_device *cd)
 			r = set_keyslot_params(cd, i);
 			if (r < 0)
 				break;
-			r = crypt_keyslot_add_by_key(cd, CRYPT_ANY_SLOT, NULL, key_size,
+			r = crypt_keyslot_add_by_key(cd, CRYPT_ANY_SLOT, vk, key_size,
 					kp[i].password, kp[i].passwordLen, CRYPT_VOLUME_KEY_NO_SEGMENT);
 			tools_keyslot_msg(r, CREATED);
 			if (r < 0)
@@ -3198,9 +3211,17 @@ static int action_reencrypt_luks2(struct crypt_device *cd)
 			kp[i].new = r;
 			keyslot_new = r;
 			keyslot_old = i;
-			r = crypt_volume_key_get(cd, keyslot_new, vk, &vk_size, kp[i].password, kp[i].passwordLen);
-			if (r < 0)
-				break;
+			if (!vk) {
+				/* key generated in crypt_keyslot_add_by_key() call above */
+				vk = crypt_safe_alloc(key_size);
+				if (!vk) {
+					r = -ENOMEM;
+					break;
+				}
+				r = crypt_volume_key_get(cd, keyslot_new, vk, &vk_size, kp[i].password, kp[i].passwordLen);
+				if (r < 0)
+					break;
+			}
 			r = assign_tokens(cd, i, r);
 			if (r < 0)
 				break;
@@ -3219,8 +3240,6 @@ static int action_reencrypt_luks2(struct crypt_device *cd)
 				break;
 		}
 	}
-
-	crypt_safe_free(vk);
 
 	if (r < 0)
 		goto err;
@@ -3241,6 +3260,7 @@ static int action_reencrypt_luks2(struct crypt_device *cd)
 			kp[keyslot_old].passwordLen, keyslot_old, kp[keyslot_old].new,
 			cipher, mode, &params);
 err:
+	crypt_safe_free(vk);
 	for (i = 0; i < kp_size; i++) {
 		crypt_safe_free(kp[i].password);
 		if (r < 0 && kp[i].new >= 0 &&
@@ -3527,6 +3547,8 @@ int main(int argc, const char **argv)
 		{ "force-password",    '\0', POPT_ARG_NONE, &opt_force_password,        0, N_("Disable password quality check (if enabled)"), NULL },
 		{ "perf-same_cpu_crypt",'\0', POPT_ARG_NONE, &opt_perf_same_cpu_crypt,  0, N_("Use dm-crypt same_cpu_crypt performance compatibility option"), NULL },
 		{ "perf-submit_from_crypt_cpus",'\0', POPT_ARG_NONE, &opt_perf_submit_from_crypt_cpus,0,N_("Use dm-crypt submit_from_crypt_cpus performance compatibility option"), NULL },
+		{ "perf-no_read_workqueue",'\0', POPT_ARG_NONE, &opt_perf_no_read_workqueue,0,N_("Bypass dm-crypt workqueue and process read requests synchronously"), NULL },
+		{ "perf-no_write_workqueue",'\0', POPT_ARG_NONE, &opt_perf_no_write_workqueue,0,N_("Bypass dm-crypt workqueue and process write requests synchronously"), NULL },
 		{ "deferred",          '\0', POPT_ARG_NONE, &opt_deferred_remove,       0, N_("Device removal is deferred until the last user closes it"), NULL },
 		{ "serialize-memory-hard-pbkdf", '\0', POPT_ARG_NONE, &opt_serialize_memory_hard_pbkdf, 0, N_("Use global lock to serialize memory hard PBKDF (OOM workaround)"), NULL },
 		{ "iter-time",         'i',  POPT_ARG_INT, &opt_iteration_time,         0, N_("PBKDF iteration time for LUKS (in ms)"), N_("msecs") },

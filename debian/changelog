@@ -1,3 +1,11 @@
+cryptsetup (2:2.3.4-1) unstable; urgency=high
+
+  * New upstream bugfix release, including fix for CVE-2020-14382:
+    possible out-of-bounds memory write while validating LUKS2 data
+    segments metadata on 32-bits platforms. (Closes: #969471)
+
+ -- Guilhem Moulin <guilhem@debian.org>  Fri, 04 Sep 2020 00:30:40 +0200
+
 cryptsetup (2:2.3.3-3+exp3) experimental; urgency=medium
 
   * d/control: Make cryptsetup-suspend explicitly depend on

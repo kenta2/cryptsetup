@@ -675,7 +675,7 @@ static int keyslot_LUKS1_compatible(struct crypt_device *cd, struct luks2_hdr *h
 int LUKS2_luks2_to_luks1(struct crypt_device *cd, struct luks2_hdr *hdr2, struct luks_phdr *hdr1)
 {
 	size_t buf_size, buf_offset;
-	char cipher[LUKS_CIPHERNAME_L-1], cipher_mode[LUKS_CIPHERMODE_L-1];
+	char cipher[LUKS_CIPHERNAME_L], cipher_mode[LUKS_CIPHERMODE_L];
 	char digest[LUKS_DIGESTSIZE], digest_salt[LUKS_SALTSIZE];
 	const char *hash;
 	size_t len;
@@ -824,8 +824,10 @@ int LUKS2_luks2_to_luks1(struct crypt_device *cd, struct luks2_hdr *hdr2, struct
 	if (r < 0)
 		return r;
 
-	strncpy(hdr1->cipherName, cipher, sizeof(hdr1->cipherName) - 1);
-	strncpy(hdr1->cipherMode, cipher_mode, sizeof(hdr1->cipherMode) - 1);
+	strncpy(hdr1->cipherName, cipher, LUKS_CIPHERNAME_L - 1);
+	hdr1->cipherName[LUKS_CIPHERNAME_L-1] = '\0';
+	strncpy(hdr1->cipherMode, cipher_mode, LUKS_CIPHERMODE_L - 1);
+	hdr1->cipherMode[LUKS_CIPHERMODE_L-1] = '\0';
 
 	if (!json_object_object_get_ex(jobj_keyslot, "kdf", &jobj_kdf))
 		return -EINVAL;
