@@ -594,9 +594,9 @@ static bool validate_segment_intervals(struct crypt_device *cd,
 static int hdr_validate_segments(struct crypt_device *cd, json_object *hdr_jobj)
 {
 	json_object *jobj_segments, *jobj_digests, *jobj_offset, *jobj_size, *jobj_type, *jobj_flags, *jobj;
-	struct interval *intervals;
 	uint64_t offset, size;
 	int i, r, count, first_backup = -1;
+	struct interval *intervals = NULL;
 
 	if (!json_object_object_get_ex(hdr_jobj, "segments", &jobj_segments)) {
 		log_dbg(cd, "Missing segments section.");
@@ -676,10 +676,18 @@ static int hdr_validate_segments(struct crypt_device *cd, json_object *hdr_jobj)
 		return 1;
 	}
 
+	/* avoid needlessly large allocation when first backup segment is invalid */
+	if (first_backup >= count) {
+		log_dbg(cd, "Gap between last regular segment and backup segment at key %d.", first_backup);
+		return 1;
+	}
+
 	if (first_backup < 0)
 		first_backup = count;
 
-	intervals = malloc(first_backup * sizeof(*intervals));
+	if ((size_t)first_backup < SIZE_MAX / sizeof(*intervals))
+		intervals = malloc(first_backup * sizeof(*intervals));
+
 	if (!intervals) {
 		log_dbg(cd, "Not enough memory.");
 		return 1;
@@ -1289,6 +1297,8 @@ static const struct  {
 	{ CRYPT_ACTIVATE_SAME_CPU_CRYPT,         "same-cpu-crypt" },
 	{ CRYPT_ACTIVATE_SUBMIT_FROM_CRYPT_CPUS, "submit-from-crypt-cpus" },
 	{ CRYPT_ACTIVATE_NO_JOURNAL,             "no-journal" },
+	{ CRYPT_ACTIVATE_NO_READ_WORKQUEUE,      "no-read-workqueue" },
+	{ CRYPT_ACTIVATE_NO_WRITE_WORKQUEUE,     "no-write-workqueue" },
 	{ 0, NULL }
 };
 

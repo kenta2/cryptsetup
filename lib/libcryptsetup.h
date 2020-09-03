@@ -1103,6 +1103,12 @@ int crypt_keyslot_destroy(struct crypt_device *cd, int keyslot);
 #define CRYPT_ACTIVATE_SUSPENDED (1 << 21)
 /** use IV sector counted in sector_size instead of default 512 bytes sectors */
 #define CRYPT_ACTIVATE_IV_LARGE_SECTORS (1 << 22)
+/** dm-verity: panic_on_corruption flag - panic kernel on corruption */
+#define CRYPT_ACTIVATE_PANIC_ON_CORRUPTION (1 << 23)
+/** dm-crypt: bypass internal workqueue and process read requests synchronously. */
+#define CRYPT_ACTIVATE_NO_READ_WORKQUEUE (1 << 24)
+/** dm-crypt: bypass internal workqueue and process write requests synchronously. */
+#define CRYPT_ACTIVATE_NO_WRITE_WORKQUEUE (1 << 25)
 
 /**
  * Active device runtime attributes
