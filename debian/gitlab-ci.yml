@@ -19,9 +19,11 @@ reprotest:
 
 # Add a deploy stage for pages
 stages:
+  - provisioning
   - build
   - publish
   - test
+  # would be better if we could extend the list rather than override it
   - deploy
 
 pages:
