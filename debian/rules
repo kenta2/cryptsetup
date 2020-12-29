@@ -65,10 +65,6 @@ endif
 	while IFS= read -r x; do if [ "$${x#CONF_HOOK_CONTENTS=}" = "$$x" ]; then printf "%s\n" "$$x"; else printf "CONF_HOOK_CONTENTS=\"\$$(cat <<EOF\n"; cat debian/initramfs/conf-hook; printf "EOF\n)\""; fi ; done <$(CURDIR)/debian/cryptsetup-initramfs.preinst~ >$(CURDIR)/debian/cryptsetup-initramfs.preinst
 	rm -f $(CURDIR)/debian/cryptsetup-initramfs.preinst~
 
-override_dh_link:
-	dh_link
-	dh_link -plibcryptsetup-dev /lib/$(DEB_HOST_MULTIARCH)/$$(basename $$(readlink debian/tmp/lib/$(DEB_HOST_MULTIARCH)/libcryptsetup.so.12)) /usr/lib/$(DEB_HOST_MULTIARCH)/libcryptsetup.so
-
 override_dh_installinit:
 	dh_installinit -pcryptsetup --no-start --name=cryptdisks
 	dh_installinit -pcryptsetup --no-start --name=cryptdisks-early

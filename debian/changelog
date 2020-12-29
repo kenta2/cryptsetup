@@ -3,6 +3,8 @@ cryptsetup (2:2.3.4-2) UNRELEASED; urgency=medium
   * d/control: Remove Build-Depends: dh-exec.  In compatibility level 13
     Debhelper supports variable expansion, which was why we used dh-exec in
     the first place.
+  * libcryptsetup-dev: Install libcryptsetup.so to /lib/$DEB_HOST_MULTIARCH
+    not /usr/lib/$DEB_HOST_MULTIARCH .
 
  -- Guilhem Moulin <guilhem@debian.org>  Tue, 29 Dec 2020 01:13:15 +0100
 
