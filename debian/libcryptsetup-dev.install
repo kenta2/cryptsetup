@@ -1,4 +1,3 @@
-#!/usr/bin/dh-exec
-debian/tmp/lib/${DEB_HOST_MULTIARCH}/*.so           /usr/lib/${DEB_HOST_MULTIARCH}/
-debian/tmp/lib/${DEB_HOST_MULTIARCH}/pkgconfig/*.pc /usr/lib/${DEB_HOST_MULTIARCH}/pkgconfig/
+lib/${DEB_HOST_MULTIARCH}/*.so           /usr/lib/${DEB_HOST_MULTIARCH}/
+lib/${DEB_HOST_MULTIARCH}/pkgconfig/*.pc /usr/lib/${DEB_HOST_MULTIARCH}/pkgconfig/
 usr/include/*.h
