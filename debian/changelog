@@ -4,8 +4,8 @@ cryptsetup (2:2.3.4-2) UNRELEASED; urgency=medium
     Debhelper supports variable expansion, which was why we used dh-exec in
     the first place.
   * libcryptsetup-dev: Install libcryptsetup.so to /lib/$DEB_HOST_MULTIARCH
-    not /usr/lib/$DEB_HOST_MULTIARCH , and override subsequent lintian warning
-    per #843932.
+    not /usr/lib/$DEB_HOST_MULTIARCH (closes: #978585), and override
+    subsequent lintian warning per #843932.
   * d/cryptsetup.lintian-overrides: Rename "init.d-script-does-not-implement-
     optional-option $FOO status" tags to "init.d-script-does-not-implement-
     status-option $FOO".
