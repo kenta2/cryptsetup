@@ -11,6 +11,8 @@ cryptsetup (2:2.3.4-2) UNRELEASED; urgency=medium
     optional-option $FOO status" tags to "init.d-script-does-not-implement-
     status-option $FOO".
   * Bump Standards-Version to 4.5.1 (no changes necessary).
+  * d/cryptdisks-functions: Rename left-over loop_cryptdevs() to
+    foreach_cryptdev().  Regression from 2:2.3.0-1.  (Closes: #974591)
 
  -- Guilhem Moulin <guilhem@debian.org>  Tue, 29 Dec 2020 01:13:15 +0100
 
