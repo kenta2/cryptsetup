@@ -159,7 +159,7 @@ setup_mapping() {
                 return 1
             elif vg="$(lvm pvs --noheadings -o vg_name --config 'log{prefix=""}' -- "$dev")"; then
                 # activate the VG held by the PV we just unlocked
-                lvm lvchange -a y --sysinit --ignoreskippedcluster -- "$vg"
+                lvm lvchange -a y --sysinit -- "$vg"
             fi
         fi
 
