@@ -43,10 +43,10 @@ Importing a new upstream release
        Use `gpg -q debian/upstream-signing-key.asc` to show its
        fingerprint.
 
-    4. Merge the upstream release tag <tag> into the master branch of your
-       packaging repository:
+    4. Merge the upstream release tag <tag> into the 'debian/latest'
+       branch of your packaging repository:
 
-           git checkout master
+           git checkout debian/latest
            git merge -m "Updated version $VERSION from '$TAG'" "$TAG"
 
     N. After development and testing, the final packages to be uploaded to
