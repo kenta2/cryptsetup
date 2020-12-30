@@ -18,6 +18,12 @@ cryptsetup (2:2.3.4-2) UNRELEASED; urgency=medium
     which is now a no-op.
   * Make d/cryptsetup-initramfs.preinst mangling idempotent.
 
+  [ Guilherme G. Piccoli ]
+  * Initramfs boot script: Fix a deadlock when cryptroot would wait at
+    local-top stage for a device to appear, while the device would only be
+    created at local-block stage.  This can be the case in dm-crypt-over-MD
+    scenario when booting the RAID array in degraded mode.  (Closes: #933059)
+
   [ Felix C. Stegerman ]
   * Fix typo in README.gnupg-sc
 
