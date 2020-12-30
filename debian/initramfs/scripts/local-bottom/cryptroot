@@ -19,5 +19,4 @@ esac
 [ -f /lib/cryptsetup/functions ] || return 0
 . /lib/cryptsetup/functions
 
-rm -f ${CRYPTR_LOCAL_BLOCK}
-rm -f ${CRYPTR_CNT_FILE}
+rm -f -- "$CRYPTR_LOCAL_BLOCK" "$CRYPTR_CNT_FILE"

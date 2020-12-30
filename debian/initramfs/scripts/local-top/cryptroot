@@ -57,7 +57,7 @@ wait_for_source() {
     # https://launchpad.net/bugs/164044 .
 
     local slumber=1
-    if [ ! -f "${CRYPTR_LOCAL_BLOCK}" ]; then # we are running on local-top
+    if [ ! -f "$CRYPTR_LOCAL_BLOCK" ]; then # we are running on local-top
          slumber=5
     fi
 
@@ -90,15 +90,15 @@ setup_mapping() {
     # We control here the number of re-invocations of this script from
     # local-block - the heuristic is $ROOTDELAY/4, with a minimum of 20.
 
-    if [ -f "${CRYPTR_CNT_FILE}" ]; then
-        initrd_cnt=$(cat ${CRYPTR_CNT_FILE})
+    if [ -f "$CRYPTR_CNT_FILE" ]; then
+        initrd_cnt="$(cat <"$CRYPTR_CNT_FILE")"
     else
-        initrd_cnt=${ROOTDELAY:-180}
-        initrd_cnt=$((initrd_cnt/4))
-        if [ "${initrd_cnt}" -lt 20 ]; then
+        initrd_cnt="${ROOTDELAY:-180}"
+        initrd_cnt=$(( initrd_cnt/4 ))
+        if [ $initrd_cnt -lt 20 ]; then
             initrd_cnt=20
         fi
-        echo ${initrd_cnt} > "${CRYPTR_CNT_FILE}"
+        echo "$initrd_cnt" >"$CRYPTR_CNT_FILE"
     fi
 
     # The same target can be specified multiple times
@@ -110,7 +110,7 @@ setup_mapping() {
     crypttab_parse_options --export --missing-path=fail || return 1
 
     if ! wait_for_source; then
-        if [ ${initrd_cnt} -eq 0 ]; then
+        if [ $initrd_cnt -eq 0 ]; then
             # we've given up
             if [ -n "$panic" ]; then
                 panic "ALERT! encrypted source device $CRYPTTAB_SOURCE does not exist, can't unlock $CRYPTTAB_NAME."
@@ -123,8 +123,8 @@ setup_mapping() {
             fi
             return 1 # can't continue because environment is lost
         else
-            initrd_cnt=$((initrd_cnt - 1))
-            echo ${initrd_cnt} > "${CRYPTR_CNT_FILE}"
+            initrd_cnt=$(( initrd_cnt - 1 ))
+            echo "$initrd_cnt" >"$CRYPTR_CNT_FILE"
             return 0 # allow some attempts on local-block stage
         fi
     fi

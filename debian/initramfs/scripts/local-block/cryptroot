@@ -19,6 +19,6 @@ esac
 . /lib/cryptsetup/functions
 
 if [ -x /scripts/local-top/cryptroot ]; then
-	touch ${CRYPTR_LOCAL_BLOCK}
+	touch -- "$CRYPTR_LOCAL_BLOCK"
 	exec /scripts/local-top/cryptroot
 fi
