@@ -56,9 +56,9 @@ wait_for_source() {
     # scripts/local's local_device_setup(), as suggested per
     # https://launchpad.net/bugs/164044 .
 
-    local slumber=1
-    if [ ! -f "$CRYPTROOT_LOCAL_BLOCK" ]; then # we are running on local-top
-         slumber=5
+    local slumber=5
+    if [ "${CRYPTROOT_STAGE-}" = "local-block" ]; then
+         slumber=1
     fi
 
     cryptsetup_message "Waiting for encrypted source device $CRYPTTAB_SOURCE..."

@@ -19,4 +19,4 @@ esac
 [ -f /lib/cryptsetup/functions ] || return 0
 . /lib/cryptsetup/functions
 
-rm -f -- "$CRYPTROOT_LOCAL_BLOCK" "$CRYPTROOT_COUNT_FILE"
+rm -f -- "$CRYPTROOT_COUNT_FILE"

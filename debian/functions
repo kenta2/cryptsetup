@@ -5,7 +5,6 @@ if [ "${0#/usr/share/initramfs-tools/hooks/}" != "$0" ] ||
 elif [ "${0#/scripts/}" != "$0" ]; then
     # called at initramfs stage from a boot script
     TABFILE="/cryptroot/crypttab"
-    export CRYPTROOT_LOCAL_BLOCK="/run/cryptroot.local-block"
     CRYPTROOT_COUNT_FILE="/run/cryptroot.initrd.cnt"
 else
     TABFILE="${TABFILE-/etc/crypttab}"

@@ -15,10 +15,7 @@ prereqs)
 	;;
 esac
 
-[ -f /lib/cryptsetup/functions ] || return 0
-. /lib/cryptsetup/functions
-
 if [ -x /scripts/local-top/cryptroot ]; then
-	touch -- "$CRYPTROOT_LOCAL_BLOCK"
-	exec /scripts/local-top/cryptroot
+    export CRYPTROOT_STAGE="local-block"
+    exec /scripts/local-top/cryptroot
 fi
