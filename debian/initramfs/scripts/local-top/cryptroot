@@ -93,7 +93,7 @@ setup_mapping() {
     if [ -f "${CRYPTR_CNT_FILE}" ]; then
         initrd_cnt=$(cat ${CRYPTR_CNT_FILE})
     else
-        initrd_cnt=${ROOTDELAY:-80}
+        initrd_cnt=${ROOTDELAY:-180}
         initrd_cnt=$((initrd_cnt/4))
         if [ "${initrd_cnt}" -lt 20 ]; then
             initrd_cnt=20
