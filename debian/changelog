@@ -16,6 +16,7 @@ cryptsetup (2:2.3.4-2) UNRELEASED; urgency=medium
     foreach_cryptdev().  Regression from 2:2.3.0-1.  (Closes: #974591)
   * Initramfs boot script: Drop `lvm vgchange`'s --ignoreskippedcluster flag
     which is now a no-op.
+  * Make d/cryptsetup-initramfs.preinst mangling idempotent.
 
   [ Felix C. Stegerman ]
   * Fix typo in README.gnupg-sc
