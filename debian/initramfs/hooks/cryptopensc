@@ -45,14 +45,14 @@ mkdir -p -- "$DESTDIR/etc/opensc" "$DESTDIR/usr/lib/pcsc" "$DESTDIR/var/run" "$D
 
 # Install pcscd daemon, drivers, conf file
 copy_exec /usr/sbin/pcscd
-LIBC_DIR="$(ldd /usr/sbin/pcscd | sed -nr 's#.* => (/lib.*)/libc\.so\.[0-9.-]+ \(0x[[:xdigit:]]+\)$#\1#p')"
-find -L "$LIBC_DIR" "/usr$LIBC_DIR" -maxdepth 1 \( -name 'libgcc_s.*' -o -name 'libusb-*.so*' -o -name 'libpcsclite.so*' \) -type f | while read so; do
-    copy_exec "$so"
-done
 
 cp -rt "$DESTDIR/usr/lib" /usr/lib/pcsc
 cp -t "$DESTDIR/etc" /etc/reader.conf || true
 cp -t "$DESTDIR/etc" /etc/libccid_Info.plist
+
+for so in $(ldconfig -p | sed -nr 's/^\s*(libusb-[0-9.-]+|libpcsclite)\.so\.[0-9]+\s.*=>\s*//p'); do
+    copy_exec "$so"
+done
 
 # Install opensc commands and conf file
 copy_exec /usr/bin/opensc-tool
