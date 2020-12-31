@@ -2,6 +2,7 @@
 
 set -e
 
+# TODO once Bullseye is released: remove the maintscript
 CONFFILE=/etc/cryptsetup-initramfs/conf-hook
 CONF_HOOK_CONTENTS=@@CONF_HOOK_CONTENTS@@
 
