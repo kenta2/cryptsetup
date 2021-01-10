@@ -23,6 +23,7 @@ cryptsetup (2:2.3.4-2) UNRELEASED; urgency=medium
   * cryptsetup-initramfs now requires initramfs-tools 0.137 or later and no
     longer copies libgcc_s.so.1 to the initrd since recent initramfs-tools
     take care of it.
+  * Add libcryptsetup.la to debian/not-installed.
 
   [ Guilherme G. Piccoli ]
   * Initramfs boot script: Fix a deadlock when cryptroot would wait at
