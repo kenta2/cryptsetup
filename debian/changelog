@@ -1,3 +1,11 @@
+cryptsetup (2:2.3.4-3) UNRELEASED; urgency=medium
+
+  * d/watch: Monitor upstream tags rather than tarball.
+  * d/gbp.conf: Set 'upstream-vcs-tag' to add upstream tag as additional
+    parent.
+
+ -- Guilhem Moulin <guilhem@debian.org>  Thu, 11 Mar 2021 22:37:57 +0100
+
 cryptsetup (2:2.3.4-2) unstable; urgency=medium
 
   [ Guilhem Moulin ]
