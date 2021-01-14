@@ -92,9 +92,7 @@ package. Replace everything after line 45 in
             if [ ! -d ${DESTDIR}/${dir} ] ; then mkdir -p ${DESTDIR}/${dir} ; fi
     done
 
-    # Install pcscd daemon, drivers, conf file, and include libgcc as
-    # well since
-    # pcscd utilizes pthread_cancel
+    # Install pcscd daemon, drivers, conf file
     copy_exec /usr/local/sbin/pcscd
     cp -r /usr/local/pcsc ${DESTDIR}/usr/local
     cp /etc/reader.conf ${DESTDIR}/etc
@@ -102,7 +100,6 @@ package. Replace everything after line 45 in
     # Install opensc commands and conf file
     copy_exec /usr/bin/opensc-tool
     copy_exec /usr/bin/pkcs15-crypt
-    cp /lib/libgcc_s.so.1 ${DESTDIR}/lib
     cp /etc/opensc/opensc.conf ${DESTDIR}/etc/opensc
 
 Edit `/usr/share/initramfs-tools/scripts/local-bottom/cryptopensc` and

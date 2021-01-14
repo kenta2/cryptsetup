@@ -16,5 +16,6 @@ prereqs)
 esac
 
 if [ -x /scripts/local-top/cryptroot ]; then
-	exec /scripts/local-top/cryptroot
+    export CRYPTROOT_STAGE="local-block"
+    exec /scripts/local-top/cryptroot
 fi

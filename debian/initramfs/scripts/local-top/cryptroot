@@ -31,8 +31,8 @@ esac
 
 
 # wait_for_source()
-#   Wait for encrypted $CRYPTTAB_SOURCE for up to 180s.  Set
-#   $CRYPTTAB_SOURCE to its normalized device name when it shows up;
+#   Wait for encrypted $CRYPTTAB_SOURCE . Set $CRYPTTAB_SOURCE
+#   to its normalized device name when it shows up;
 #   return 1 if timeout.
 wait_for_source() {
     wait_for_udev 10
@@ -42,17 +42,27 @@ wait_for_source() {
         return 0
     fi
 
-    # The lines below has been taken from
-    # /usr/share/initramfs-tools/scripts/local's local_device_setup(),
-    # as suggested per https://launchpad.net/bugs/164044
-
     # If the source device hasn't shown up yet, give it a little while
     # to allow for asynchronous device discovery (e.g. USB).
+    #
+    # We also need to take into account RAID or other devices that may
+    # only be available on local-block stage. So, wait 5 seconds upfront,
+    # in local-top; if that fails, end execution relying on local-block
+    # invocations. Allow $ROOTDELAY/4 invocations with 1s sleep times (with
+    # a minimum of 20 invocations), and if after that we still fail, then it's
+    # really time to give-up. Variable $initrd_cnt tracks the re-invocations.
+    #
+    # Part of the lines below has been taken from initramfs-tools
+    # scripts/local's local_device_setup(), as suggested per
+    # https://launchpad.net/bugs/164044 .
+
+    local slumber=5
+    if [ "${CRYPTROOT_STAGE-}" = "local-block" ]; then
+         slumber=1
+    fi
 
     cryptsetup_message "Waiting for encrypted source device $CRYPTTAB_SOURCE..."
 
-    # Default delay is 180s, cf. initramfs-tools(8)
-    local slumber="${ROOTDELAY:-180}"
     while [ $slumber -gt 0 ]; do
         sleep 1
 
@@ -75,7 +85,21 @@ wait_for_source() {
 #   Set up a crypttab(5) mapping defined by $CRYPTTAB_NAME,
 #   $CRYPTTAB_SOURCE, $CRYPTTAB_KEY, $CRYPTTAB_OPTIONS.
 setup_mapping() {
-    local dev
+    local dev initrd_cnt
+
+    # We control here the number of re-invocations of this script from
+    # local-block - the heuristic is $ROOTDELAY/4, with a minimum of 20.
+
+    if [ -f "$CRYPTROOT_COUNT_FILE" ]; then
+        initrd_cnt="$(cat <"$CRYPTROOT_COUNT_FILE")"
+    else
+        initrd_cnt="${ROOTDELAY:-180}"
+        initrd_cnt=$(( initrd_cnt/4 ))
+        if [ $initrd_cnt -lt 20 ]; then
+            initrd_cnt=20
+        fi
+        echo "$initrd_cnt" >"$CRYPTROOT_COUNT_FILE"
+    fi
 
     # The same target can be specified multiple times
     # e.g. root and resume lvs-on-lvm-on-crypto
@@ -86,17 +110,23 @@ setup_mapping() {
     crypttab_parse_options --export --missing-path=fail || return 1
 
     if ! wait_for_source; then
-        # we've given up
-        if [ -n "$panic" ]; then
-            panic "ALERT! encrypted source device $CRYPTTAB_SOURCE does not exist, can't unlock $CRYPTTAB_NAME."
+        if [ $initrd_cnt -eq 0 ]; then
+            # we've given up
+            if [ -n "$panic" ]; then
+                panic "ALERT! encrypted source device $CRYPTTAB_SOURCE does not exist, can't unlock $CRYPTTAB_NAME."
+            else
+                # let the user fix matters if they can
+                echo "	ALERT! encrypted source device $CRYPTTAB_SOURCE does not exist, can't unlock $CRYPTTAB_NAME."
+                echo "	Check cryptopts=source= bootarg: cat /proc/cmdline"
+                echo "	or missing modules, devices: cat /proc/modules; ls /dev"
+                panic "Dropping to a shell."
+            fi
+            return 1 # can't continue because environment is lost
         else
-            # let the user fix matters if they can
-            echo "	ALERT! encrypted source device $CRYPTTAB_SOURCE does not exist, can't unlock $CRYPTTAB_NAME."
-            echo "	Check cryptopts=source= bootarg: cat /proc/cmdline"
-            echo "	or missing modules, devices: cat /proc/modules; ls /dev"
-            panic "Dropping to a shell."
+            initrd_cnt=$(( initrd_cnt - 1 ))
+            echo "$initrd_cnt" >"$CRYPTROOT_COUNT_FILE"
+            return 0 # allow some attempts on local-block stage
         fi
-        return 1 # can't continue because environment is lost
     fi
 
     # our `cryptroot-unlock` script searches for cryptsetup processes
@@ -159,7 +189,7 @@ setup_mapping() {
                 return 1
             elif vg="$(lvm pvs --noheadings -o vg_name --config 'log{prefix=""}' -- "$dev")"; then
                 # activate the VG held by the PV we just unlocked
-                lvm lvchange -a y --sysinit --ignoreskippedcluster -- "$vg"
+                lvm lvchange -a y --sysinit -- "$vg"
             fi
         fi
 

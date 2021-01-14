@@ -195,7 +195,7 @@ _do_stop_callback() {
     # suboptimal but we can't use mapped device names as they might
     # contain any character other than NUL.  shouldn't be much overhead
     # anyway as the device tree is likely not that long
-    loop_cryptdevs _do_stop_skipped $devno_rootfs $devno_usr
+    foreach_cryptdev _do_stop_skipped $devno_rootfs $devno_usr
 
     if [ "$skip" = "n" ]; then
         for i in 1 2 4 8 16 32; do

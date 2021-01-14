@@ -5,5 +5,6 @@ debian/initramfs/hooks/*                            /usr/share/initramfs-tools/h
 debian/initramfs/scripts/local-block/cryptroot      /usr/share/initramfs-tools/scripts/local-block/
 debian/initramfs/scripts/local-bottom/cryptgnupg-sc /usr/share/initramfs-tools/scripts/local-bottom/
 debian/initramfs/scripts/local-bottom/cryptopensc   /usr/share/initramfs-tools/scripts/local-bottom/
+debian/initramfs/scripts/local-bottom/cryptroot     /usr/share/initramfs-tools/scripts/local-bottom/
 debian/initramfs/scripts/local-top/cryptopensc      /usr/share/initramfs-tools/scripts/local-top/
 debian/initramfs/scripts/local-top/cryptroot        /usr/share/initramfs-tools/scripts/local-top/

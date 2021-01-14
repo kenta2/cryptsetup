@@ -1,5 +1,5 @@
-rUing OpenPGP smartcard for LUKS dm-crypt devices in Debian
-===========================================================
+Using an OpenPGP smartcard for LUKS dm-crypt devices in Debian
+==============================================================
 
 The Debian cryptsetup package provides the keyscript `decrypt_gnupg-sc`
 for setups with a keyfile that is encrypted using an OpenPGP smartcard.

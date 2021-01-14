@@ -1,3 +1,42 @@
+cryptsetup (2:2.3.4-2) unstable; urgency=medium
+
+  [ Guilhem Moulin ]
+  * d/control: Remove Build-Depends: dh-exec.  In compatibility level 13
+    Debhelper supports variable expansion, which was why we used dh-exec in
+    the first place.
+  * libcryptsetup-dev: Install libcryptsetup.so to /lib/$DEB_HOST_MULTIARCH
+    not /usr/lib/$DEB_HOST_MULTIARCH (closes: #978585), and override
+    subsequent lintian warning per #843932.
+  * d/*.install: Replace wildcard with $DEB_HOST_MULTIARCH for consistency.
+  * d/cryptsetup.lintian-overrides: Rename "init.d-script-does-not-implement-
+    optional-option $FOO status" tags to "init.d-script-does-not-implement-
+    status-option $FOO".
+  * Bump Standards-Version to 4.5.1 (no changes necessary).
+  * d/cryptdisks-functions: Rename left-over loop_cryptdevs() to
+    foreach_cryptdev().  Regression from 2:2.3.0-1.  (Closes: #974591)
+  * Initramfs boot script: Drop `lvm vgchange`'s --ignoreskippedcluster flag
+    which is now a no-op.
+  * Make d/cryptsetup-initramfs.preinst mangling idempotent.
+  * Rename Debian resp. upstream branch to debian/latest resp. upstream/latest
+    for DEP-14 compliance.
+  * Rename d/gitlab-ci.yml to d/salsa-ci.yml.
+  * Consolidate d/gbp.conf.
+  * cryptsetup-initramfs now requires initramfs-tools 0.137 or later and no
+    longer copies libgcc_s.so.1 to the initrd since recent initramfs-tools
+    take care of it.
+  * Add libcryptsetup.la to debian/not-installed.
+
+  [ Guilherme G. Piccoli ]
+  * Initramfs boot script: Fix a deadlock when cryptroot would wait at
+    local-top stage for a device to appear, while the device would only be
+    created at local-block stage.  This can be the case in dm-crypt-over-MD
+    scenario when booting the RAID array in degraded mode.  (Closes: #933059)
+
+  [ Felix C. Stegerman ]
+  * Fix typo in README.gnupg-sc
+
+ -- Guilhem Moulin <guilhem@debian.org>  Thu, 14 Jan 2021 19:16:40 +0100
+
 cryptsetup (2:2.3.4-1+exp1) experimental; urgency=medium
 
   * Upload to experimental.

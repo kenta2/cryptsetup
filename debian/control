@@ -9,7 +9,6 @@ Build-Depends: autoconf,
                automake (>= 1:1.12),
                autopoint,
                debhelper-compat (= 13),
-               dh-exec,
                dh-strip-nondeterminism,
                docbook-xml,
                docbook-xsl,
@@ -30,10 +29,10 @@ Build-Depends: autoconf,
                uuid-dev,
                xsltproc,
                xxd <!nocheck>
-Standards-Version: 4.5.0
+Standards-Version: 4.5.1
 Homepage: https://gitlab.com/cryptsetup/cryptsetup
 Vcs-Browser: https://salsa.debian.org/cryptsetup-team/cryptsetup
-Vcs-Git: https://salsa.debian.org/cryptsetup-team/cryptsetup.git
+Vcs-Git: https://salsa.debian.org/cryptsetup-team/cryptsetup.git -b debian/latest
 
 Package: cryptsetup
 Architecture: linux-any
@@ -78,7 +77,7 @@ Package: cryptsetup-initramfs
 Architecture: all
 Depends: busybox | busybox-static,
          cryptsetup (>= ${source:Version}),
-         initramfs-tools (>= 0.129) | linux-initramfs-tool,
+         initramfs-tools (>= 0.137) | linux-initramfs-tool,
          ${misc:Depends}
 Recommends: console-setup, kbd
 Breaks: cryptsetup (<< 2:2.0.3-1)

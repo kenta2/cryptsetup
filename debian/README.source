@@ -18,11 +18,9 @@ Importing a new upstream release
        as a remote in the Git repository where you're doing the packaging
        work and it's up to date:
 
-           git remote add --tags upstream git+ssh://gitlab.com/cryptsetup/cryptsetup.git
-           git config remote.upstream.fetch master:upstream-2.0.x
-
-       Please note we tack the upstream 'master' branch in our branch
-       'upstream-2.0.x' for historical reasons.
+           git remote add upstream https://gitlab.com/cryptsetup/cryptsetup.git
+           git config remote.upstream.fetch +refs/heads/master:refs/remotes/upstream/master
+           git branch -u refs/remotes/upstream/master upstream/latest
 
     1. Update 'upstream' remote
 
@@ -43,10 +41,10 @@ Importing a new upstream release
        Use `gpg -q debian/upstream-signing-key.asc` to show its
        fingerprint.
 
-    4. Merge the upstream release tag <tag> into the master branch of your
-       packaging repository:
+    4. Merge the upstream release tag <tag> into the 'debian/latest'
+       branch of your packaging repository:
 
-           git checkout master
+           git checkout debian/latest
            git merge -m "Updated version $VERSION from '$TAG'" "$TAG"
 
     N. After development and testing, the final packages to be uploaded to

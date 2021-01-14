@@ -58,20 +58,24 @@ override_dh_auto_install:
 
 override_dh_install:
 	dh_install
-	rm -f $(CURDIR)/debian/tmp/lib/$(DEB_HOST_MULTIARCH)/libcryptsetup.la # not installed to anywhere
 	# install apport files when building on Ubuntu
 ifeq ($(shell dpkg-vendor --is Ubuntu && echo yes),yes)
 	mkdir -p $(CURDIR)/debian/cryptsetup/usr/share/apport/package-hooks
 	install -m 0644 debian/cryptsetup.apport \
 		$(CURDIR)/debian/cryptsetup/usr/share/apport/package-hooks/cryptsetup.py
 endif
-	mv -f $(CURDIR)/debian/cryptsetup-initramfs.preinst $(CURDIR)/debian/cryptsetup-initramfs.preinst~
-	while IFS= read -r x; do if [ "$${x#CONF_HOOK_CONTENTS=}" = "$$x" ]; then printf "%s\n" "$$x"; else printf "CONF_HOOK_CONTENTS=\"\$$(cat <<EOF\n"; cat debian/initramfs/conf-hook; printf "EOF\n)\""; fi ; done <$(CURDIR)/debian/cryptsetup-initramfs.preinst~ >$(CURDIR)/debian/cryptsetup-initramfs.preinst
-	rm -f $(CURDIR)/debian/cryptsetup-initramfs.preinst~
-
-override_dh_link:
-	dh_link
-	dh_link -plibcryptsetup-dev /lib/$(DEB_HOST_MULTIARCH)/$$(basename $$(readlink debian/tmp/lib/$(DEB_HOST_MULTIARCH)/libcryptsetup.so.12)) /usr/lib/$(DEB_HOST_MULTIARCH)/libcryptsetup.so
+	if [ ! -f $(CURDIR)/debian/cryptsetup-initramfs.preinst.in ]; then \
+		cp -fpT $(CURDIR)/debian/cryptsetup-initramfs.preinst $(CURDIR)/debian/cryptsetup-initramfs.preinst.in; \
+	fi
+	while IFS= read -r x; do \
+		if [ "$${x#CONF_HOOK_CONTENTS=}" = "$$x" ]; then \
+			printf "%s\\n" "$$x"; \
+		else \
+			printf "CONF_HOOK_CONTENTS=\"\$$(cat <<EOF\\n"; \
+			cat debian/initramfs/conf-hook || exit 1; \
+			printf "EOF\\n)\""; \
+		fi; \
+	done <$(CURDIR)/debian/cryptsetup-initramfs.preinst.in >$(CURDIR)/debian/cryptsetup-initramfs.preinst
 
 override_dh_installinit:
 	dh_installinit -pcryptsetup --no-start --name=cryptdisks
@@ -80,6 +84,9 @@ override_dh_installinit:
 override_dh_auto_clean:
 	dh_auto_clean
 	$(MAKE) -C debian/scripts/po update clean
+	if [ -f $(CURDIR)/debian/cryptsetup-initramfs.preinst.in ]; then \
+		mv -fT $(CURDIR)/debian/cryptsetup-initramfs.preinst.in $(CURDIR)/debian/cryptsetup-initramfs.preinst; \
+	fi
 
 override_dh_bugfiles:
 	dh_bugfiles -A

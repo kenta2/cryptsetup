@@ -297,11 +297,6 @@ copy_exec /sbin/cryptsetup
 copy_exec /sbin/dmsetup
 copy_exec /lib/cryptsetup/askpass
 
-# libargon2 uses pthread_cancel
-for so in $(ldconfig -p | sed -nr 's/^\s*libgcc_s\.so.*=>\s*//p'); do
-    copy_exec "$so"
-done
-
 # We need sed. Either via busybox or as standalone binary.
 if [ "$BUSYBOX" = n ] || [ ! -e "$BUSYBOXDIR/busybox" ]; then
     copy_exec /bin/sed

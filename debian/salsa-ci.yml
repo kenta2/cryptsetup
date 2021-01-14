@@ -19,9 +19,11 @@ reprotest:
 
 # Add a deploy stage for pages
 stages:
+  - provisioning
   - build
   - publish
   - test
+  # would be better if we could extend the list rather than override it
   - deploy
 
 pages:
@@ -46,9 +48,9 @@ pages:
     paths:
       - public
   only:
-    # only run on master branch
+    # only run on debian/latest branch
     refs:
-      - master
+      - debian/latest
     # only run when commit is tagged (to install docs on package releases only)
     #variables:
     #  - $CI_COMMIT_TAG
