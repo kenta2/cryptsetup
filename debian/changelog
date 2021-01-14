@@ -1,3 +1,9 @@
+cryptsetup (2:2.3.4-2+exp1) experimental; urgency=medium
+
+  * Upload to experimental.
+
+ -- Guilhem Moulin <guilhem@debian.org>  Thu, 14 Jan 2021 19:55:25 +0100
+
 cryptsetup (2:2.3.4-2) unstable; urgency=medium
 
   [ Guilhem Moulin ]
