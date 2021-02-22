@@ -170,6 +170,7 @@ Description: disk encryption support - development files
 Package: cryptsetup-udeb
 Section: debian-installer
 Package-Type: udeb
+Build-Profiles: <!noudeb>
 Architecture: linux-any
 Depends: dmsetup-udeb, ${misc:Depends}, ${shlibs:Depends}
 Description: disk encryption support - commandline tools (udeb)
@@ -183,6 +184,7 @@ Description: disk encryption support - commandline tools (udeb)
 Package: libcryptsetup12-udeb
 Section: debian-installer
 Package-Type: udeb
+Build-Profiles: <!noudeb>
 Architecture: linux-any
 Depends: ${misc:Depends}, ${shlibs:Depends}
 Description: disk encryption support - shared library (udeb)

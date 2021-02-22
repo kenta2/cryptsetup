@@ -85,8 +85,10 @@ execute_after_dh_fixperms-arch:
 	chmod 0755 debian/cryptsetup/lib/cryptsetup/scripts/decrypt_*
 	chmod 0755 debian/cryptsetup-suspend/lib/cryptsetup/scripts/suspend/cryptsetup-suspend-wrapper
 	chmod 0755 debian/cryptsetup-suspend/lib/systemd/system-shutdown/cryptsetup-suspend.shutdown
+ifeq (,$(filter noudeb, $(DEB_BUILD_PROFILES)))
 	chmod 0755 debian/cryptsetup-udeb/lib/cryptsetup/checks/*
 	chmod 0755 debian/cryptsetup-udeb/lib/cryptsetup/scripts/decrypt_*
+endif
 
 execute_after_dh_fixperms-indep:
 	chmod 0755 debian/cryptsetup-initramfs/usr/share/cryptsetup/initramfs/bin/*
