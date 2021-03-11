@@ -4,6 +4,7 @@ cryptsetup (2:2.3.5-1) UNRELEASED; urgency=medium
   * d/watch: Monitor upstream tags rather than tarball.
   * d/gbp.conf: Set 'upstream-vcs-tag' to add upstream tag as additional
     parent.
+  * Simplify d/README.source in accordance with the above.
   * Rename d/upstream-signing-key.asc to d/upstream/signing-key.asc as uscan
     is now able to verify git tags.
   * encrypted-boot.md: Clarify how to solve double password prompt for the
