@@ -3,8 +3,8 @@
  *
  * Copyright (C) 2004 Jana Saout <jana@saout.de>
  * Copyright (C) 2004-2007 Clemens Fruhwirth <clemens@endorphin.org>
- * Copyright (C) 2009-2020 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2009-2020 Milan Broz
+ * Copyright (C) 2009-2021 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2009-2021 Milan Broz
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -24,6 +24,7 @@
 #ifndef CRYPTSETUP_H
 #define CRYPTSETUP_H
 
+#include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -97,7 +98,6 @@ int tools_get_key(const char *prompt,
 void tools_passphrase_msg(int r);
 int tools_is_stdin(const char *key_file);
 int tools_string_to_size(struct crypt_device *cd, const char *s, uint64_t *size);
-int tools_is_cipher_null(const char *cipher);
 
 void tools_clear_line(void);
 
@@ -115,6 +115,11 @@ int tools_wipe_all_signatures(const char *path);
 
 int tools_lookup_crypt_device(struct crypt_device *cd, const char *type,
 		const char *data_device_path, char *name, size_t name_length);
+
+/* each utility is required to implement it */
+void tools_cleanup(void);
+
+#define FREE_AND_NULL(x) do { free(x); x = NULL; } while (0)
 
 /* Log */
 #define log_dbg(x...) clogger(NULL, CRYPT_LOG_DEBUG, __FILE__, __LINE__, x)

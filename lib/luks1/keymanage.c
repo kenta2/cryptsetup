@@ -2,8 +2,8 @@
  * LUKS - Linux Unified Key Setup
  *
  * Copyright (C) 2004-2006 Clemens Fruhwirth <clemens@endorphin.org>
- * Copyright (C) 2009-2020 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2013-2020 Milan Broz
+ * Copyright (C) 2009-2021 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2013-2021 Milan Broz
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -375,8 +375,13 @@ static int _keyslot_repair(struct luks_phdr *phdr, struct crypt_device *ctx)
 		log_err(ctx, _("Non standard key size, manual repair required."));
 		return -EINVAL;
 	}
-	/* cryptsetup 1.0 did not align to 4k, cannot repair this one */
-	if (LUKS_keyslots_offset(phdr) < (LUKS_ALIGN_KEYSLOTS / SECTOR_SIZE)) {
+
+	/*
+	 * cryptsetup 1.0 did not align keyslots to 4k, cannot repair this one
+	 * Also we cannot trust possibly broken keyslots metadata here through LUKS_keyslots_offset().
+	 * Expect first keyslot is aligned, if not, then manual repair is neccessary.
+	 */
+	if (phdr->keyblock[0].keyMaterialOffset < (LUKS_ALIGN_KEYSLOTS / SECTOR_SIZE)) {
 		log_err(ctx, _("Non standard keyslots alignment, manual repair required."));
 		return -EINVAL;
 	}
@@ -386,6 +391,8 @@ static int _keyslot_repair(struct luks_phdr *phdr, struct crypt_device *ctx)
 		return -EINVAL;
 
 	vk = crypt_alloc_volume_key(phdr->keyBytes, NULL);
+	if (!vk)
+		return -ENOMEM;
 
 	log_verbose(ctx, _("Repairing keyslots."));
 
@@ -955,12 +962,12 @@ static int LUKS_open_key(unsigned int keyIndex,
 		  const char *password,
 		  size_t passwordLen,
 		  struct luks_phdr *hdr,
-		  struct volume_key *vk,
+		  struct volume_key **vk,
 		  struct crypt_device *ctx)
 {
 	crypt_keyslot_info ki = LUKS_keyslot_info(hdr, keyIndex);
 	struct volume_key *derived_key;
-	char *AfKey;
+	char *AfKey = NULL;
 	size_t AFEKSize;
 	int r;
 
@@ -974,8 +981,13 @@ static int LUKS_open_key(unsigned int keyIndex,
 	if (!derived_key)
 		return -ENOMEM;
 
-	assert(vk->keylength == hdr->keyBytes);
-	AFEKSize = AF_split_sectors(vk->keylength, hdr->keyblock[keyIndex].stripes) * SECTOR_SIZE;
+	*vk = crypt_alloc_volume_key(hdr->keyBytes, NULL);
+	if (!*vk) {
+		r = -ENOMEM;
+		goto out;
+	}
+
+	AFEKSize = AF_split_sectors(hdr->keyBytes, hdr->keyblock[keyIndex].stripes) * SECTOR_SIZE;
 	AfKey = crypt_safe_alloc(AFEKSize);
 	if (!AfKey) {
 		r = -ENOMEM;
@@ -1001,16 +1013,20 @@ static int LUKS_open_key(unsigned int keyIndex,
 	if (r < 0)
 		goto out;
 
-	r = AF_merge(ctx, AfKey, vk->key, vk->keylength, hdr->keyblock[keyIndex].stripes, hdr->hashSpec);
+	r = AF_merge(ctx, AfKey, (*vk)->key, (*vk)->keylength, hdr->keyblock[keyIndex].stripes, hdr->hashSpec);
 	if (r < 0)
 		goto out;
 
-	r = LUKS_verify_volume_key(hdr, vk);
+	r = LUKS_verify_volume_key(hdr, *vk);
 
 	/* Allow only empty passphrase with null cipher */
-	if (!r && !strcmp(hdr->cipherName, "cipher_null") && passwordLen)
+	if (!r && crypt_is_cipher_null(hdr->cipherName) && passwordLen)
 		r = -EPERM;
 out:
+	if (r < 0) {
+		crypt_free_volume_key(*vk);
+		*vk = NULL;
+	}
 	crypt_safe_free(AfKey);
 	crypt_free_volume_key(derived_key);
 	return r;
@@ -1026,16 +1042,14 @@ int LUKS_open_key_with_hdr(int keyIndex,
 	unsigned int i, tried = 0;
 	int r;
 
-	*vk = crypt_alloc_volume_key(hdr->keyBytes, NULL);
-
 	if (keyIndex >= 0) {
-		r = LUKS_open_key(keyIndex, password, passwordLen, hdr, *vk, ctx);
+		r = LUKS_open_key(keyIndex, password, passwordLen, hdr, vk, ctx);
 		return (r < 0) ? r : keyIndex;
 	}
 
 	for (i = 0; i < LUKS_NUMKEYS; i++) {
-		r = LUKS_open_key(i, password, passwordLen, hdr, *vk, ctx);
-		if(r == 0)
+		r = LUKS_open_key(i, password, passwordLen, hdr, vk, ctx);
+		if (r == 0)
 			return i;
 
 		/* Do not retry for errors that are no -EPERM or -ENOENT,

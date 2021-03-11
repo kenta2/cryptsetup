@@ -1,8 +1,8 @@
 /*
  * Metadata on-disk locking for processes serialization
  *
- * Copyright (C) 2016-2020 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2016-2020 Ondrej Kozina
+ * Copyright (C) 2016-2021 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2016-2021 Ondrej Kozina
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -106,7 +106,7 @@ static int open_lock_dir(struct crypt_device *cd, const char *dir, const char *b
 	lockdfd = openat(dirfd, base, O_RDONLY | O_NOFOLLOW | O_DIRECTORY | O_CLOEXEC);
 	if (lockdfd < 0) {
 		if (errno == ENOENT) {
-			log_std(cd, _("WARNING: Locking directory %s/%s is missing!\n"), dir, base);
+			log_dbg(cd, _("Locking directory %s/%s will be created with default compiled-in permissions."), dir, base);
 
 			/* success or failure w/ errno == EEXIST either way just try to open the 'base' directory again */
 			if (mkdirat(dirfd, base, DEFAULT_LUKS2_LOCK_DIR_PERMS) && errno != EEXIST)

@@ -158,10 +158,11 @@ system: no need to reboot into a live CD or an initramfs shell.
 You can skip the next sub-section and go directly to [Enabling
 `cryptomount` in GRUB2].  Note that `init`(1) needs to unlock the
 `/boot` partition *again* during the boot process.  See [Avoiding the
-extra password prompt] for details and a proposed workaround.  (Only
-steps 1-3 from that section are relevant here; no need to copy the key
-file to the initramfs image since `/boot` can be unlocked and mounted
-later during the boot process.)
+extra password prompt] for details and a proposed workaround.  (You'll
+need to substitute `/` resp. `sda5` with `/boot` resp. `sda1` in that
+section, however only steps 1-3 are relevant here: no need to copy the
+key file to the initramfs image since `/boot` can be unlocked and
+mounted later during the boot process.)
 
 
 Moving `/boot` to the root file system

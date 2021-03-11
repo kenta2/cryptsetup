@@ -3,8 +3,8 @@
  *
  * Copyright (C) 2004 Jana Saout <jana@saout.de>
  * Copyright (C) 2004-2007 Clemens Fruhwirth <clemens@endorphin.org>
- * Copyright (C) 2009-2020 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2009-2020 Milan Broz
+ * Copyright (C) 2009-2021 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2009-2021 Milan Broz
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -300,6 +300,9 @@ static int device_open_internal(struct crypt_device *cd, struct device *device, 
 
 int device_open(struct crypt_device *cd, struct device *device, int flags)
 {
+	if (!device)
+		return -EINVAL;
+
 	assert(!device_locked(device->lh));
 	return device_open_internal(cd, device, flags);
 }
@@ -354,6 +357,9 @@ void device_release_excl(struct crypt_device *cd, struct device *device)
 
 int device_open_locked(struct crypt_device *cd, struct device *device, int flags)
 {
+	if (!device)
+		return -EINVAL;
+
 	assert(!crypt_metadata_locking_enabled() || device_locked(device->lh));
 	return device_open_internal(cd, device, flags);
 }
@@ -528,7 +534,7 @@ void device_topology_alignment(struct crypt_device *cd,
 	if ((temp_alignment < (unsigned long)opt_io_size) &&
 	    !((unsigned long)opt_io_size % temp_alignment) && !MISALIGNED_4K(opt_io_size))
 		temp_alignment = (unsigned long)opt_io_size;
-	else if (opt_io_size)
+	else if (opt_io_size && (opt_io_size != min_io_size))
 		log_err(cd, _("Ignoring bogus optimal-io size for data device (%u bytes)."), opt_io_size);
 
 	/* If calculated alignment is multiple of default, keep default */
@@ -589,8 +595,11 @@ int device_size(struct device *device, uint64_t *size)
 	struct stat st;
 	int devfd, r = -EINVAL;
 
+	if (!device)
+		return -EINVAL;
+
 	devfd = open(device->path, O_RDONLY);
-	if(devfd == -1)
+	if (devfd == -1)
 		return -EINVAL;
 
 	if (fstat(devfd, &st) < 0)
@@ -611,6 +620,9 @@ int device_fallocate(struct device *device, uint64_t size)
 {
 	struct stat st;
 	int devfd, r = -EINVAL;
+
+	if (!device)
+		return -EINVAL;
 
 	devfd = open(device_path(device), O_RDWR);
 	if (devfd == -1)
@@ -852,22 +864,30 @@ size_t size_round_up(size_t size, size_t block)
 
 void device_disable_direct_io(struct device *device)
 {
-	device->o_direct = 0;
+	if (device)
+		device->o_direct = 0;
 }
 
 int device_direct_io(const struct device *device)
 {
-	return device->o_direct;
+	return device ? device->o_direct : 0;
 }
 
-static dev_t device_devno(const struct device *device)
+static int device_compare_path(const char *path1, const char *path2)
 {
-	struct stat st;
+	struct stat st_path1, st_path2;
 
-	if (stat(device->path, &st) || !S_ISBLK(st.st_mode))
-		return 0;
+	if (stat(path1, &st_path1 ) < 0 || stat(path2, &st_path2 ) < 0)
+		return -EINVAL;
 
-	return st.st_rdev;
+	if (S_ISBLK(st_path1.st_mode) && S_ISBLK(st_path2.st_mode))
+		return (st_path1.st_rdev == st_path2.st_rdev) ? 1 : 0;
+
+	if (S_ISREG(st_path1.st_mode) && S_ISREG(st_path2.st_mode))
+		return (st_path1.st_ino == st_path2.st_ino &&
+			st_path1.st_dev == st_path2.st_dev) ? 1 : 0;
+
+	return 0;
 }
 
 int device_is_identical(struct device *device1, struct device *device2)
@@ -878,20 +898,18 @@ int device_is_identical(struct device *device1, struct device *device2)
 	if (device1 == device2)
 		return 1;
 
-	if (device1->init_done && device2->init_done)
-		return (device_devno(device1) == device_devno(device2));
-	else if (device1->init_done || device2->init_done)
-		return 0;
-
 	if (!strcmp(device_path(device1), device_path(device2)))
 		return 1;
 
-	return 0;
+	return device_compare_path(device_path(device1), device_path(device2));
 }
 
 int device_is_rotational(struct device *device)
 {
 	struct stat st;
+
+	if (!device)
+		return -EINVAL;
 
 	if (stat(device_path(device), &st) < 0)
 		return -EINVAL;
@@ -906,6 +924,9 @@ size_t device_alignment(struct device *device)
 {
 	int devfd;
 
+	if (!device)
+		return -EINVAL;
+
 	if (!device->alignment) {
 		devfd = open(device_path(device), O_RDONLY);
 		if (devfd != -1) {
@@ -919,17 +940,18 @@ size_t device_alignment(struct device *device)
 
 void device_set_lock_handle(struct device *device, struct crypt_lock_handle *h)
 {
-	device->lh = h;
+	if (device)
+		device->lh = h;
 }
 
 struct crypt_lock_handle *device_get_lock_handle(struct device *device)
 {
-	return device->lh;
+	return device ? device->lh : NULL;
 }
 
 int device_read_lock(struct crypt_device *cd, struct device *device)
 {
-	if (!crypt_metadata_locking_enabled())
+	if (!device || !crypt_metadata_locking_enabled())
 		return 0;
 
 	if (device_read_lock_internal(cd, device))
@@ -940,7 +962,7 @@ int device_read_lock(struct crypt_device *cd, struct device *device)
 
 int device_write_lock(struct crypt_device *cd, struct device *device)
 {
-	if (!crypt_metadata_locking_enabled())
+	if (!device || !crypt_metadata_locking_enabled())
 		return 0;
 
 	assert(!device_locked(device->lh) || !device_locked_readonly(device->lh));
@@ -950,7 +972,7 @@ int device_write_lock(struct crypt_device *cd, struct device *device)
 
 void device_read_unlock(struct crypt_device *cd, struct device *device)
 {
-	if (!crypt_metadata_locking_enabled())
+	if (!device || !crypt_metadata_locking_enabled())
 		return;
 
 	assert(device_locked(device->lh));
@@ -960,7 +982,7 @@ void device_read_unlock(struct crypt_device *cd, struct device *device)
 
 void device_write_unlock(struct crypt_device *cd, struct device *device)
 {
-	if (!crypt_metadata_locking_enabled())
+	if (!device || !crypt_metadata_locking_enabled())
 		return;
 
 	assert(device_locked(device->lh) && !device_locked_readonly(device->lh));

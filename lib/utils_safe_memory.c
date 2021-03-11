@@ -1,8 +1,8 @@
 /*
  * utils_safe_memory - safe memory helpers
  *
- * Copyright (C) 2009-2020 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2009-2020 Milan Broz
+ * Copyright (C) 2009-2021 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2009-2021 Milan Broz
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -66,6 +66,7 @@ void *crypt_safe_alloc(size_t size)
 void crypt_safe_free(void *data)
 {
 	struct safe_allocation *alloc;
+	volatile size_t *s;
 
 	if (!data)
 		return;
@@ -75,7 +76,8 @@ void crypt_safe_free(void *data)
 
 	crypt_safe_memzero(data, alloc->size);
 
-	alloc->size = 0x55aa55aa;
+	s = (volatile size_t *)&alloc->size;
+	*s = 0x55aa55aa;
 	free(alloc);
 }
 

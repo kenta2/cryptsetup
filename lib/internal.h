@@ -3,8 +3,8 @@
  *
  * Copyright (C) 2004 Jana Saout <jana@saout.de>
  * Copyright (C) 2004-2007 Clemens Fruhwirth <clemens@endorphin.org>
- * Copyright (C) 2009-2020 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2009-2020 Milan Broz
+ * Copyright (C) 2009-2021 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2009-2021 Milan Broz
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -265,5 +265,13 @@ int crypt_compare_dm_devices(struct crypt_device *cd,
 			       const struct crypt_dm_active_device *src,
 			       const struct crypt_dm_active_device *tgt);
 static inline void *crypt_zalloc(size_t size) { return calloc(1, size); }
+
+static inline bool uint64_mult_overflow(uint64_t *u, uint64_t b, size_t size)
+{
+	*u = (uint64_t)b * size;
+	if ((uint64_t)(*u / size) != b)
+		return true;
+	return false;
+}
 
 #endif /* INTERNAL_H */

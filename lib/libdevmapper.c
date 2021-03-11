@@ -3,8 +3,8 @@
  *
  * Copyright (C) 2004 Jana Saout <jana@saout.de>
  * Copyright (C) 2004-2007 Clemens Fruhwirth <clemens@endorphin.org>
- * Copyright (C) 2009-2020 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2009-2020 Milan Broz
+ * Copyright (C) 2009-2021 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2009-2021 Milan Broz
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -238,6 +238,9 @@ static void _dm_set_integrity_compat(struct crypt_device *cd,
 
 	if (_dm_satisfies_version(1, 6, 0, integrity_maj, integrity_min, integrity_patch))
 		_dm_flags |= DM_INTEGRITY_DISCARDS_SUPPORTED;
+
+	if (_dm_satisfies_version(1, 7, 0, integrity_maj, integrity_min, integrity_patch))
+		_dm_flags |= DM_INTEGRITY_FIX_HMAC_SUPPORTED;
 
 	_dm_integrity_checked = true;
 }
@@ -648,14 +651,16 @@ static char *get_dm_crypt_params(const struct dm_target *tgt, uint32_t flags)
 	} else
 		*features = '\0';
 
-	if (!strncmp(cipher_dm, "cipher_null-", 12))
+	if (crypt_is_cipher_null(cipher_dm))
 		null_cipher = 1;
 
-	if (flags & CRYPT_ACTIVATE_KEYRING_KEY) {
+	if (null_cipher)
+		hexkey = crypt_safe_alloc(2);
+	else if (flags & CRYPT_ACTIVATE_KEYRING_KEY) {
 		keystr_len = strlen(tgt->u.crypt.vk->key_description) + int_log10(tgt->u.crypt.vk->keylength) + 10;
 		hexkey = crypt_safe_alloc(keystr_len);
 	} else
-		hexkey = crypt_safe_alloc(null_cipher ? 2 : (tgt->u.crypt.vk->keylength * 2 + 1));
+		hexkey = crypt_safe_alloc(tgt->u.crypt.vk->keylength * 2 + 1);
 
 	if (!hexkey)
 		return NULL;
@@ -728,7 +733,7 @@ static char *get_dm_verity_params(const struct dm_target *tgt, uint32_t flags)
 		snprintf(fec_features, sizeof(fec_features)-1,
 			 " use_fec_from_device %s fec_start %" PRIu64 " fec_blocks %" PRIu64 " fec_roots %" PRIu32,
 			 device_block_path(tgt->u.verity.fec_device), tgt->u.verity.fec_offset,
-			 vp->data_size + tgt->u.verity.hash_blocks, vp->fec_roots);
+			 tgt->u.verity.fec_blocks, vp->fec_roots);
 	} else
 		*fec_features = '\0';
 
@@ -912,9 +917,22 @@ static char *get_dm_integrity_params(const struct dm_target *tgt, uint32_t flags
 		strncat(features, feature, sizeof(features) - strlen(features) - 1);
 		crypt_safe_free(hexkey);
 	}
+
 	if (tgt->u.integrity.fix_padding) {
 		num_options++;
 		snprintf(feature, sizeof(feature), "fix_padding ");
+		strncat(features, feature, sizeof(features) - strlen(features) - 1);
+	}
+
+	if (tgt->u.integrity.fix_hmac) {
+		num_options++;
+		snprintf(feature, sizeof(feature), "fix_hmac ");
+		strncat(features, feature, sizeof(features) - strlen(features) - 1);
+	}
+
+	if (tgt->u.integrity.legacy_recalc) {
+		num_options++;
+		snprintf(feature, sizeof(feature), "legacy_recalculate ");
 		strncat(features, feature, sizeof(features) - strlen(features) - 1);
 	}
 
@@ -1653,6 +1671,14 @@ int dm_create_device(struct crypt_device *cd, const char *name,
 		log_dbg(cd, "Retrying open without incompatible options.");
 		r = _dm_create_device(cd, name, type, dmd->uuid, dmd);
 	}
+
+	/*
+	 * Print warning if activating dm-crypt cipher_null device unless it's reencryption helper or
+	 * keyslot encryption helper device (LUKS1 cipher_null devices).
+	 */
+	if (!r && !(dmd->flags & CRYPT_ACTIVATE_PRIVATE) && single_segment(dmd) && dmd->segment.type == DM_CRYPT &&
+	    crypt_is_cipher_null(dmd->segment.u.crypt.cipher))
+		log_dbg(cd, "Activated dm-crypt device with cipher_null. Device is not encrypted.");
 
 	if (r == -EINVAL &&
 	    dmd->flags & (CRYPT_ACTIVATE_SAME_CPU_CRYPT|CRYPT_ACTIVATE_SUBMIT_FROM_CRYPT_CPUS) &&
@@ -2474,6 +2500,10 @@ static int _dm_target_query_integrity(struct crypt_device *cd,
 				*act_flags |= CRYPT_ACTIVATE_RECALCULATE;
 			} else if (!strcmp(arg, "fix_padding")) {
 				tgt->u.integrity.fix_padding = true;
+			} else if (!strcmp(arg, "fix_hmac")) {
+				tgt->u.integrity.fix_hmac = true;
+			} else if (!strcmp(arg, "legacy_recalculate")) {
+				tgt->u.integrity.legacy_recalc = true;
 			} else if (!strcmp(arg, "allow_discards")) {
 				*act_flags |= CRYPT_ACTIVATE_ALLOW_DISCARDS;
 			} else /* unknown option */
@@ -2913,7 +2943,9 @@ int dm_resume_and_reinstate_key(struct crypt_device *cd, const char *name,
 	if (!(dmt_flags & DM_KEY_WIPE_SUPPORTED))
 		goto out;
 
-	if (vk->key_description)
+	if (!vk->keylength)
+		msg_size = 11; // key set -
+	else if (vk->key_description)
 		msg_size = strlen(vk->key_description) + int_log10(vk->keylength) + 18;
 	else
 		msg_size = vk->keylength * 2 + 10; // key set <key>
@@ -2925,7 +2957,9 @@ int dm_resume_and_reinstate_key(struct crypt_device *cd, const char *name,
 	}
 
 	strcpy(msg, "key set ");
-	if (vk->key_description)
+	if (!vk->keylength)
+		snprintf(msg + 8, msg_size - 8, "-");
+	else if (vk->key_description)
 		snprintf(msg + 8, msg_size - 8, ":%zu:logon:%s", vk->keylength, vk->key_description);
 	else
 		hex_key(&msg[8], vk->keylength, vk->key);
@@ -3000,8 +3034,8 @@ err:
 
 int dm_verity_target_set(struct dm_target *tgt, uint64_t seg_offset, uint64_t seg_size,
 	struct device *data_device, struct device *hash_device, struct device *fec_device,
-	const char *root_hash, uint32_t root_hash_size, const char *root_hash_sig_key_desc,
-	uint64_t hash_offset_block, uint64_t hash_blocks, struct crypt_params_verity *vp)
+	const char *root_hash, uint32_t root_hash_size, const char* root_hash_sig_key_desc,
+	uint64_t hash_offset_block, uint64_t fec_blocks, struct crypt_params_verity *vp)
 {
 	if (!data_device || !hash_device || !vp)
 		return -EINVAL;
@@ -3019,7 +3053,7 @@ int dm_verity_target_set(struct dm_target *tgt, uint64_t seg_offset, uint64_t se
 	tgt->u.verity.root_hash_sig_key_desc = root_hash_sig_key_desc;
 	tgt->u.verity.hash_offset = hash_offset_block;
 	tgt->u.verity.fec_offset = vp->fec_area_offset / vp->hash_block_size;
-	tgt->u.verity.hash_blocks = hash_blocks;
+	tgt->u.verity.fec_blocks = fec_blocks;
 	tgt->u.verity.vp = vp;
 
 	return 0;
@@ -3059,6 +3093,15 @@ int dm_integrity_target_set(struct crypt_device *cd,
 	    (dmi_flags & DM_INTEGRITY_FIX_PADDING_SUPPORTED) &&
 	    !(crypt_get_compatibility(cd) & CRYPT_COMPAT_LEGACY_INTEGRITY_PADDING))
 		tgt->u.integrity.fix_padding = true;
+
+	if (!dm_flags(cd, DM_INTEGRITY, &dmi_flags) &&
+	    (dmi_flags & DM_INTEGRITY_FIX_HMAC_SUPPORTED) &&
+	    !(crypt_get_compatibility(cd) & CRYPT_COMPAT_LEGACY_INTEGRITY_HMAC))
+		tgt->u.integrity.fix_hmac = true;
+
+	/* This flag can be backported, just try to set it always */
+	if (crypt_get_compatibility(cd) & CRYPT_COMPAT_LEGACY_INTEGRITY_RECALC)
+		tgt->u.integrity.legacy_recalc = true;
 
 	if (ip) {
 		tgt->u.integrity.journal_size = ip->journal_size;

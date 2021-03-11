@@ -2,8 +2,8 @@
  * utils_crypt - cipher utilities for cryptsetup
  *
  * Copyright (C) 2004-2007 Clemens Fruhwirth <clemens@endorphin.org>
- * Copyright (C) 2009-2020 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2009-2020 Milan Broz
+ * Copyright (C) 2009-2021 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2009-2021 Milan Broz
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -23,6 +23,7 @@
 #ifndef _UTILS_CRYPT_H
 #define _UTILS_CRYPT_H
 
+#include <stdbool.h>
 #include <unistd.h>
 
 #define MAX_CIPHER_LEN		32
@@ -37,5 +38,7 @@ int crypt_parse_integrity_mode(const char *s, char *integrity,
 int crypt_parse_pbkdf(const char *s, const char **pbkdf);
 
 ssize_t crypt_hex_to_bytes(const char *hex, char **result, int safe_alloc);
+
+bool crypt_is_cipher_null(const char *cipher_spec);
 
 #endif /* _UTILS_CRYPT_H */

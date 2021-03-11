@@ -1,8 +1,8 @@
 /*
  * Password quality check wrapper
  *
- * Copyright (C) 2012-2020 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2012-2020 Milan Broz
+ * Copyright (C) 2012-2021 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2012-2021 Milan Broz
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -62,51 +62,86 @@ static int tools_check_pwquality(const char *password)
 #elif defined ENABLE_PASSWDQC
 #include <passwdqc.h>
 
-static int tools_check_pwquality(const char *password)
+static int tools_check_passwdqc(const char *password)
 {
 	passwdqc_params_t params;
-	char *parse_reason;
+	char *parse_reason = NULL;
 	const char *check_reason;
 	const char *config = PASSWDQC_CONFIG_FILE;
+	int r = -EINVAL;
 
 	passwdqc_params_reset(&params);
 
 	if (*config && passwdqc_params_load(&params, &parse_reason, config)) {
 		log_err(_("Cannot check password quality: %s"),
 			(parse_reason ? parse_reason : "Out of memory"));
-		free(parse_reason);
-		return -EINVAL;
+		goto out;
 	}
 
 	check_reason = passwdqc_check(&params.qc, password, NULL, NULL);
 	if (check_reason) {
 		log_err(_("Password quality check failed: Bad passphrase (%s)"),
 			check_reason);
-		return -EPERM;
-	}
-
-	return 0;
-}
-#else /* !(ENABLE_PWQUALITY || ENABLE_PASSWDQC) */
-static int tools_check_pwquality(const char *password)
-{
-	return 0;
+		r = -EPERM;
+	} else
+		r = 0;
+out:
+#if HAVE_PASSWDQC_PARAMS_FREE
+	passwdqc_params_free(&params);
+#endif
+	free(parse_reason);
+	return r;
 }
 #endif /* ENABLE_PWQUALITY || ENABLE_PASSWDQC */
 
+/* coverity[ +tainted_string_sanitize_content : arg-0 ] */
+static int tools_check_password(const char *password)
+{
+#if defined ENABLE_PWQUALITY
+	return tools_check_pwquality(password);
+#elif defined ENABLE_PASSWDQC
+	return tools_check_passwdqc(password);
+#else
+	return 0;
+#endif
+}
+
 /* Password reading helpers */
+
+static ssize_t read_tty_eol(int fd, char *pass, size_t maxlen)
+{
+	bool eol = false;
+	size_t read_size = 0;
+	ssize_t r;
+
+	do {
+		r = read(fd, pass, maxlen - read_size);
+		if ((r == -1 && errno != EINTR) || quit)
+			return -1;
+		if (r >= 0) {
+			if (!r || pass[r-1] == '\n')
+				eol = true;
+			read_size += (size_t)r;
+			pass = pass + r;
+		}
+	} while (!eol && read_size != maxlen);
+
+	return (ssize_t)read_size;
+}
+
+/* The pass buffer is zeroed and has trailing \0 already " */
 static int untimed_read(int fd, char *pass, size_t maxlen)
 {
 	ssize_t i;
 
-	i = read(fd, pass, maxlen);
+	i = read_tty_eol(fd, pass, maxlen);
 	if (i > 0) {
-		pass[i-1] = '\0';
+		if (pass[i-1] == '\n')
+			pass[i-1] = '\0';
 		i = 0;
-	} else if (i == 0) { /* EOF */
-		*pass = 0;
+	} else if (i == 0) /* empty input */
 		i = -1;
-	}
+
 	return i;
 }
 
@@ -193,10 +228,9 @@ static int crypt_get_key_tty(const char *prompt,
 		log_err(_("Error reading passphrase from terminal."));
 		goto out_err;
 	}
-	pass[key_size_max] = '\0';
 
 	if (verify) {
-		pass_verify = crypt_safe_alloc(key_size_max);
+		pass_verify = crypt_safe_alloc(key_size_max + 1);
 		if (!pass_verify) {
 			log_err(_("Out of memory while reading passphrase."));
 			r = -ENOMEM;
@@ -276,7 +310,7 @@ int tools_get_key(const char *prompt,
 
 	/* Check pwquality for password (not keyfile) */
 	if (pwquality && !opt_force_password && !key_file && !r)
-		r = tools_check_pwquality(*key);
+		r = tools_check_password(*key);
 
 	return r;
 }
@@ -293,7 +327,7 @@ int tools_read_mk(const char *file, char **key, int keysize)
 {
 	int fd;
 
-	if (!keysize || !key)
+	if (keysize <= 0 || !key)
 		return -EINVAL;
 
 	*key = crypt_safe_alloc(keysize);
@@ -322,6 +356,9 @@ fail:
 int tools_write_mk(const char *file, const char *key, int keysize)
 {
 	int fd, r = -EINVAL;
+
+	if (keysize <= 0 || !key)
+		return -EINVAL;
 
 	fd = open(file, O_CREAT|O_EXCL|O_WRONLY, S_IRUSR);
 	if (fd < 0) {

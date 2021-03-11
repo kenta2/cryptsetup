@@ -3,8 +3,8 @@
  *
  * Copyright (C) 2004 Jana Saout <jana@saout.de>
  * Copyright (C) 2004-2007 Clemens Fruhwirth <clemens@endorphin.org>
- * Copyright (C) 2009-2020 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2009-2020 Milan Broz
+ * Copyright (C) 2009-2021 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2009-2021 Milan Broz
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -24,22 +24,43 @@
 #include "cryptsetup.h"
 #include <uuid/uuid.h>
 
-static const char *opt_cipher = NULL;
-static const char *opt_keyslot_cipher = NULL;
-static const char *opt_hash = NULL;
-static int opt_verify_passphrase = 0;
+static char *opt_cipher = NULL;
+static char *opt_keyslot_cipher = NULL;
+static char *opt_hash = NULL;
+static char *opt_json_file = NULL;
+static char *opt_key_file = NULL;
+static char *opt_keyfile_stdin = NULL;
+static char *opt_keyfiles[MAX_KEYFILES];
+static char *opt_master_key_file = NULL;
+static char *opt_header_backup_file = NULL;
+static char *opt_uuid = NULL;
+static char *opt_header_device = NULL;
+static char *opt_type = NULL;
+static char *opt_pbkdf = NULL;
+static char *opt_priority = NULL; /* normal */
+static char *opt_integrity = NULL; /* none */
+static char *opt_key_description = NULL;
+static char *opt_label = NULL;
+static char *opt_subsystem = NULL;
+static char *opt_active_name = NULL;
+static char *opt_resilience_mode = NULL; /* default value "checksum" */
+static char *opt_resilience_hash = NULL; /* default value "sha256" */
 
-static const char *opt_json_file = NULL;
-static const char *opt_key_file = NULL;
-static const char *opt_keyfile_stdin = NULL;
+/* helper strings converted to uint64_t later */
+static char *opt_reduce_size_str = NULL;
+static char *opt_hotzone_size_str = NULL;
+static char *opt_device_size_str = NULL;
+static char *opt_luks2_metadata_size_str = NULL;
+static char *opt_luks2_keyslots_size_str = NULL;
+
+static uint64_t opt_reduce_size = 0;
+static uint64_t opt_hotzone_size = 0;
+static uint64_t opt_device_size = 0;
+static uint64_t opt_luks2_metadata_size = 0;
+static uint64_t opt_luks2_keyslots_size = 0;
+
 static int opt_keyfiles_count = 0;
-static const char *opt_keyfiles[MAX_KEYFILES];
-
-static const char *opt_master_key_file = NULL;
-static const char *opt_header_backup_file = NULL;
-static const char *opt_uuid = NULL;
-static const char *opt_header_device = NULL;
-static const char *opt_type = "luks";
+static int opt_verify_passphrase = 0;
 static int opt_key_size = 0;
 static int opt_keyslot_key_size = 0;
 static long opt_keyfile_size = 0;
@@ -76,56 +97,67 @@ static int opt_veracrypt_query_pim = 0;
 static int opt_deferred_remove = 0;
 static int opt_serialize_memory_hard_pbkdf = 0;
 //FIXME: check uint32 overflow for long type
-static const char *opt_pbkdf = NULL;
 static long opt_pbkdf_memory = DEFAULT_LUKS2_MEMORY_KB;
 static long opt_pbkdf_parallel = DEFAULT_LUKS2_PARALLEL_THREADS;
 static long opt_pbkdf_iterations = 0;
 static int opt_iteration_time = 0;
 static int opt_disable_locks = 0;
 static int opt_disable_keyring = 0;
-static const char *opt_priority = NULL; /* normal */
-static const char *opt_integrity = NULL; /* none */
 static int opt_integrity_nojournal = 0;
 static int opt_integrity_no_wipe = 0;
 static int opt_integrity_legacy_padding = 0;
-static const char *opt_key_description = NULL;
 static int opt_sector_size = 0;
 static int opt_iv_large_sectors = 0;
 static int opt_persistent = 0;
-static const char *opt_label = NULL;
-static const char *opt_subsystem = NULL;
 static int opt_unbound = 0;
 static int opt_refresh = 0;
 
 /* LUKS2 reencryption parameters */
-static const char *opt_active_name = NULL;
-static const char *opt_resilience_mode = "checksum"; // TODO: default resilience
-static const char *opt_resilience_hash = "sha256"; // TODO: default checksum hash
 static int opt_encrypt = 0;
 static int opt_reencrypt_init_only = 0;
 static int opt_reencrypt_resume_only = 0;
 static int opt_decrypt = 0;
 
-static const char *opt_reduce_size_str = NULL;
-static uint64_t opt_reduce_size = 0;
-
-static const char *opt_hotzone_size_str = NULL;
-static uint64_t opt_hotzone_size = 0;
-
-static const char *opt_device_size_str = NULL;
-static uint64_t opt_device_size = 0;
-
 /* do not set from command line, use helpers above */
 static int64_t opt_data_shift;
-
-static const char *opt_luks2_metadata_size_str = NULL;
-static uint64_t opt_luks2_metadata_size = 0;
-static const char *opt_luks2_keyslots_size_str = NULL;
-static uint64_t opt_luks2_keyslots_size = 0;
+static const char *device_type = "luks";
+static const char *set_pbkdf = NULL;
 
 static const char **action_argv;
 static int action_argc;
 static const char *null_action_argv[] = {NULL, NULL};
+
+void tools_cleanup(void)
+{
+	FREE_AND_NULL(opt_cipher);
+	FREE_AND_NULL(opt_keyslot_cipher);
+	FREE_AND_NULL(opt_hash);
+	FREE_AND_NULL(opt_json_file);
+	FREE_AND_NULL(opt_key_file);
+	FREE_AND_NULL(opt_keyfile_stdin);
+	FREE_AND_NULL(opt_master_key_file);
+	FREE_AND_NULL(opt_header_backup_file);
+	FREE_AND_NULL(opt_uuid);
+	FREE_AND_NULL(opt_header_device);
+	FREE_AND_NULL(opt_type);
+	FREE_AND_NULL(opt_pbkdf);
+	FREE_AND_NULL(opt_priority);
+	FREE_AND_NULL(opt_integrity);
+	FREE_AND_NULL(opt_key_description);
+	FREE_AND_NULL(opt_label);
+	FREE_AND_NULL(opt_subsystem);
+	FREE_AND_NULL(opt_active_name);
+	FREE_AND_NULL(opt_resilience_mode);
+	FREE_AND_NULL(opt_resilience_hash);
+	FREE_AND_NULL(opt_reduce_size_str);
+	FREE_AND_NULL(opt_hotzone_size_str);
+	FREE_AND_NULL(opt_device_size_str);
+	FREE_AND_NULL(opt_luks2_metadata_size_str);
+	FREE_AND_NULL(opt_luks2_keyslots_size_str);
+
+	while (opt_keyfiles_count)
+		free(opt_keyfiles[--opt_keyfiles_count]);
+}
 
 static const char *uuid_or_device_header(const char **data_device)
 {
@@ -440,7 +472,7 @@ static int tcrypt_load(struct crypt_device *cd, struct crypt_params_tcrypt *para
 			unsigned long long tmp_pim_ull = 0;
 
 			r = tools_get_key(_("Enter VeraCrypt PIM: "),
-					CONST_CAST(char**)&tmp_pim_nptr,
+					&tmp_pim_nptr,
 					&tmp_pim_size, 0, 0, opt_keyfile_stdin, opt_timeout,
 					_verify_passphrase(0), 0, cd);
 			if (r < 0)
@@ -457,7 +489,7 @@ static int tcrypt_load(struct crypt_device *cd, struct crypt_params_tcrypt *para
 				log_err(_("Invalid PIM value: outside of range."));
 				r = -ERANGE;
 			}
-			crypt_safe_free(CONST_CAST(char*)tmp_pim_nptr);
+			crypt_safe_free(tmp_pim_nptr);
 			if (r < 0)
 				continue;
 
@@ -500,7 +532,7 @@ static int action_open_tcrypt(void)
 {
 	struct crypt_device *cd = NULL;
 	struct crypt_params_tcrypt params = {
-		.keyfiles = opt_keyfiles,
+		.keyfiles = CONST_CAST(const char **)opt_keyfiles,
 		.keyfiles_count = opt_keyfiles_count,
 		.flags = CRYPT_TCRYPT_LEGACY_MODES |
 			 (opt_veracrypt ? CRYPT_TCRYPT_VERA_MODES : 0),
@@ -618,7 +650,7 @@ static int action_tcryptDump(void)
 {
 	struct crypt_device *cd = NULL;
 	struct crypt_params_tcrypt params = {
-		.keyfiles = opt_keyfiles,
+		.keyfiles = CONST_CAST(const char **)opt_keyfiles,
 		.keyfiles_count = opt_keyfiles_count,
 		.flags = CRYPT_TCRYPT_LEGACY_MODES |
 			 (opt_veracrypt ? CRYPT_TCRYPT_VERA_MODES : 0),
@@ -715,7 +747,9 @@ static int action_resize(void)
 		r = crypt_activate_by_token(cd, NULL, opt_token, NULL,
 					    CRYPT_ACTIVATE_KEYRING_KEY);
 		tools_keyslot_msg(r, UNLOCKED);
-		if (r < 0 && opt_token_only)
+		if (r >= 0)
+			goto resize;
+		else if (opt_token_only)
 			goto out;
 
 		r = tools_get_key(NULL, &password, &passwordLen,
@@ -731,7 +765,7 @@ static int action_resize(void)
 		tools_keyslot_msg(r, UNLOCKED);
 		crypt_safe_free(password);
 	}
-
+resize:
 	if (opt_device_size)
 		opt_size = opt_device_size / SECTOR_SIZE;
 
@@ -961,10 +995,10 @@ static int action_benchmark(void)
 	int i, r;
 
 	log_std(_("# Tests are approximate using memory only (no storage IO).\n"));
-	if (opt_pbkdf || opt_hash) {
-		if (!opt_pbkdf && opt_hash)
-			opt_pbkdf = CRYPT_KDF_PBKDF2;
-		r = action_benchmark_kdf(opt_pbkdf, opt_hash, key_size);
+	if (set_pbkdf || opt_hash) {
+		if (!set_pbkdf && opt_hash)
+			set_pbkdf = CRYPT_KDF_PBKDF2;
+		r = action_benchmark_kdf(set_pbkdf, opt_hash, key_size);
 	} else if (opt_cipher) {
 		r = crypt_parse_name_and_mode(opt_cipher, cipher, NULL, cipher_mode);
 		if (r < 0) {
@@ -1036,7 +1070,7 @@ static int set_pbkdf_params(struct crypt_device *cd, const char *dev_type)
 	if (!pbkdf_default)
 		return -EINVAL;
 
-	pbkdf.type = opt_pbkdf ?: pbkdf_default->type;
+	pbkdf.type = set_pbkdf ?: pbkdf_default->type;
 	pbkdf.hash = opt_hash ?: pbkdf_default->hash;
 	pbkdf.time_ms = (uint32_t)opt_iteration_time ?: pbkdf_default->time_ms;
 	if (strcmp(pbkdf.type, CRYPT_KDF_PBKDF2)) {
@@ -1063,11 +1097,17 @@ static int set_keyslot_params(struct crypt_device *cd, int keyslot)
 	if (!cipher)
 		return -EINVAL;
 
+	if (crypt_is_cipher_null(cipher)) {
+		log_dbg("Keyslot %d uses cipher_null. Replacing with default encryption in new keyslot.", keyslot);
+		cipher = DEFAULT_LUKS2_KEYSLOT_CIPHER;
+		key_size = DEFAULT_LUKS2_KEYSLOT_KEYBITS / 8;
+	}
+
 	if (crypt_keyslot_set_encryption(cd, cipher, key_size))
 		return -EINVAL;
 
 	/* if requested any of those just reinitialize context pbkdf */
-	if (opt_pbkdf || opt_hash || opt_pbkdf_iterations || opt_iteration_time)
+	if (set_pbkdf || opt_hash || opt_pbkdf_iterations || opt_iteration_time)
 		return set_pbkdf_params(cd, CRYPT_LUKS2);
 
 	if (crypt_keyslot_get_pbkdf(cd, keyslot, &pbkdf))
@@ -1139,7 +1179,7 @@ static int action_luksRepair(void)
 		goto out;
 
 	crypt_set_log_callback(cd, quiet_log, NULL);
-	r = crypt_load(cd, luksType(opt_type), NULL);
+	r = crypt_load(cd, luksType(device_type), NULL);
 	crypt_set_log_callback(cd, tool_log, NULL);
 	if (r == 0) {
 		log_verbose(_("No known problems detected for LUKS header."));
@@ -1153,7 +1193,7 @@ static int action_luksRepair(void)
 	r = yesDialog(_("Really try to repair LUKS device header?"),
 		       _("Operation aborted.\n")) ? 0 : -EINVAL;
 	if (r == 0)
-		r = crypt_repair(cd, luksType(opt_type), NULL);
+		r = crypt_repair(cd, luksType(device_type), NULL);
 skip_repair:
 	if (!r && crypt_get_type(cd) && !strcmp(crypt_get_type(cd), CRYPT_LUKS2))
 		r = _do_luks2_reencrypt_recovery(cd);
@@ -1202,6 +1242,21 @@ static int strcmp_or_null(const char *str, const char *expected)
 	return !str ? 0 : strcmp(str, expected);
 }
 
+static int get_adjusted_key_size(const char *cipher_mode, uint32_t default_size_bits, int integrity_keysize)
+{
+	uint32_t keysize_bits = opt_key_size;
+
+#ifdef ENABLE_LUKS_ADJUST_XTS_KEYSIZE
+	if (!opt_key_size && !strncmp(cipher_mode, "xts-", 4)) {
+		if (default_size_bits == 128)
+			keysize_bits = 256;
+		else if (default_size_bits == 256)
+			keysize_bits = 512;
+	}
+#endif
+	return (keysize_bits ?: default_size_bits) / 8 + integrity_keysize;
+}
+
 static int _luksFormat(struct crypt_device **r_cd, char **r_password, size_t *r_passwordLen)
 {
 	int r = -EINVAL, keysize, integrity_keysize = 0, fd, created = 0;
@@ -1225,7 +1280,7 @@ static int _luksFormat(struct crypt_device **r_cd, char **r_password, size_t *r_
 	};
 	void *params;
 
-	type = luksType(opt_type);
+	type = luksType(device_type);
 	if (!type)
 		type = crypt_get_default_type();
 
@@ -1254,8 +1309,8 @@ static int _luksFormat(struct crypt_device **r_cd, char **r_password, size_t *r_
 	/* Create header file (must contain at least one sector)? */
 	if (opt_header_device && stat(opt_header_device, &st) < 0 && errno == ENOENT) {
 		if (!opt_batch_mode &&
-		    !yesDialog("Header file does not exist, do you want to create it?",
-			    _("Operation aborted.\n")))
+		    !yesDialog(_("Header file does not exist, do you want to create it?"),
+			       _("Operation aborted.\n")))
 		    return -EPERM;
 
 		log_dbg("Creating header file.");
@@ -1293,7 +1348,7 @@ static int _luksFormat(struct crypt_device **r_cd, char **r_password, size_t *r_
 	}
 
 	/* Never call pwquality if using null cipher */
-	if (tools_is_cipher_null(cipher))
+	if (crypt_is_cipher_null(cipher))
 		opt_force_password = 1;
 
 	if ((r = crypt_init(&cd, header_device))) {
@@ -1334,15 +1389,7 @@ static int _luksFormat(struct crypt_device **r_cd, char **r_password, size_t *r_
 			goto out;
 	}
 
-#ifdef ENABLE_LUKS_ADJUST_XTS_KEYSIZE
-	if (!opt_key_size && !strncmp(cipher_mode, "xts-", 4)) {
-		if (DEFAULT_LUKS1_KEYBITS == 128)
-			opt_key_size = 256;
-		else if (DEFAULT_LUKS1_KEYBITS == 256)
-			opt_key_size = 512;
-	}
-#endif
-	keysize = (opt_key_size ?: DEFAULT_LUKS1_KEYBITS) / 8 + integrity_keysize;
+	keysize = get_adjusted_key_size(cipher_mode, DEFAULT_LUKS1_KEYBITS, integrity_keysize);
 
 	if (opt_random)
 		crypt_set_rng_type(cd, CRYPT_RNG_RANDOM);
@@ -1441,7 +1488,7 @@ static int action_open_luks(void)
 		if ((r = crypt_init_data_device(&cd, header_device, data_device)))
 			goto out;
 
-		if ((r = crypt_load(cd, luksType(opt_type), NULL))) {
+		if ((r = crypt_load(cd, luksType(device_type), NULL))) {
 			log_err(_("Device %s is not a valid LUKS device."),
 				header_device);
 			goto out;
@@ -1567,7 +1614,7 @@ static int action_luksKillSlot(void)
 
 	crypt_set_confirm_callback(cd, yesDialog, NULL);
 
-	if ((r = crypt_load(cd, luksType(opt_type), NULL))) {
+	if ((r = crypt_load(cd, luksType(device_type), NULL))) {
 		log_err(_("Device %s is not a valid LUKS device."),
 			uuid_or_device_header(NULL));
 		goto out;
@@ -1624,7 +1671,7 @@ static int action_luksRemoveKey(void)
 
 	crypt_set_confirm_callback(cd, yesDialog, NULL);
 
-	if ((r = crypt_load(cd, luksType(opt_type), NULL))) {
+	if ((r = crypt_load(cd, luksType(device_type), NULL))) {
 		log_err(_("Device %s is not a valid LUKS device."),
 			uuid_or_device_header(NULL));
 		goto out;
@@ -1691,7 +1738,7 @@ static int luksAddUnboundKey(void)
 		goto out;
 
 	/* Never call pwquality if using null cipher */
-	if (tools_is_cipher_null(crypt_get_cipher(cd)))
+	if (crypt_is_cipher_null(crypt_get_cipher(cd)))
 		opt_force_password = 1;
 
 	keysize = opt_key_size / 8;
@@ -1747,7 +1794,7 @@ static int action_luksAddKey(void)
 
 	crypt_set_confirm_callback(cd, yesDialog, NULL);
 
-	if ((r = crypt_load(cd, luksType(opt_type), NULL))) {
+	if ((r = crypt_load(cd, luksType(device_type), NULL))) {
 		log_err(_("Device %s is not a valid LUKS device."),
 			uuid_or_device_header(NULL));
 		goto out;
@@ -1758,7 +1805,7 @@ static int action_luksAddKey(void)
 		goto out;
 
 	/* Never call pwquality if using null cipher */
-	if (tools_is_cipher_null(crypt_get_cipher(cd)))
+	if (crypt_is_cipher_null(crypt_get_cipher(cd)))
 		opt_force_password = 1;
 
 	keysize = crypt_get_volume_key_size(cd);
@@ -1850,7 +1897,7 @@ static int action_luksChangeKey(void)
 	if ((r = crypt_init(&cd, uuid_or_device_header(NULL))))
 		goto out;
 
-	if ((r = crypt_load(cd, luksType(opt_type), NULL))) {
+	if ((r = crypt_load(cd, luksType(device_type), NULL))) {
 		log_err(_("Device %s is not a valid LUKS device."),
 			uuid_or_device_header(NULL));
 		goto out;
@@ -1861,7 +1908,7 @@ static int action_luksChangeKey(void)
 		goto out;
 
 	/* Never call pwquality if using null cipher */
-	if (tools_is_cipher_null(crypt_get_cipher(cd)))
+	if (crypt_is_cipher_null(crypt_get_cipher(cd)))
 		opt_force_password = 1;
 
 	r = set_pbkdf_params(cd, crypt_get_type(cd));
@@ -1968,7 +2015,7 @@ static int action_isLuks(void)
 		goto out;
 
 	crypt_set_log_callback(cd, quiet_log, NULL);
-	r = crypt_load(cd, luksType(opt_type), NULL);
+	r = crypt_load(cd, luksType(device_type), NULL);
 out:
 	crypt_free(cd);
 	return r;
@@ -1985,7 +2032,7 @@ static int action_luksUUID(void)
 
 	crypt_set_confirm_callback(cd, yesDialog, _("Operation aborted.\n"));
 
-	if ((r = crypt_load(cd, luksType(opt_type), NULL)))
+	if ((r = crypt_load(cd, luksType(device_type), NULL)))
 		goto out;
 
 	if (opt_uuid)
@@ -2144,7 +2191,7 @@ static int action_luksDump(void)
 	if ((r = crypt_init(&cd, uuid_or_device_header(NULL))))
 		goto out;
 
-	if ((r = crypt_load(cd, luksType(opt_type), NULL))) {
+	if ((r = crypt_load(cd, luksType(device_type), NULL))) {
 		log_err(_("Device %s is not a valid LUKS device."),
 			uuid_or_device_header(NULL));
 		goto out;
@@ -2167,8 +2214,11 @@ static int action_luksSuspend(void)
 	int r;
 
 	r = crypt_init_by_name_and_header(&cd, action_argv[0], uuid_or_device(opt_header_device));
-	if (!r)
+	if (!r) {
 		r = crypt_suspend(cd, action_argv[0]);
+		if (r == -ENODEV)
+			log_err(_("%s is not active %s device name."), action_argv[0], "LUKS");
+	}
 
 	crypt_free(cd);
 	return r;
@@ -2180,12 +2230,25 @@ static int action_luksResume(void)
 	char *password = NULL;
 	size_t passwordLen;
 	int r, tries;
+	const char *type, *req_type = luksType(device_type);
+
+	if (req_type && strcmp(req_type, CRYPT_LUKS1) && strcmp(req_type, CRYPT_LUKS2))
+		return -EINVAL;
 
 	if ((r = crypt_init_by_name_and_header(&cd, action_argv[0], uuid_or_device(opt_header_device))))
-		goto out;
+		return r;
 
-	if ((r = crypt_load(cd, luksType(opt_type), NULL)))
+	r = -EINVAL;
+	type = crypt_get_type(cd);
+	if (!type || (strcmp(type, CRYPT_LUKS1) && strcmp(type, CRYPT_LUKS2))) {
+		log_err(_("%s is not active LUKS device name or header is missing."), action_argv[0]);
 		goto out;
+	}
+
+	if (req_type && strcmp(req_type, crypt_get_type(cd))) {
+		log_err(_("%s is not active %s device name."), action_argv[0], req_type);
+		goto out;
+	}
 
 	tries = (tools_is_stdin(opt_key_file) && isatty(STDIN_FILENO)) ? opt_tries : 1;
 	do {
@@ -2289,38 +2352,38 @@ static const char *_get_device_type(void)
 
 static int action_open(void)
 {
-	if (opt_refresh && !opt_type)
+	if (opt_refresh && !device_type)
 		/* read device type from active mapping */
-		opt_type = _get_device_type();
+		device_type = _get_device_type();
 
-	if (!opt_type)
+	if (!device_type)
 		return -EINVAL;
 
-	if (!strcmp(opt_type, "luks") ||
-	    !strcmp(opt_type, "luks1") ||
-	    !strcmp(opt_type, "luks2")) {
+	if (!strcmp(device_type, "luks") ||
+	    !strcmp(device_type, "luks1") ||
+	    !strcmp(device_type, "luks2")) {
 		if (action_argc < 2 && (!opt_test_passphrase && !opt_refresh))
 			goto args;
 		return action_open_luks();
-	} else if (!strcmp(opt_type, "plain")) {
+	} else if (!strcmp(device_type, "plain")) {
 		if (action_argc < 2 && !opt_refresh)
 			goto args;
 		return action_open_plain();
-	} else if (!strcmp(opt_type, "loopaes")) {
+	} else if (!strcmp(device_type, "loopaes")) {
 		if (action_argc < 2 && !opt_refresh)
 			goto args;
 		return action_open_loopaes();
-	} else if (!strcmp(opt_type, "tcrypt")) {
+	} else if (!strcmp(device_type, "tcrypt")) {
 		if (action_argc < 2 && !opt_test_passphrase)
 			goto args;
 		return action_open_tcrypt();
-	} else if (!strcmp(opt_type, "bitlk")) {
+	} else if (!strcmp(device_type, "bitlk")) {
 		if (action_argc < 2 && !opt_test_passphrase)
 			goto args;
 		return action_open_bitlk();
 	}
 
-	log_err(_("Unrecognized metadata device type %s."), opt_type);
+	log_err(_("Unrecognized metadata device type %s."), device_type);
 	return -EINVAL;
 args:
 	log_err(_("Command requires device and mapped name as arguments."));
@@ -2339,7 +2402,7 @@ static int action_luksErase(void)
 
 	crypt_set_confirm_callback(cd, yesDialog, NULL);
 
-	if ((r = crypt_load(cd, luksType(opt_type), NULL))) {
+	if ((r = crypt_load(cd, luksType(device_type), NULL))) {
 		log_err(_("Device %s is not a valid LUKS device."),
 			uuid_or_device_header(NULL));
 		goto out;
@@ -2359,8 +2422,10 @@ static int action_luksErase(void)
 
 	/* Safety check */
 	max = crypt_keyslot_max(crypt_get_type(cd));
-	if (max <= 0)
-		return -EINVAL;
+	if (max <= 0) {
+		r = -EINVAL;
+		goto out;
+	}
 
 	for (i = 0; i < max; i++) {
 		ki = crypt_keyslot_status(cd, i);
@@ -2384,9 +2449,9 @@ static int action_luksConvert(void)
 	const char *to_type, *from_type;
 	int r;
 
-	if (!strcmp(opt_type, "luks2")) {
+	if (!strcmp(device_type, "luks2")) {
 		to_type = CRYPT_LUKS2;
-	} else if (!strcmp(opt_type, "luks1")) {
+	} else if (!strcmp(device_type, "luks1")) {
 		to_type = CRYPT_LUKS1;
 	} else {
 		log_err(_("Invalid LUKS type, only luks1 and luks2 are supported."));
@@ -2705,8 +2770,8 @@ static int action_reencrypt_load(struct crypt_device *cd)
 	char dm_name[PATH_MAX] = {}, *password = NULL;
 	const char *active_name = NULL;
 	struct crypt_params_reencrypt params = {
-		.resilience = opt_resilience_mode,
-		.hash = opt_resilience_hash,
+		.resilience = opt_resilience_mode ?: "checksum",
+		.hash = opt_resilience_hash ?: "sha256",
 		.max_hotzone_size = opt_hotzone_size / SECTOR_SIZE,
 		.device_size = opt_device_size / SECTOR_SIZE,
 		.flags = CRYPT_REENCRYPT_RESUME_ONLY
@@ -2750,8 +2815,8 @@ static int action_encrypt_luks2(struct crypt_device **cd)
 	struct crypt_params_reencrypt params = {
 		.mode = CRYPT_REENCRYPT_ENCRYPT,
 		.direction = opt_data_shift < 0 ? CRYPT_REENCRYPT_BACKWARD : CRYPT_REENCRYPT_FORWARD,
-		.resilience = opt_resilience_mode,
-		.hash = opt_resilience_hash,
+		.resilience = opt_resilience_mode ?: "checksum",
+		.hash = opt_resilience_hash ?: "sha256",
 		.max_hotzone_size = opt_hotzone_size / SECTOR_SIZE,
 		.device_size = opt_device_size / SECTOR_SIZE,
 		.luks2 = &luks2_params,
@@ -2760,7 +2825,7 @@ static int action_encrypt_luks2(struct crypt_device **cd)
 
 	_set_reencryption_flags(&params.flags);
 
-	type = luksType(opt_type);
+	type = luksType(device_type);
 	if (!type)
 		type = crypt_get_default_type();
 
@@ -2800,7 +2865,8 @@ static int action_encrypt_luks2(struct crypt_device **cd)
 	if (!opt_uuid) {
 		uuid_generate(uuid);
 		uuid_unparse(uuid, uuid_str);
-		opt_uuid = uuid_str;
+		if (!(opt_uuid = strdup(uuid_str)))
+			return -ENOMEM;
 	}
 
 	/* Check the data device is not LUKS device already */
@@ -2839,7 +2905,10 @@ static int action_encrypt_luks2(struct crypt_device **cd)
 			goto err;
 		}
 
-		opt_header_device = header_file;
+		if (!(opt_header_device = strdup(header_file))) {
+			r = -ENOMEM;
+			goto err;
+		}
 		/*
 		 * FIXME: just override offset here, but we should support both.
 		 * offset and implicit offset via data shift (lvprepend?)
@@ -2925,8 +2994,8 @@ static int action_decrypt_luks2(struct crypt_device *cd)
 	struct crypt_params_reencrypt params = {
 		.mode = CRYPT_REENCRYPT_DECRYPT,
 		.direction = opt_data_shift > 0 ? CRYPT_REENCRYPT_FORWARD : CRYPT_REENCRYPT_BACKWARD,
-		.resilience = opt_data_shift ? "datashift" : opt_resilience_mode,
-		.hash = opt_resilience_hash,
+		.resilience = opt_data_shift ? "datashift" : (opt_resilience_mode ?: "checksum"),
+		.hash = opt_resilience_hash ?: "sha256",
 		.data_shift = imaxabs(opt_data_shift) / SECTOR_SIZE,
 		.device_size = opt_device_size / SECTOR_SIZE,
 		.max_hotzone_size = opt_hotzone_size / SECTOR_SIZE,
@@ -3138,8 +3207,8 @@ static int action_reencrypt_luks2(struct crypt_device *cd)
 	struct crypt_params_reencrypt params = {
 		.mode = CRYPT_REENCRYPT_REENCRYPT,
 		.direction = opt_data_shift < 0 ? CRYPT_REENCRYPT_BACKWARD : CRYPT_REENCRYPT_FORWARD,
-		.resilience = opt_data_shift ? "datashift" : opt_resilience_mode,
-		.hash = opt_resilience_hash,
+		.resilience = opt_data_shift ? "datashift" : (opt_resilience_mode ?: "checksum"),
+		.hash = opt_resilience_hash ?: "sha256",
 		.data_shift = imaxabs(opt_data_shift) / SECTOR_SIZE,
 		.max_hotzone_size = opt_hotzone_size / SECTOR_SIZE,
 		.device_size = opt_device_size / SECTOR_SIZE,
@@ -3147,6 +3216,11 @@ static int action_reencrypt_luks2(struct crypt_device *cd)
 	};
 
 	_set_reencryption_flags(&params.flags);
+
+	if (!opt_cipher && crypt_is_cipher_null(crypt_get_cipher(cd))) {
+		opt_cipher = strdup(DEFAULT_CIPHER(LUKS1));
+		log_std(_("Switching data encryption cipher to %s.\n"), opt_cipher);
+	}
 
 	if (!opt_cipher) {
 		strncpy(cipher, crypt_get_cipher(cd), MAX_CIPHER_LEN - 1);
@@ -3164,10 +3238,8 @@ static int action_reencrypt_luks2(struct crypt_device *cd)
 	if (r)
 		return r;
 
-	if (opt_key_size)
-		key_size = opt_key_size / 8;
-	else if (opt_cipher)
-		key_size = DEFAULT_LUKS1_KEYBITS / 8;
+	if (opt_key_size || opt_cipher)
+		key_size = get_adjusted_key_size(mode, DEFAULT_LUKS1_KEYBITS, 0);
 	else
 		key_size = crypt_get_volume_key_size(cd);
 
@@ -3450,10 +3522,12 @@ static void help(poptContext popt_context,
 #if defined(ENABLE_LUKS_ADJUST_XTS_KEYSIZE) && DEFAULT_LUKS1_KEYBITS != 512
 		log_std(_("\tLUKS: Default keysize with XTS mode (two internal keys) will be doubled.\n"));
 #endif
+		tools_cleanup();
 		poptFreeContext(popt_context);
 		exit(EXIT_SUCCESS);
 	} else if (key->shortName == 'V') {
 		log_std("%s %s\n", PACKAGE_NAME, PACKAGE_VERSION);
+		tools_cleanup();
 		poptFreeContext(popt_context);
 		exit(EXIT_SUCCESS);
 	} else
@@ -3494,7 +3568,6 @@ static int run_action(struct action_type *action)
 
 int main(int argc, const char **argv)
 {
-	static char *popt_tmp;
 	static struct poptOption popt_help_options[] = {
 		{ NULL,    '\0', POPT_ARG_CALLBACK, help, 0, NULL,                         NULL },
 		{ "help",  '?',  POPT_ARG_NONE,     NULL, 0, N_("Show this help message"), NULL },
@@ -3510,19 +3583,19 @@ int main(int argc, const char **argv)
 		{ "cipher",            'c',  POPT_ARG_STRING, &opt_cipher,              0, N_("The cipher used to encrypt the disk (see /proc/crypto)"), NULL },
 		{ "hash",              'h',  POPT_ARG_STRING, &opt_hash,                0, N_("The hash used to create the encryption key from the passphrase"), NULL },
 		{ "verify-passphrase", 'y',  POPT_ARG_NONE, &opt_verify_passphrase,     0, N_("Verifies the passphrase by asking for it twice"), NULL },
-		{ "key-file",          'd',  POPT_ARG_STRING, &opt_key_file,            6, N_("Read the key from a file"), NULL },
+		{ "key-file",          'd',  POPT_ARG_STRING, NULL,                     6, N_("Read the key from a file"), NULL },
 		{ "master-key-file",  '\0',  POPT_ARG_STRING, &opt_master_key_file,     0, N_("Read the volume (master) key from file."), NULL },
 		{ "dump-master-key",  '\0',  POPT_ARG_NONE, &opt_dump_master_key,       0, N_("Dump volume (master) key instead of keyslots info"), NULL },
 		{ "key-size",          's',  POPT_ARG_INT, &opt_key_size,               0, N_("The size of the encryption key"), N_("BITS") },
 		{ "keyfile-size",      'l',  POPT_ARG_LONG, &opt_keyfile_size,          0, N_("Limits the read from keyfile"), N_("bytes") },
-		{ "keyfile-offset",   '\0',  POPT_ARG_STRING, &popt_tmp,                4, N_("Number of bytes to skip in keyfile"), N_("bytes") },
+		{ "keyfile-offset",   '\0',  POPT_ARG_STRING, NULL,                     4, N_("Number of bytes to skip in keyfile"), N_("bytes") },
 		{ "new-keyfile-size", '\0',  POPT_ARG_LONG, &opt_new_keyfile_size,      0, N_("Limits the read from newly added keyfile"), N_("bytes") },
-		{ "new-keyfile-offset",'\0', POPT_ARG_STRING, &popt_tmp,                5, N_("Number of bytes to skip in newly added keyfile"), N_("bytes") },
+		{ "new-keyfile-offset",'\0', POPT_ARG_STRING, NULL,                     5, N_("Number of bytes to skip in newly added keyfile"), N_("bytes") },
 		{ "key-slot",          'S',  POPT_ARG_INT, &opt_key_slot,               0, N_("Slot number for new key (default is first free)"), NULL },
-		{ "size",              'b',  POPT_ARG_STRING, &popt_tmp,                1, N_("The size of the device"), N_("SECTORS") },
+		{ "size",              'b',  POPT_ARG_STRING, NULL,                     1, N_("The size of the device"), N_("SECTORS") },
 		{ "device-size",      '\0',  POPT_ARG_STRING, &opt_device_size_str,     0, N_("Use only specified device size (ignore rest of device). DANGEROUS!"), N_("bytes") },
-		{ "offset",            'o',  POPT_ARG_STRING, &popt_tmp,                2, N_("The start offset in the backend device"), N_("SECTORS") },
-		{ "skip",              'p',  POPT_ARG_STRING, &popt_tmp,                3, N_("How many sectors of the encrypted data to skip at the beginning"), N_("SECTORS") },
+		{ "offset",            'o',  POPT_ARG_STRING, NULL,                     2, N_("The start offset in the backend device"), N_("SECTORS") },
+		{ "skip",              'p',  POPT_ARG_STRING, NULL,                     3, N_("How many sectors of the encrypted data to skip at the beginning"), N_("SECTORS") },
 		{ "readonly",          'r',  POPT_ARG_NONE, &opt_readonly,              0, N_("Create a readonly mapping"), NULL },
 		{ "batch-mode",        'q',  POPT_ARG_NONE, &opt_batch_mode,            0, N_("Do not ask for confirmation"), NULL },
 		{ "timeout",           't',  POPT_ARG_INT, &opt_timeout,                0, N_("Timeout for interactive passphrase prompt (in seconds)"), N_("secs") },
@@ -3606,24 +3679,28 @@ int main(int argc, const char **argv)
 
 	while((r = poptGetNextOpt(popt_context)) > 0) {
 		unsigned long long ull_value;
-		char *endp;
+		char *endp, *str = poptGetOptArg(popt_context);
 
 		if (r == 6) {
-			const char *kf = poptGetOptArg(popt_context);
-			if (tools_is_stdin(kf))
-				opt_keyfile_stdin = kf;
-			else if (opt_keyfiles_count < MAX_KEYFILES)
-				opt_keyfiles[opt_keyfiles_count++] = kf;
+			free(opt_key_file);
+			opt_key_file = str;
+			if (tools_is_stdin(str)) {
+				free(opt_keyfile_stdin);
+				opt_keyfile_stdin = strdup(str);
+			} else if (opt_keyfiles_count < MAX_KEYFILES)
+				opt_keyfiles[opt_keyfiles_count++] = strdup(str);
 			total_keyfiles++;
 			continue;
 		}
 
 		errno = 0;
-		ull_value = strtoull(popt_tmp, &endp, 0);
-		if (*endp || !*popt_tmp || !isdigit(*popt_tmp) ||
+		ull_value = strtoull(str, &endp, 0);
+		if (*endp || !*str || !isdigit(*str) ||
 		    (errno == ERANGE && ull_value == ULLONG_MAX) ||
 		    (errno != 0 && ull_value == 0))
 			r = POPT_ERROR_BADNUMBER;
+
+		free(str);
 
 		switch(r) {
 			case 1:
@@ -3675,26 +3752,26 @@ int main(int argc, const char **argv)
 			action_argv[1] = tmp;
 		}
 		aname = "open";
-		opt_type = "plain";
+		device_type = "plain";
 	} else if (!strcmp(aname, "plainOpen")) {
 		aname = "open";
-		opt_type = "plain";
+		device_type = "plain";
 	} else if (!strcmp(aname, "luksOpen")) {
 		aname = "open";
-		opt_type = "luks";
+		device_type = "luks";
 	} else if (!strcmp(aname, "loopaesOpen")) {
 		aname = "open";
-		opt_type = "loopaes";
+		device_type = "loopaes";
 	} else if (!strcmp(aname, "tcryptOpen")) {
 		aname = "open";
-		opt_type = "tcrypt";
+		device_type = "tcrypt";
 	} else if (!strcmp(aname, "bitlkOpen")) {
 		aname = "open";
-		opt_type = "bitlk";
+		device_type = "bitlk";
 	} else if (!strcmp(aname, "tcryptDump")) {
-		opt_type = "tcrypt";
+		device_type = "tcrypt";
 	} else if (!strcmp(aname, "bitlkDump")) {
-		opt_type = "bitlk";
+		device_type = "bitlk";
 	} else if (!strcmp(aname, "remove") ||
 		   !strcmp(aname, "plainClose") ||
 		   !strcmp(aname, "luksClose") ||
@@ -3704,18 +3781,19 @@ int main(int argc, const char **argv)
 		aname = "close";
 	} else if (!strcmp(aname, "luksErase")) {
 		aname = "erase";
-		opt_type = "luks";
+		device_type = "luks";
 	} else if (!strcmp(aname, "luksConfig")) {
 		aname = "config";
-		opt_type = "luks2";
+		device_type = "luks2";
 	} else if (!strcmp(aname, "refresh")) {
 		aname = "open";
 		opt_refresh = 1;
-	}
+	} else if (opt_type)
+		device_type = opt_type;
 
 	/* ignore user supplied type and query device type instead */
 	if (opt_refresh)
-		opt_type = NULL;
+		device_type = NULL;
 
 	for(action = action_types; action->type; action++)
 		if (strcmp(action->type, aname) == 0)
@@ -3740,7 +3818,7 @@ int main(int argc, const char **argv)
 		      _("Option --deferred is allowed only for close command."),
 		      poptGetInvocationName(popt_context));
 
-	if (opt_shared && (strcmp(aname, "open") || strcmp_or_null(opt_type, "plain")))
+	if (opt_shared && (strcmp(aname, "open") || strcmp_or_null(device_type, "plain")))
 		usage(popt_context, EXIT_FAILURE,
 		      _("Option --shared is allowed only for open of plain device."),
 		      poptGetInvocationName(popt_context));
@@ -3792,8 +3870,8 @@ int main(int argc, const char **argv)
 		      _("Options --label and --subsystem are allowed only for luksFormat and config LUKS2 operations."),
 		      poptGetInvocationName(popt_context));
 
-	if (opt_test_passphrase && (strcmp(aname, "open") || !opt_type ||
-	    (strncmp(opt_type, "luks", 4) && strcmp(opt_type, "tcrypt") && strcmp(opt_type, "bitlk"))))
+	if (opt_test_passphrase && (strcmp(aname, "open") || !device_type ||
+	    (strncmp(device_type, "luks", 4) && strcmp(device_type, "tcrypt") && strcmp(device_type, "bitlk"))))
 		usage(popt_context, EXIT_FAILURE,
 		      _("Option --test-passphrase is allowed only for open of LUKS, TCRYPT and BITLK devices."),
 		      poptGetInvocationName(popt_context));
@@ -3815,7 +3893,7 @@ int main(int argc, const char **argv)
 		if (opt_key_file)
 			log_err(_("Option --key-file takes precedence over specified key file argument."));
 		else
-			opt_key_file = action_argv[1];
+			opt_key_file = strdup(action_argv[1]);
 	}
 
 	if (opt_keyfile_size < 0 || opt_new_keyfile_size < 0 || opt_key_size < 0)
@@ -3823,7 +3901,7 @@ int main(int argc, const char **argv)
 		      _("Negative number for option not permitted."),
 		      poptGetInvocationName(popt_context));
 
-	if (total_keyfiles > 1 && (strcmp_or_null(opt_type, "tcrypt")))
+	if (total_keyfiles > 1 && (strcmp_or_null(device_type, "tcrypt")))
 		usage(popt_context, EXIT_FAILURE, _("Only one --key-file argument is allowed."),
 		      poptGetInvocationName(popt_context));
 
@@ -3861,20 +3939,20 @@ int main(int argc, const char **argv)
 		      poptGetInvocationName(popt_context));
 
 	if (opt_skip && (strcmp(aname, "open") ||
-	    (strcmp_or_null(opt_type, "plain") && strcmp(opt_type, "loopaes"))))
+	    (strcmp_or_null(device_type, "plain") && strcmp(device_type, "loopaes"))))
 		usage(popt_context, EXIT_FAILURE,
 		_("Option --skip is supported only for open of plain and loopaes devices."),
 		poptGetInvocationName(popt_context));
 
 	if (opt_offset && ((strcmp(aname, "reencrypt") && strcmp(aname, "open") && strcmp(aname, "luksFormat")) ||
-	    (!strcmp(aname, "open") && strcmp_or_null(opt_type, "plain") && strcmp(opt_type, "loopaes")) ||
-	    (!strcmp(aname, "luksFormat") && opt_type && strncmp(opt_type, "luks", 4))))
+	    (!strcmp(aname, "open") && strcmp_or_null(device_type, "plain") && strcmp(device_type, "loopaes")) ||
+	    (!strcmp(aname, "luksFormat") && device_type && strncmp(device_type, "luks", 4))))
 		usage(popt_context, EXIT_FAILURE,
 		_("Option --offset is supported only for open of plain and loopaes devices, luksFormat and device reencryption."),
 		poptGetInvocationName(popt_context));
 
 	if ((opt_tcrypt_hidden || opt_tcrypt_system || opt_tcrypt_backup) && strcmp(aname, "tcryptDump") &&
-	    (strcmp(aname, "open") || !opt_type || strcmp(opt_type, "tcrypt")))
+	    (strcmp(aname, "open") || !device_type || strcmp(device_type, "tcrypt")))
 		usage(popt_context, EXIT_FAILURE,
 		_("Option --tcrypt-hidden, --tcrypt-system or --tcrypt-backup is supported only for TCRYPT device."),
 		poptGetInvocationName(popt_context));
@@ -3884,7 +3962,7 @@ int main(int argc, const char **argv)
 		_("Option --tcrypt-hidden cannot be combined with --allow-discards."),
 		poptGetInvocationName(popt_context));
 
-	if (opt_veracrypt && (!opt_type || strcmp(opt_type, "tcrypt")))
+	if (opt_veracrypt && (!device_type || strcmp(device_type, "tcrypt")))
 		usage(popt_context, EXIT_FAILURE,
 		_("Option --veracrypt is supported only for TCRYPT device type."),
 		poptGetInvocationName(popt_context));
@@ -3923,7 +4001,7 @@ int main(int argc, const char **argv)
 		_("Keyslot specification is required."),
 		poptGetInvocationName(popt_context));
 
-	if (opt_pbkdf && crypt_parse_pbkdf(opt_pbkdf, &opt_pbkdf))
+	if (opt_pbkdf && crypt_parse_pbkdf(opt_pbkdf, &set_pbkdf))
 		usage(popt_context, EXIT_FAILURE,
 		_("Password-based key derivation function (PBKDF) can be only pbkdf2 or argon2i/argon2id."),
 		poptGetInvocationName(popt_context));
@@ -3934,7 +4012,7 @@ int main(int argc, const char **argv)
 		poptGetInvocationName(popt_context));
 
 	if (opt_sector_size && strcmp(aname, "reencrypt") && strcmp(aname, "luksFormat") &&
-	    (strcmp(aname, "open") || strcmp_or_null(opt_type, "plain")))
+	    (strcmp(aname, "open") || strcmp_or_null(device_type, "plain")))
 		usage(popt_context, EXIT_FAILURE,
 		      _("Sector size option is not supported for this command."),
 		      poptGetInvocationName(popt_context));
@@ -3980,6 +4058,7 @@ int main(int argc, const char **argv)
 
 	if (opt_disable_locks && crypt_metadata_locking(NULL, 0)) {
 		log_std(_("Cannot disable metadata locking."));
+		tools_cleanup();
 		poptFreeContext(popt_context);
 		exit(EXIT_FAILURE);
 	}
@@ -4037,6 +4116,7 @@ int main(int argc, const char **argv)
 		      poptGetInvocationName(popt_context));
 
 	r = run_action(action);
+	tools_cleanup();
 	poptFreeContext(popt_context);
 	return r;
 }

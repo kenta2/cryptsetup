@@ -2,7 +2,7 @@
  * Generic wrapper for storage functions
  * (experimental only)
  *
- * Copyright (C) 2018-2020, Ondrej Kozina
+ * Copyright (C) 2018-2021, Ondrej Kozina
  *
  * This file is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -21,6 +21,9 @@
 
 #ifndef _UTILS_STORAGE_WRAPPERS_H
 #define _UTILS_STORAGE_WRAPPERS_H
+
+#include <stdint.h>
+#include <sys/types.h>
 
 struct crypt_storage_wrapper;
 struct device;

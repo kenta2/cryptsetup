@@ -1,3 +1,17 @@
+cryptsetup (2:2.3.5-1) unstable; urgency=medium
+
+  * New upstream bugfix release.
+  * d/watch: Monitor upstream tags rather than tarballs.
+  * d/gbp.conf: Set 'upstream-vcs-tag' to add upstream tag as additional
+    parent.
+  * Simplify d/README.source in accordance with the above.
+  * Rename d/upstream-signing-key.asc to d/upstream/signing-key.asc as uscan
+    is now able to verify git tags.
+  * encrypted-boot.md: Clarify how to solve double password prompt for the
+    device holding /boot.
+
+ -- Guilhem Moulin <guilhem@debian.org>  Thu, 11 Mar 2021 23:33:13 +0100
+
 cryptsetup (2:2.3.4-2+exp1) experimental; urgency=medium
 
   * Upload to experimental.
