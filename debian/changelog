@@ -1,3 +1,9 @@
+cryptsetup (2:2.3.5-1+exp1) experimental; urgency=medium
+
+  * Upload to experimental.
+
+ -- Guilhem Moulin <guilhem@debian.org>  Thu, 11 Mar 2021 23:36:01 +0100
+
 cryptsetup (2:2.3.5-1) unstable; urgency=medium
 
   * New upstream bugfix release.
