@@ -3,8 +3,8 @@
  *
  * Copyright (C) 2004 Jana Saout <jana@saout.de>
  * Copyright (C) 2004-2007 Clemens Fruhwirth <clemens@endorphin.org>
- * Copyright (C) 2009-2020 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2009-2020 Milan Broz
+ * Copyright (C) 2009-2021 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2009-2021 Milan Broz
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -652,6 +652,10 @@ uint32_t crypt_get_compatibility(struct crypt_device *cd);
 
 /** dm-integrity device uses less effective (legacy) padding (old kernels) */
 #define CRYPT_COMPAT_LEGACY_INTEGRITY_PADDING (1 << 0)
+/** dm-integrity device does not protect superblock with HMAC (old kernels) */
+#define CRYPT_COMPAT_LEGACY_INTEGRITY_HMAC (1 << 1)
+/** dm-integrity allow recalculating of volumes with HMAC keys (old kernels) */
+#define CRYPT_COMPAT_LEGACY_INTEGRITY_RECALC (1 << 2)
 
 /**
  * Convert to new type for already existing device.
@@ -1485,11 +1489,11 @@ const char *crypt_get_cipher_mode(struct crypt_device *cd);
 const char *crypt_get_uuid(struct crypt_device *cd);
 
 /**
- * Get path to underlaying device.
+ * Get path to underlying device.
  *
  * @param cd crypt device handle
  *
- * @return path to underlaying device name
+ * @return path to underlying device name
  *
  */
 const char *crypt_get_device_name(struct crypt_device *cd);
@@ -1499,7 +1503,7 @@ const char *crypt_get_device_name(struct crypt_device *cd);
  *
  * @param cd crypt device handle
  *
- * @return path to underlaying device name
+ * @return path to underlying device name
  *
  */
 const char *crypt_get_metadata_device_name(struct crypt_device *cd);
@@ -2295,7 +2299,7 @@ int crypt_reencrypt_init_by_keyring(struct crypt_device *cd,
  * Run data reencryption.
  *
  * @param cd crypt device handle
- * @param progress is a callback funtion reporting device \b size,
+ * @param progress is a callback function reporting device \b size,
  * current \b offset of reencryption and provided \b usrptr identification
  *
  * @return @e 0 on success or negative errno value otherwise.
@@ -2336,17 +2340,15 @@ crypt_reencrypt_info crypt_reencrypt_status(struct crypt_device *cd,
  *
  * @param size size of memory in bytes
  *
- * @return pointer to allocate memory or @e NULL.
+ * @return pointer to allocated memory or @e NULL.
  */
 void *crypt_safe_alloc(size_t size);
 
 /**
- * Release safe memory, content is safely wiped
+ * Release safe memory, content is safely wiped.
  * The pointer must be allocated with @link crypt_safe_alloc @endlink
  *
  * @param data pointer to memory to be deallocated
- *
- * @return pointer to allocate memory or @e NULL.
  */
 void crypt_safe_free(void *data);
 
@@ -2356,17 +2358,15 @@ void crypt_safe_free(void *data);
  * @param data pointer to memory to be deallocated
  * @param size new size of memory in bytes
  *
- * @return pointer to allocate memory or @e NULL.
+ * @return pointer to allocated memory or @e NULL.
  */
 void *crypt_safe_realloc(void *data, size_t size);
 
 /**
  * Safe clear memory area (compile should not compile this call out).
  *
- * @param data pointer to memory to cleared
- * @param size new size of memory in bytes
- *
- * @return pointer to allocate memory or @e NULL.
+ * @param data pointer to memory to be cleared
+ * @param size size of memory in bytes
  */
 void crypt_safe_memzero(void *data, size_t size);
 

@@ -3,8 +3,8 @@
  *
  * Copyright (C) 2004 Jana Saout <jana@saout.de>
  * Copyright (C) 2004-2007 Clemens Fruhwirth <clemens@endorphin.org>
- * Copyright (C) 2009-2020 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2009-2020 Milan Broz
+ * Copyright (C) 2009-2021 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2009-2021 Milan Broz
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -238,6 +238,7 @@ __attribute__ ((noreturn)) void usage(poptContext popt_context,
 	poptPrintUsage(popt_context, stderr, 0);
 	if (error)
 		log_err("%s: %s", more, error);
+	tools_cleanup();
 	poptFreeContext(popt_context);
 	exit(exitcode);
 }
@@ -594,14 +595,6 @@ out:
 	close(fd);
 	blk_free(h);
 	return r;
-}
-
-int tools_is_cipher_null(const char *cipher)
-{
-	if (!cipher)
-		return 0;
-
-	return !strcmp(cipher, "cipher_null") ? 1 : 0;
 }
 
 /*

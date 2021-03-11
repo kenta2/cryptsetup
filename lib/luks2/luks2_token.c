@@ -1,8 +1,8 @@
 /*
  * LUKS - Linux Unified Key Setup v2, token handling
  *
- * Copyright (C) 2016-2020 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2016-2020 Milan Broz
+ * Copyright (C) 2016-2021 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2016-2021 Milan Broz
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -329,7 +329,7 @@ static void LUKS2_token_buffer_free(struct crypt_device *cd,
 {
 	const crypt_token_handler *h = LUKS2_token_handler(cd, token);
 
-	if (h->buffer_free)
+	if (h && h->buffer_free)
 		h->buffer_free(buffer, buffer_len);
 	else {
 		crypt_safe_memzero(buffer, buffer_len);
@@ -383,6 +383,7 @@ int LUKS2_token_open_and_activate(struct crypt_device *cd,
 		uint32_t flags,
 		void *usrptr)
 {
+	bool use_keyring;
 	int keyslot, r;
 	char *buffer;
 	size_t buffer_len;
@@ -404,7 +405,13 @@ int LUKS2_token_open_and_activate(struct crypt_device *cd,
 
 	keyslot = r;
 
-	if ((name || (flags & CRYPT_ACTIVATE_KEYRING_KEY)) && crypt_use_keyring_for_vk(cd)) {
+	if (!crypt_use_keyring_for_vk(cd))
+		use_keyring = false;
+	else
+		use_keyring = ((name && !crypt_is_cipher_null(crypt_get_cipher(cd))) ||
+			       (flags & CRYPT_ACTIVATE_KEYRING_KEY));
+
+	if (use_keyring) {
 		if (!(r = LUKS2_volume_key_load_in_keyring_by_keyslot(cd, hdr, vk, keyslot)))
 			flags |= CRYPT_ACTIVATE_KEYRING_KEY;
 	}
@@ -576,16 +583,12 @@ int LUKS2_token_assign(struct crypt_device *cd, struct luks2_hdr *hdr,
 	return token;
 }
 
-int LUKS2_token_is_assigned(struct crypt_device *cd, struct luks2_hdr *hdr,
-			    int keyslot, int token)
+static int token_is_assigned(struct luks2_hdr *hdr, int keyslot, int token)
 {
 	int i;
-	json_object *jobj_token, *jobj_token_keyslots, *jobj;
+	json_object *jobj, *jobj_token_keyslots,
+		    *jobj_token = LUKS2_get_token_jobj(hdr, token);
 
-	if (keyslot < 0 || keyslot >= LUKS2_KEYSLOTS_MAX || token < 0 || token >= LUKS2_TOKENS_MAX)
-		return -EINVAL;
-
-	jobj_token = LUKS2_get_token_jobj(hdr, token);
 	if (!jobj_token)
 		return -ENOENT;
 
@@ -600,6 +603,15 @@ int LUKS2_token_is_assigned(struct crypt_device *cd, struct luks2_hdr *hdr,
 	return -ENOENT;
 }
 
+int LUKS2_token_is_assigned(struct crypt_device *cd, struct luks2_hdr *hdr,
+			    int keyslot, int token)
+{
+	if (keyslot < 0 || keyslot >= LUKS2_KEYSLOTS_MAX || token < 0 || token >= LUKS2_TOKENS_MAX)
+		return -EINVAL;
+
+	return token_is_assigned(hdr, keyslot, token);
+}
+
 int LUKS2_tokens_count(struct luks2_hdr *hdr)
 {
 	json_object *jobj_tokens = LUKS2_get_tokens_jobj(hdr);
@@ -607,4 +619,29 @@ int LUKS2_tokens_count(struct luks2_hdr *hdr)
 		return -EINVAL;
 
 	return json_object_object_length(jobj_tokens);
+}
+
+int LUKS2_token_assignment_copy(struct crypt_device *cd,
+			struct luks2_hdr *hdr,
+			int keyslot_from,
+			int keyslot_to,
+			int commit)
+{
+	int i, r;
+
+	if (keyslot_from < 0 || keyslot_from >= LUKS2_KEYSLOTS_MAX || keyslot_to < 0 || keyslot_to >= LUKS2_KEYSLOTS_MAX)
+		return -EINVAL;
+
+	r = LUKS2_tokens_count(hdr);
+	if (r <= 0)
+		return r;
+
+	for (i = 0; i < LUKS2_TOKENS_MAX; i++) {
+		if (!token_is_assigned(hdr, keyslot_from, i)) {
+			if ((r = assign_one_token(cd, hdr, keyslot_to, i, 1)))
+				return r;
+		}
+	}
+
+	return commit ? LUKS2_hdr_write(cd, hdr) : 0;
 }

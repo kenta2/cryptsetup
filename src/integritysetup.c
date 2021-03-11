@@ -1,8 +1,8 @@
 /*
  * integritysetup - setup integrity protected volumes for dm-integrity
  *
- * Copyright (C) 2017-2020 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2017-2020 Milan Broz
+ * Copyright (C) 2017-2021 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2017-2021 Milan Broz
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -27,8 +27,19 @@
 #define DEFAULT_ALG_NAME "crc32c"
 #define MAX_KEY_SIZE 4096
 
-static const char *opt_journal_size_str = NULL;
+static char *opt_data_device = NULL;
+static char *opt_integrity = NULL; /* DEFAULT_ALG_NAME */
+static char *opt_integrity_key_file = NULL;
+static char *opt_journal_integrity = NULL; /* none */
+static char *opt_journal_integrity_key_file = NULL;
+static char *opt_journal_crypt = NULL; /* none */
+static char *opt_journal_crypt_key_file = NULL;
+
+/* helper strings converted to uint64_t later */
+static char *opt_journal_size_str = NULL;
+
 static uint64_t opt_journal_size = 0;
+
 static int opt_interleave_sectors = 0;
 static int opt_journal_watermark = 0;
 static int opt_bitmap_sectors_per_bit = 0;
@@ -37,33 +48,34 @@ static int opt_bitmap_flush_time = 0;
 static int opt_tag_size = 0;
 static int opt_sector_size = 0;
 static int opt_buffer_sectors = 0;
-
 static int opt_no_wipe = 0;
-
-static const char *opt_data_device = NULL;
-
-static const char *opt_integrity = DEFAULT_ALG_NAME;
-static const char *opt_integrity_key_file = NULL;
 static int opt_integrity_key_size = 0;
-
-static const char *opt_journal_integrity = NULL; /* none */
-static const char *opt_journal_integrity_key_file = NULL;
 static int opt_journal_integrity_key_size = 0;
-
-static const char *opt_journal_crypt = NULL; /* none */
-static const char *opt_journal_crypt_key_file = NULL;
 static int opt_journal_crypt_key_size = 0;
-
 static int opt_integrity_nojournal = 0;
 static int opt_integrity_recovery = 0;
 static int opt_integrity_bitmap = 0;
 static int opt_integrity_legacy_padding = 0;
-
+static int opt_integrity_legacy_hmac = 0;
+static int opt_integrity_legacy_recalculate = 0;
 static int opt_integrity_recalculate = 0;
 static int opt_allow_discards = 0;
 
+static const char *integrity_alg = DEFAULT_ALG_NAME;
 static const char **action_argv;
 static int action_argc;
+
+void tools_cleanup(void)
+{
+	FREE_AND_NULL(opt_data_device);
+	FREE_AND_NULL(opt_integrity);
+	FREE_AND_NULL(opt_integrity_key_file);
+	FREE_AND_NULL(opt_journal_integrity);
+	FREE_AND_NULL(opt_journal_integrity_key_file);
+	FREE_AND_NULL(opt_journal_crypt);
+	FREE_AND_NULL(opt_journal_crypt_key_file);
+	FREE_AND_NULL(opt_journal_size_str);
+}
 
 // FIXME: move this to tools and handle EINTR
 static int _read_mk(const char *file, char **key, int keysize)
@@ -189,14 +201,12 @@ static int action_format(int arg)
 	int r;
 	size_t signatures;
 
-	if (opt_integrity) {
-		r = crypt_parse_hash_integrity_mode(opt_integrity, integrity);
-		if (r < 0) {
-			log_err(_("No known integrity specification pattern detected."));
-			return r;
-		}
-		params.integrity = integrity;
+	r = crypt_parse_hash_integrity_mode(integrity_alg, integrity);
+	if (r < 0) {
+		log_err(_("No known integrity specification pattern detected."));
+		return r;
 	}
+	params.integrity = integrity;
 
 	if (opt_journal_integrity) {
 		r = crypt_parse_hash_integrity_mode(opt_journal_integrity, journal_integrity);
@@ -246,6 +256,9 @@ static int action_format(int arg)
 	if (opt_integrity_legacy_padding)
 		crypt_set_compatibility(cd, CRYPT_COMPAT_LEGACY_INTEGRITY_PADDING);
 
+	if (opt_integrity_legacy_hmac)
+		crypt_set_compatibility(cd, CRYPT_COMPAT_LEGACY_INTEGRITY_HMAC);
+
 	r = crypt_format(cd, CRYPT_INTEGRITY, NULL, NULL, NULL, NULL, 0, &params);
 	if (r < 0) /* FIXME: call wipe signatures again */
 		goto out;
@@ -278,14 +291,12 @@ static int action_open(int arg)
 	char *integrity_key = NULL;
 	int r;
 
-	if (opt_integrity) {
-		r = crypt_parse_hash_integrity_mode(opt_integrity, integrity);
-		if (r < 0) {
-			log_err(_("No known integrity specification pattern detected."));
-			return r;
-		}
-		params.integrity = integrity;
+	r = crypt_parse_hash_integrity_mode(integrity_alg, integrity);
+	if (r < 0) {
+		log_err(_("No known integrity specification pattern detected."));
+		return r;
 	}
+	params.integrity = integrity;
 
 	if (opt_journal_integrity) {
 		r = crypt_parse_hash_integrity_mode(opt_journal_integrity, journal_integrity);
@@ -313,7 +324,7 @@ static int action_open(int arg)
 	if (opt_integrity_bitmap)
 		activate_flags |= CRYPT_ACTIVATE_NO_JOURNAL_BITMAP;
 
-	if (opt_integrity_recalculate)
+	if (opt_integrity_recalculate || opt_integrity_legacy_recalculate)
 		activate_flags |= CRYPT_ACTIVATE_RECALCULATE;
 	if (opt_allow_discards)
 		activate_flags |= CRYPT_ACTIVATE_ALLOW_DISCARDS;
@@ -328,6 +339,9 @@ static int action_open(int arg)
 	r = crypt_load(cd, CRYPT_INTEGRITY, &params);
 	if (r)
 		goto out;
+
+	if (opt_integrity_legacy_recalculate)
+		crypt_set_compatibility(cd, CRYPT_COMPAT_LEGACY_INTEGRITY_RECALC);
 
 	r = crypt_activate_by_volume_key(cd, action_argv[1], integrity_key,
 					 opt_integrity_key_size, activate_flags);
@@ -506,10 +520,12 @@ static void help(poptContext popt_context,
 
 		log_std(_("\nDefault compiled-in dm-integrity parameters:\n"
 			  "\tChecksum algorithm: %s\n"), DEFAULT_ALG_NAME);
+		tools_cleanup();
 		poptFreeContext(popt_context);
 		exit(EXIT_SUCCESS);
 	} else if (key->shortName == 'V') {
 		log_std("%s %s\n", PACKAGE_INTEGRITY, PACKAGE_VERSION);
+		tools_cleanup();
 		poptFreeContext(popt_context);
 		exit(EXIT_SUCCESS);
 	} else
@@ -576,6 +592,9 @@ int main(int argc, const char **argv)
 		{ "integrity-recalculate",     '\0', POPT_ARG_NONE,  &opt_integrity_recalculate,  0, N_("Recalculate initial tags automatically."), NULL },
 		{ "integrity-legacy-padding",  '\0', POPT_ARG_NONE,  &opt_integrity_legacy_padding, 0, N_("Use inefficient legacy padding (old kernels)"), NULL },
 
+		{ "integrity-legacy-hmac",     '\0', POPT_ARG_NONE,  &opt_integrity_legacy_hmac, 0, N_("Do not protect superblock with HMAC (old kernels)"), NULL },
+		{ "integrity-legacy-recalculate",'\0',POPT_ARG_NONE, &opt_integrity_legacy_recalculate, 0, N_("Allow recalculating of volumes with HMAC keys (old kernels)"), NULL },
+
 		{ "allow-discards",            '\0', POPT_ARG_NONE,  &opt_allow_discards, 0, N_("Allow discards (aka TRIM) requests for device"), NULL },
 		POPT_TABLEEND
 	};
@@ -629,6 +648,9 @@ int main(int argc, const char **argv)
 		aname = "close";
 	}
 
+	if (opt_integrity)
+		integrity_alg = opt_integrity;
+
 	for (action = action_types; action->type; action++)
 		if (strcmp(action->type, aname) == 0)
 			break;
@@ -679,9 +701,6 @@ int main(int argc, const char **argv)
 	   (!opt_integrity_key_file && opt_integrity_key_size))
 		usage(popt_context, EXIT_FAILURE, _("Both key file and key size options must be specified."),
 		      poptGetInvocationName(popt_context));
-	if (!opt_integrity && opt_integrity_key_file)
-		usage(popt_context, EXIT_FAILURE, _("Integrity algorithm must be specified if integrity key is used."),
-		      poptGetInvocationName(popt_context));
 
 	if ((opt_journal_integrity_key_file && !opt_journal_integrity_key_size) ||
 	   (!opt_journal_integrity_key_file && opt_journal_integrity_key_size))
@@ -718,6 +737,7 @@ int main(int argc, const char **argv)
 	}
 
 	r = run_action(action);
+	tools_cleanup();
 	poptFreeContext(popt_context);
 	return r;
 }

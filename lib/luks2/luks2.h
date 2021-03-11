@@ -1,8 +1,8 @@
 /*
  * LUKS - Linux Unified Key Setup v2
  *
- * Copyright (C) 2015-2020 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2015-2020 Milan Broz
+ * Copyright (C) 2015-2021 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2015-2021 Milan Broz
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -23,6 +23,8 @@
 #define _CRYPTSETUP_LUKS2_ONDISK_H
 
 #include <stdbool.h>
+#include <stdint.h>
+#include <sys/types.h>
 
 #include "libcryptsetup.h"
 
@@ -329,6 +331,12 @@ int LUKS2_token_is_assigned(struct crypt_device *cd,
 	struct luks2_hdr *hdr,
 	int keyslot,
 	int token);
+
+int LUKS2_token_assignment_copy(struct crypt_device *cd,
+			struct luks2_hdr *hdr,
+			int keyslot_from,
+			int keyslot_to,
+			int commit);
 
 int LUKS2_token_create(struct crypt_device *cd,
 	struct luks2_hdr *hdr,

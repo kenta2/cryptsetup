@@ -1,7 +1,7 @@
 /*
  * PBKDF performance check
- * Copyright (C) 2012-2020 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2012-2020 Milan Broz
+ * Copyright (C) 2012-2021 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2012-2021 Milan Broz
  * Copyright (C) 2016-2020 Ondrej Mosnacek
  *
  * This file is free software; you can redistribute it and/or
@@ -361,8 +361,10 @@ static int crypt_pbkdf_check(const char *kdf, const char *hash,
 		ms = time_ms(&rstart, &rend);
 		if (ms) {
 			PBKDF2_temp = (double)iterations * target_ms / ms;
-			if (PBKDF2_temp > UINT32_MAX)
-				return -EINVAL;
+			if (PBKDF2_temp > UINT32_MAX) {
+				r = -EINVAL;
+				goto out;
+			}
 			*iter_secs = (uint32_t)PBKDF2_temp;
 		}
 

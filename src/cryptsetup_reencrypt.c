@@ -1,8 +1,8 @@
 /*
  * cryptsetup-reencrypt - crypt utility for offline re-encryption
  *
- * Copyright (C) 2012-2020 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2012-2020 Milan Broz All rights reserved.
+ * Copyright (C) 2012-2021 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2012-2021 Milan Broz All rights reserved.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -29,16 +29,25 @@
 
 #define NO_UUID "cafecafe-cafe-cafe-cafe-cafecafeeeee"
 
-static const char *opt_cipher = NULL;
-static const char *opt_hash = NULL;
-static const char *opt_key_file = NULL;
-static const char *opt_master_key_file = NULL;
-static const char *opt_uuid = NULL;
-static const char *opt_type = "luks";
+static char *opt_cipher = NULL;
+static char *opt_hash = NULL;
+static char *opt_key_file = NULL;
+static char *opt_master_key_file = NULL;
+static char *opt_uuid = NULL;
+static char *opt_type = NULL;
+static char *opt_pbkdf = NULL;
+static char *opt_header_device = NULL;
+
+/* helper strings converted to uint64_t later */
+static char *opt_reduce_size_str = NULL;
+static char *opt_device_size_str = NULL;
+
+static uint64_t opt_reduce_size = 0;
+static uint64_t opt_device_size = 0;
+
 static long opt_keyfile_size = 0;
 static long opt_keyfile_offset = 0;
 static int opt_iteration_time = 0;
-static const char *opt_pbkdf = NULL;
 static long opt_pbkdf_memory = DEFAULT_LUKS2_MEMORY_KB;
 static long opt_pbkdf_parallel = DEFAULT_LUKS2_PARALLEL_THREADS;
 static long opt_pbkdf_iterations = 0;
@@ -54,15 +63,10 @@ static int opt_key_size = 0;
 static int opt_new = 0;
 static int opt_keep_key = 0;
 static int opt_decrypt = 0;
-static const char *opt_header_device = NULL;
-
-static const char *opt_reduce_size_str = NULL;
-static uint64_t opt_reduce_size = 0;
-
-static const char *opt_device_size_str = NULL;
-static uint64_t opt_device_size = 0;
 
 static const char **action_argv;
+
+static const char *set_pbkdf = NULL;
 
 #define MAX_SLOT 32
 #define MAX_TOKEN 32
@@ -112,6 +116,20 @@ typedef enum {
 	CHECK_UNUSABLE,
 	CHECK_OPEN,
 } header_magic;
+
+void tools_cleanup(void)
+{
+	FREE_AND_NULL(opt_cipher);
+	FREE_AND_NULL(opt_hash);
+	FREE_AND_NULL(opt_key_file);
+	FREE_AND_NULL(opt_master_key_file);
+	FREE_AND_NULL(opt_uuid);
+	FREE_AND_NULL(opt_type);
+	FREE_AND_NULL(opt_pbkdf);
+	FREE_AND_NULL(opt_header_device);
+	FREE_AND_NULL(opt_reduce_size_str);
+	FREE_AND_NULL(opt_device_size_str);
+}
 
 static void _quiet_log(int level, const char *msg, void *usrptr)
 {
@@ -482,7 +500,7 @@ static int set_pbkdf_params(struct crypt_device *cd, const char *dev_type)
 	if (!pbkdf_default)
 		return -EINVAL;
 
-	pbkdf.type = opt_pbkdf ?: pbkdf_default->type;
+	pbkdf.type = set_pbkdf ?: pbkdf_default->type;
 	pbkdf.hash = opt_hash ?: pbkdf_default->hash;
 	pbkdf.time_ms = (uint32_t)opt_iteration_time ?: pbkdf_default->time_ms;
 	if (strcmp(pbkdf.type, CRYPT_KDF_PBKDF2)) {
@@ -1590,10 +1608,12 @@ static void help(poptContext popt_context,
 	if (key->shortName == '?') {
 		log_std("%s %s\n", PACKAGE_REENC, PACKAGE_VERSION);
 		poptPrintHelp(popt_context, stdout, 0);
+		tools_cleanup();
 		poptFreeContext(popt_context);
 		exit(EXIT_SUCCESS);
 	} else if (key->shortName == 'V') {
 		log_std("%s %s\n", PACKAGE_REENC, PACKAGE_VERSION);
+		tools_cleanup();
 		poptFreeContext(popt_context);
 		exit(EXIT_SUCCESS);
 	} else
@@ -1688,7 +1708,7 @@ int main(int argc, const char **argv)
 		      poptGetInvocationName(popt_context));
 	}
 
-	if (opt_pbkdf && crypt_parse_pbkdf(opt_pbkdf, &opt_pbkdf))
+	if (opt_pbkdf && crypt_parse_pbkdf(opt_pbkdf, &set_pbkdf))
 		usage(popt_context, EXIT_FAILURE,
 		_("Password-based key derivation function (PBKDF) can be only pbkdf2 or argon2i/argon2id."),
 		poptGetInvocationName(popt_context));
@@ -1764,8 +1784,7 @@ int main(int argc, const char **argv)
 	}
 
 	r = run_reencrypt(action_argv[0]);
-
+	tools_cleanup();
 	poptFreeContext(popt_context);
-
 	return translate_errno(r);
 }

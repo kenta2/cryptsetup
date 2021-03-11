@@ -1,8 +1,8 @@
 /*
  * Linux kernel userspace API crypto backend implementation (skcipher)
  *
- * Copyright (C) 2012-2020 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2012-2020 Milan Broz
+ * Copyright (C) 2012-2021 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2012-2021 Milan Broz
  *
  * This file is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -152,6 +152,9 @@ static int _crypt_cipher_crypt(struct crypt_cipher_kernel *ctx,
 	/* Set IV */
 	if (iv) {
 		header = CMSG_NXTHDR(&msg, header);
+		if (!header)
+			return -EINVAL;
+
 		header->cmsg_level = SOL_ALG;
 		header->cmsg_type = ALG_SET_IV;
 		header->cmsg_len = iv_msg_size;
