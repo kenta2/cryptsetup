@@ -6,6 +6,8 @@ cryptsetup (2:2.3.5-1) UNRELEASED; urgency=medium
     parent.
   * Rename d/upstream-signing-key.asc to d/upstream/signing-key.asc as uscan
     is now able to verify git tags.
+  * encrypted-boot.md: Clarify how to solve double password prompt for the
+    device holding /boot.
 
  -- Guilhem Moulin <guilhem@debian.org>  Thu, 11 Mar 2021 22:37:57 +0100
 
