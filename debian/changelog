@@ -1,4 +1,4 @@
-cryptsetup (2:2.3.5-1) UNRELEASED; urgency=medium
+cryptsetup (2:2.3.5-1) unstable; urgency=medium
 
   * New upstream bugfix release.
   * d/watch: Monitor upstream tags rather than tarballs.
@@ -10,7 +10,7 @@ cryptsetup (2:2.3.5-1) UNRELEASED; urgency=medium
   * encrypted-boot.md: Clarify how to solve double password prompt for the
     device holding /boot.
 
- -- Guilhem Moulin <guilhem@debian.org>  Thu, 11 Mar 2021 22:37:57 +0100
+ -- Guilhem Moulin <guilhem@debian.org>  Thu, 11 Mar 2021 23:33:13 +0100
 
 cryptsetup (2:2.3.4-2) unstable; urgency=medium
 
