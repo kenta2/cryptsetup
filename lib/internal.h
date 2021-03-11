@@ -3,8 +3,8 @@
  *
  * Copyright (C) 2004 Jana Saout <jana@saout.de>
  * Copyright (C) 2004-2007 Clemens Fruhwirth <clemens@endorphin.org>
- * Copyright (C) 2009-2020 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2009-2020 Milan Broz
+ * Copyright (C) 2009-2021 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2009-2021 Milan Broz
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -83,7 +83,7 @@
 #endif
 
 struct crypt_device;
-struct luks2_reencrypt;
+struct luks2_reenc_context;
 
 struct volume_key {
 	int id;
@@ -193,10 +193,11 @@ uint64_t crypt_getphysmemory_kb(void);
 
 int init_crypto(struct crypt_device *ctx);
 
-#define log_dbg(c, x...) crypt_logf(c, CRYPT_LOG_DEBUG, x)
-#define log_std(c, x...) crypt_logf(c, CRYPT_LOG_NORMAL, x)
-#define log_verbose(c, x...) crypt_logf(c, CRYPT_LOG_VERBOSE, x)
-#define log_err(c, x...) crypt_logf(c, CRYPT_LOG_ERROR, x)
+void logger(struct crypt_device *cd, int level, const char *file, int line, const char *format, ...) __attribute__ ((format (printf, 5, 6)));
+#define log_dbg(c, x...) logger(c, CRYPT_LOG_DEBUG, __FILE__, __LINE__, x)
+#define log_std(c, x...) logger(c, CRYPT_LOG_NORMAL, __FILE__, __LINE__, x)
+#define log_verbose(c, x...) logger(c, CRYPT_LOG_VERBOSE, __FILE__, __LINE__, x)
+#define log_err(c, x...) logger(c, CRYPT_LOG_ERROR, __FILE__, __LINE__, x)
 
 int crypt_get_debug_level(void);
 
@@ -221,8 +222,8 @@ int PLAIN_activate(struct crypt_device *cd,
 		     uint32_t flags);
 
 void *crypt_get_hdr(struct crypt_device *cd, const char *type);
-void crypt_set_luks2_reencrypt(struct crypt_device *cd, struct luks2_reencrypt *rh);
-struct luks2_reencrypt *crypt_get_luks2_reencrypt(struct crypt_device *cd);
+void crypt_set_reenc_context(struct crypt_device *cd, struct luks2_reenc_context *rh);
+struct luks2_reenc_context *crypt_get_reenc_context(struct crypt_device *cd);
 
 int onlyLUKS2(struct crypt_device *cd);
 int onlyLUKS2mask(struct crypt_device *cd, uint32_t mask);
@@ -264,5 +265,13 @@ int crypt_compare_dm_devices(struct crypt_device *cd,
 			       const struct crypt_dm_active_device *src,
 			       const struct crypt_dm_active_device *tgt);
 static inline void *crypt_zalloc(size_t size) { return calloc(1, size); }
+
+static inline bool uint64_mult_overflow(uint64_t *u, uint64_t b, size_t size)
+{
+	*u = (uint64_t)b * size;
+	if ((uint64_t)(*u / size) != b)
+		return true;
+	return false;
+}
 
 #endif /* INTERNAL_H */

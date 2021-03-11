@@ -1,12 +1,9 @@
 AC_PREREQ([2.67])
-AC_INIT([cryptsetup],[2.4.0-git])
+AC_INIT([cryptsetup],[2.3.5])
 
 dnl library version from <major>.<minor>.<release>[-<suffix>]
 LIBCRYPTSETUP_VERSION=$(echo $PACKAGE_VERSION | cut -f1 -d-)
 LIBCRYPTSETUP_VERSION_INFO=18:0:6
-
-LIBCRYPTSETUP_CLI_VERSION=$(echo $PACKAGE_VERSION | cut -f1 -d-)
-LIBCRYPTSETUP_CLI_VERSION_INFO=1:0:0
 
 AM_SILENT_RULES([yes])
 AC_CONFIG_SRCDIR(src/cryptsetup.c)
@@ -120,14 +117,6 @@ AC_FUNC_STRERROR_R
 
 dnl ==========================================================================
 
-AC_ARG_ENABLE([external-tokens],
-	AS_HELP_STRING([--enable-external-tokens], [enable external LUKS2 tokens]))
-if test "x$enable_external_tokens" = "xyes"; then
-	AC_DEFINE(USE_EXTERNAL_TOKENS, 1, [Use external tokens])
-fi
-
-dnl ==========================================================================
-
 AM_GNU_GETTEXT([external],[need-ngettext])
 AM_GNU_GETTEXT_VERSION([0.18.3])
 
@@ -187,7 +176,15 @@ AC_DEFINE_UNQUOTED([PASSWDQC_CONFIG_FILE], ["$use_passwdqc_config"], [passwdqc l
 if test "x$enable_passwdqc" = "xyes"; then
 	AC_DEFINE(ENABLE_PASSWDQC, 1, [Enable password quality checking using passwdqc library])
 
-	PASSWDQC_LIBS="-lpasswdqc"
+	saved_LIBS="$LIBS"
+	AC_SEARCH_LIBS([passwdqc_check], [passwdqc])
+	case "$ac_cv_search_passwdqc_check" in
+		no) AC_MSG_ERROR([failed to find passwdqc_check]) ;;
+		-l*) PASSWDQC_LIBS="$ac_cv_search_passwdqc_check" ;;
+		*) PASSWDQC_LIBS= ;;
+	esac
+	AC_CHECK_FUNCS([passwdqc_params_free])
+	LIBS="$saved_LIBS"
 fi
 
 if test "x$enable_pwquality$enable_passwdqc" = "xyesyes"; then
@@ -542,9 +539,6 @@ AC_SUBST([BLKID_LIBS])
 AC_SUBST([LIBCRYPTSETUP_VERSION])
 AC_SUBST([LIBCRYPTSETUP_VERSION_INFO])
 
-AC_SUBST([LIBCRYPTSETUP_CLI_VERSION])
-AC_SUBST([LIBCRYPTSETUP_CLI_VERSION_INFO])
-
 dnl ==========================================================================
 AC_ARG_ENABLE([dev-random],
 	AS_HELP_STRING([--enable-dev-random], [use /dev/random by default for key generation (otherwise use /dev/urandom)]))
@@ -654,7 +648,6 @@ dnl ==========================================================================
 
 AC_CONFIG_FILES([ Makefile
 lib/libcryptsetup.pc
-lib/cli/libcryptsetup_cli.pc
 po/Makefile.in
 scripts/cryptsetup.conf
 tests/Makefile

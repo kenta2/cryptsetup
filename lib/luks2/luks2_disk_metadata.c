@@ -1,8 +1,8 @@
 /*
  * LUKS - Linux Unified Key Setup v2
  *
- * Copyright (C) 2015-2020 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2015-2020 Milan Broz
+ * Copyright (C) 2015-2021 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2015-2021 Milan Broz
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -175,13 +175,13 @@ static void hdr_to_disk(struct luks2_hdr *hdr,
 	hdr_disk->hdr_offset  = cpu_to_be64(offset);
 	hdr_disk->seqid       = cpu_to_be64(hdr->seqid);
 
-	strncpy(hdr_disk->label, hdr->label, LUKS2_LABEL_L);
+	memcpy(hdr_disk->label, hdr->label, MIN(strlen(hdr->label), LUKS2_LABEL_L));
 	hdr_disk->label[LUKS2_LABEL_L - 1] = '\0';
-	strncpy(hdr_disk->subsystem, hdr->subsystem, LUKS2_LABEL_L);
+	memcpy(hdr_disk->subsystem, hdr->subsystem, MIN(strlen(hdr->subsystem), LUKS2_LABEL_L));
 	hdr_disk->subsystem[LUKS2_LABEL_L - 1] = '\0';
-	strncpy(hdr_disk->checksum_alg, hdr->checksum_alg, LUKS2_CHECKSUM_ALG_L);
+	memcpy(hdr_disk->checksum_alg, hdr->checksum_alg, MIN(strlen(hdr->checksum_alg), LUKS2_CHECKSUM_ALG_L));
 	hdr_disk->checksum_alg[LUKS2_CHECKSUM_ALG_L - 1] = '\0';
-	strncpy(hdr_disk->uuid, hdr->uuid, LUKS2_UUID_L);
+	memcpy(hdr_disk->uuid, hdr->uuid, MIN(strlen(hdr->uuid), LUKS2_UUID_L));
 	hdr_disk->uuid[LUKS2_UUID_L - 1] = '\0';
 
 	memcpy(hdr_disk->salt, secondary ? hdr->salt2 : hdr->salt1, LUKS2_SALT_L);
@@ -385,7 +385,7 @@ int LUKS2_device_write_lock(struct crypt_device *cd, struct luks2_hdr *hdr, stru
 	}
 
 	/* run sequence id check only on first write lock (r == 1) and w/o LUKS2 reencryption in-progress */
-	if (r == 1 && !crypt_get_luks2_reencrypt(cd)) {
+	if (r == 1 && !crypt_get_reenc_context(cd)) {
 		log_dbg(cd, "Checking context sequence id matches value stored on disk.");
 		if (LUKS2_check_sequence_id(cd, hdr, device)) {
 			device_write_unlock(cd, device);
@@ -413,7 +413,7 @@ int LUKS2_disk_hdr_write(struct crypt_device *cd, struct luks2_hdr *hdr, struct 
 		return -EINVAL;
 	}
 
-	r = device_check_size(cd, crypt_metadata_device(cd), LUKS2_hdr_and_areas_size(hdr), 1);
+	r = device_check_size(cd, crypt_metadata_device(cd), LUKS2_hdr_and_areas_size(hdr->jobj), 1);
 	if (r)
 		return r;
 
@@ -669,9 +669,9 @@ int LUKS2_disk_hdr_read(struct crypt_device *cd, struct luks2_hdr *hdr,
 
 	/* check header with keyslots to fit the device */
 	if (state_hdr1 == HDR_OK)
-		hdr_size = LUKS2_hdr_and_areas_size_jobj(jobj_hdr1);
+		hdr_size = LUKS2_hdr_and_areas_size(jobj_hdr1);
 	else if (state_hdr2 == HDR_OK)
-		hdr_size = LUKS2_hdr_and_areas_size_jobj(jobj_hdr2);
+		hdr_size = LUKS2_hdr_and_areas_size(jobj_hdr2);
 	else {
 		r = (state_hdr1 == HDR_FAIL_IO && state_hdr2 == HDR_FAIL_IO) ? -EIO : -EINVAL;
 		goto err;

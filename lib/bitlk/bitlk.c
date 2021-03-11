@@ -1,9 +1,9 @@
 /*
  * BITLK (BitLocker-compatible) volume handling
  *
- * Copyright (C) 2019-2020 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2019-2020 Milan Broz
- * Copyright (C) 2019-2020 Vojtech Trefny
+ * Copyright (C) 2019-2021 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2019-2021 Milan Broz
+ * Copyright (C) 2019-2021 Vojtech Trefny
  *
  * This file is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -904,6 +904,7 @@ static int parse_external_key_entry(struct crypt_device *cd, const char *data, i
 			*vk = crypt_alloc_volume_key(key_size, key);
 			if (*vk == NULL)
 				return -ENOMEM;
+			return 0;
 		/* optional "ExternalKey" string, we can safely ignore it */
 		} else if (key_entry_value == BITLK_ENTRY_VALUE_STRING)
 			;
@@ -915,7 +916,8 @@ static int parse_external_key_entry(struct crypt_device *cd, const char *data, i
 		start += key_entry_size;
 	}
 
-	return 0;
+	/* if we got here we failed to parse the metadata */
+	return -EINVAL;
 }
 
 /* check if given passphrase can be a startup key (has right format) and convert it */
@@ -931,12 +933,9 @@ static int get_startup_key(struct crypt_device *cd,
 	uint16_t key_entry_size = 0;
 	uint16_t key_entry_type = 0;
 	uint16_t key_entry_value = 0;
-	int start = 0;
-	int end = 0;
-	int r = 0;
 
 	if (passwordLen < BITLK_BEK_FILE_HEADER_LEN)
-		return 0;
+		return -EPERM;
 
 	memcpy(&bek_header, password, BITLK_BEK_FILE_HEADER_LEN);
 
@@ -945,7 +944,7 @@ static int get_startup_key(struct crypt_device *cd,
 	if (strcmp(guid_buf, vmk->guid) == 0)
 		log_dbg(cd, "Found matching startup key for VMK %s", vmk->guid);
 	else
-		return 0;
+		return -EPERM;
 
 	if (bek_header.metadata_version != 1) {
 		log_err(cd, "Unsupported BEK metadata version %" PRIu32 "", bek_header.metadata_version);
@@ -957,44 +956,31 @@ static int get_startup_key(struct crypt_device *cd,
 		return -EINVAL;
 	}
 
-	start = BITLK_BEK_FILE_HEADER_LEN;
-	end = bek_header.metadata_size;
-	while (end - start > 2) {
-		/* size of this entry */
-		memcpy(&key_entry_size, password + start, sizeof(key_entry_size));
-		key_entry_size = le16_to_cpu(key_entry_size);
-		if (key_entry_size < BITLK_ENTRY_HEADER_LEN) {
-			log_dbg(cd, "Unexpected metadata entry size %" PRIu16 " when parsing BEK file", key_entry_size);
-			break;
-		}
-
-		/* type and value of this entry */
-		memcpy(&key_entry_type, password + start + sizeof(key_entry_size), sizeof(key_entry_type));
-		memcpy(&key_entry_value,
-		       password + start + sizeof(key_entry_size) + sizeof(key_entry_type),
-		       sizeof(key_entry_value));
-		key_entry_type = le16_to_cpu(key_entry_type);
-		key_entry_value = le16_to_cpu(key_entry_value);
-
-		if (key_entry_type == BITLK_ENTRY_TYPE_STARTUP_KEY && key_entry_value == BITLK_ENTRY_VALUE_EXTERNAL_KEY) {
-			r = parse_external_key_entry(cd, password,
-						     start + BITLK_ENTRY_HEADER_LEN + BITLK_STARTUP_KEY_HEADER_LEN,
-						     end, su_key);
-			if (r < 0)
-				return r;
-		} else {
-			log_err(cd, _("Unexpected metadata entry found when parsing startup key."));
-			log_dbg(cd, "Entry type: %u, entry value: %u", key_entry_type, key_entry_value);
-			return -EINVAL;
-		}
-
-		start += key_entry_size;
+	/* we are expecting exactly one metadata entry starting immediately after the header */
+	memcpy(&key_entry_size, password + BITLK_BEK_FILE_HEADER_LEN, sizeof(key_entry_size));
+	key_entry_size = le16_to_cpu(key_entry_size);
+	if (key_entry_size < BITLK_ENTRY_HEADER_LEN) {
+		log_dbg(cd, "Unexpected metadata entry size %" PRIu16 " when parsing BEK file", key_entry_size);
+		return -EINVAL;
 	}
 
-	if (*su_key == NULL)
-		log_dbg(cd, "Failed to get VMK from matching BEK key file.");
+	/* type and value of this entry */
+	memcpy(&key_entry_type, password + BITLK_BEK_FILE_HEADER_LEN + sizeof(key_entry_size), sizeof(key_entry_type));
+	memcpy(&key_entry_value,
+	       password + BITLK_BEK_FILE_HEADER_LEN + sizeof(key_entry_size) + sizeof(key_entry_type),
+	       sizeof(key_entry_value));
+	key_entry_type = le16_to_cpu(key_entry_type);
+	key_entry_value = le16_to_cpu(key_entry_value);
 
-	return 0;
+	if (key_entry_type == BITLK_ENTRY_TYPE_STARTUP_KEY && key_entry_value == BITLK_ENTRY_VALUE_EXTERNAL_KEY) {
+		return parse_external_key_entry(cd, password,
+						BITLK_BEK_FILE_HEADER_LEN + BITLK_ENTRY_HEADER_LEN + BITLK_STARTUP_KEY_HEADER_LEN,
+						passwordLen, su_key);
+	} else {
+		log_err(cd, _("Unexpected metadata entry found when parsing startup key."));
+		log_dbg(cd, "Entry type: %u, entry value: %u", key_entry_type, key_entry_value);
+		return -EINVAL;
+	}
 }
 
 static int bitlk_kdf(struct crypt_device *cd,
@@ -1115,17 +1101,45 @@ out:
 	return r;
 }
 
-int BITLK_get_volume_key(struct crypt_device *cd,
-			 const char *password,
-			 size_t passwordLen,
-			 const struct bitlk_metadata *params,
-			 struct volume_key **open_fvek_key)
+int BITLK_activate(struct crypt_device *cd,
+		   const char *name,
+		   const char *password,
+		   size_t passwordLen,
+		   const struct bitlk_metadata *params,
+		   uint32_t flags)
 {
 	int r = 0;
+	int i = 0;
+	int j = 0;
+	int min = 0;
+	int num_segments = 0;
+	struct crypt_dm_active_device dmd = {
+		.flags = flags,
+	};
+	struct dm_target *next_segment = NULL;
 	struct volume_key *open_vmk_key = NULL;
+	struct volume_key *open_fvek_key = NULL;
 	struct volume_key *vmk_dec_key = NULL;
 	struct volume_key *recovery_key = NULL;
 	const struct bitlk_vmk *next_vmk = NULL;
+	struct segment segments[MAX_BITLK_SEGMENTS] = {};
+	struct segment temp;
+	uint64_t next_start = 0;
+	uint64_t next_end = 0;
+	uint64_t last_segment = 0;
+	uint32_t dmt_flags;
+
+	if (!params->state) {
+		log_err(cd, _("This BITLK device is in an unsupported state and cannot be activated."));
+		r = -ENOTSUP;
+		goto out;
+	}
+
+	if (params->type != BITLK_ENCRYPTION_TYPE_NORMAL) {
+		log_err(cd, _("BITLK devices with type '%s' cannot be activated."), get_bitlk_type_string(params->type));
+		r = -ENOTSUP;
+		goto out;
+	}
 
 	next_vmk = params->vmks;
 	while (next_vmk) {
@@ -1161,12 +1175,6 @@ int BITLK_get_volume_key(struct crypt_device *cd,
 				next_vmk = next_vmk->next;
 				continue;
 			}
-			if (vmk_dec_key == NULL){
-				/* r = 0 but no key -> given passphrase is not a recovery startup key */
-				r = -EPERM;
-				next_vmk = next_vmk->next;
-				continue;
-			}
 			log_dbg(cd, "Trying to use external key found in provided password.");
 		} else {
 			/* only passphrase, recovery passphrase and startup key VMKs supported right now */
@@ -1192,7 +1200,7 @@ int BITLK_get_volume_key(struct crypt_device *cd,
 		}
 		crypt_free_volume_key(vmk_dec_key);
 
-		r = decrypt_key(cd, open_fvek_key, params->fvek->vk, open_vmk_key,
+		r = decrypt_key(cd, &open_fvek_key, params->fvek->vk, open_vmk_key,
 				params->fvek->mac_tag, BITLK_VMK_MAC_TAG_SIZE,
 				params->fvek->nonce, BITLK_NONCE_SIZE, true);
 		if (r < 0) {
@@ -1213,66 +1221,28 @@ int BITLK_get_volume_key(struct crypt_device *cd,
 		return r;
 	}
 
-	return 0;
-}
-
-static int _activate_check(struct crypt_device *cd,
-		           const struct bitlk_metadata *params)
-{
-	const struct bitlk_vmk *next_vmk = NULL;
-
-	if (!params->state) {
-		log_err(cd, _("This BITLK device is in an unsupported state and cannot be activated."));
-		return -ENOTSUP;
-	}
-
-	if (params->type != BITLK_ENCRYPTION_TYPE_NORMAL) {
-		log_err(cd, _("BITLK devices with type '%s' cannot be activated."), get_bitlk_type_string(params->type));
-		return -ENOTSUP;
+	/* Password verify only */
+	if (!name) {
+		crypt_free_volume_key(open_fvek_key);
+		return r;
 	}
 
 	next_vmk = params->vmks;
 	while (next_vmk) {
 		if (next_vmk->protection == BITLK_PROTECTION_CLEAR_KEY) {
+			crypt_free_volume_key(open_fvek_key);
 			log_err(cd, _("Activation of partially decrypted BITLK device is not supported."));
 			return -ENOTSUP;
 		}
 		next_vmk = next_vmk->next;
 	}
 
-	return 0;
-}
-
-static int _activate(struct crypt_device *cd,
-		     const char *name,
-		     struct volume_key *open_fvek_key,
-		     const struct bitlk_metadata *params,
-		     uint32_t flags)
-{
-	int r = 0;
-	int i = 0;
-	int j = 0;
-	int min = 0;
-	int num_segments = 0;
-	struct crypt_dm_active_device dmd = {
-		.flags = flags,
-	};
-	struct dm_target *next_segment = NULL;
-	struct segment segments[MAX_BITLK_SEGMENTS] = {};
-	struct segment temp;
-	uint64_t next_start = 0;
-	uint64_t next_end = 0;
-	uint64_t last_segment = 0;
-	uint32_t dmt_flags;
-
-	r = _activate_check(cd, params);
-	if (r)
-		return r;
-
 	r = device_block_adjust(cd, crypt_data_device(cd), DEV_EXCL,
 				0, &dmd.size, &dmd.flags);
-	if (r)
+	if (r) {
+		crypt_free_volume_key(open_fvek_key);
 		return r;
+	}
 
 	/* there will be always 4 dm-zero segments: 3x metadata, 1x FS header */
 	for (i = 0; i < 3; i++) {
@@ -1407,57 +1377,6 @@ static int _activate(struct crypt_device *cd,
 	}
 out:
 	dm_targets_free(cd, &dmd);
-	return r;
-}
-
-int BITLK_activate_by_passphrase(struct crypt_device *cd,
-				 const char *name,
-				 const char *password,
-				 size_t passwordLen,
-				 const struct bitlk_metadata *params,
-				 uint32_t flags)
-{
-	int r = 0;
-	struct volume_key *open_fvek_key = NULL;
-
-	r = _activate_check(cd, params);
-	if (r)
-		return r;
-
-	r = BITLK_get_volume_key(cd, password, passwordLen, params, &open_fvek_key);
-	if (r < 0)
-		goto out;
-
-	/* Password verify only */
-	if (!name)
-		goto out;
-
-	r = _activate(cd, name, open_fvek_key, params, flags);
-out:
-	crypt_free_volume_key(open_fvek_key);
-	return r;
-}
-
-int BITLK_activate_by_volume_key(struct crypt_device *cd,
-				 const char *name,
-				 const char *volume_key,
-				 size_t volume_key_size,
-				 const struct bitlk_metadata *params,
-				 uint32_t flags)
-{
-	int r = 0;
-	struct volume_key *open_fvek_key = NULL;
-
-	r = _activate_check(cd, params);
-	if (r)
-		return r;
-
-	open_fvek_key = crypt_alloc_volume_key(volume_key_size, volume_key);
-	if (!open_fvek_key)
-		return -ENOMEM;
-
-	r = _activate(cd, name, open_fvek_key, params, flags);
-
 	crypt_free_volume_key(open_fvek_key);
 	return r;
 }

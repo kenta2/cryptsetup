@@ -1,9 +1,9 @@
 /*
  * Helper utilities for LUKS2 features
  *
- * Copyright (C) 2018-2020 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2018-2020 Milan Broz
- * Copyright (C) 2018-2020 Ondrej Kozina
+ * Copyright (C) 2018-2021 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2018-2021 Milan Broz
+ * Copyright (C) 2018-2021 Ondrej Kozina
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -27,7 +27,7 @@
  * In future, read max allowed JSON size from config section.
  */
 #define LUKS2_MAX_MDA_SIZE 0x400000
-int tools_read_json_file(struct crypt_device *cd, const char *file, char **json, size_t *json_size, bool batch_mode)
+int tools_read_json_file(struct crypt_device *cd, const char *file, char **json, size_t *json_size)
 {
 	ssize_t ret;
 	int fd, block, r;
@@ -56,7 +56,7 @@ int tools_read_json_file(struct crypt_device *cd, const char *file, char **json,
 		goto out;
 	}
 
-	if (isatty(fd) && !batch_mode)
+	if (isatty(fd) && !opt_batch_mode)
 		log_std(_("Provide valid LUKS2 token JSON:\n"));
 
 	/* we expect JSON (string) */

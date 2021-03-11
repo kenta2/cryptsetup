@@ -1,9 +1,9 @@
 /*
  * BITLK (BitLocker-compatible) header definition
  *
- * Copyright (C) 2019-2020 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2019-2020 Milan Broz
- * Copyright (C) 2019-2020 Vojtech Trefny
+ * Copyright (C) 2019-2021 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2019-2021 Milan Broz
+ * Copyright (C) 2019-2021 Vojtech Trefny
  *
  * This file is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -117,25 +117,12 @@ int BITLK_read_sb(struct crypt_device *cd, struct bitlk_metadata *params);
 
 int BITLK_dump(struct crypt_device *cd, struct device *device, struct bitlk_metadata *params);
 
-int BITLK_get_volume_key(struct crypt_device *cd,
-			 const char *password,
-			 size_t passwordLen,
-			 const struct bitlk_metadata *params,
-			 struct volume_key **open_fvek_key);
-
-int BITLK_activate_by_passphrase(struct crypt_device *cd,
-				 const char *name,
-				 const char *password,
-				 size_t passwordLen,
-				 const struct bitlk_metadata *params,
-				 uint32_t flags);
-
-int BITLK_activate_by_volume_key(struct crypt_device *cd,
-				 const char *name,
-				 const char *volume_key,
-				 size_t volume_key_size,
-				 const struct bitlk_metadata *params,
-				 uint32_t flags);
+int BITLK_activate(struct crypt_device *cd,
+		   const char *name,
+		   const char *password,
+		   size_t passwordLen,
+		   const struct bitlk_metadata *params,
+		   uint32_t flags);
 
 void BITLK_bitlk_fvek_free(struct bitlk_fvek *fvek);
 void BITLK_bitlk_vmk_free(struct bitlk_vmk *vmk);

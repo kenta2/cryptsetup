@@ -1,8 +1,8 @@
 /*
  * LUKS - Linux Unified Key Setup v2, keyslot handling
  *
- * Copyright (C) 2015-2020 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2015-2020 Milan Broz
+ * Copyright (C) 2015-2021 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2015-2021 Milan Broz
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -148,7 +148,7 @@ int LUKS2_keyslot_cipher_incompatible(struct crypt_device *cd, const char *ciphe
 {
 	char cipher[MAX_CIPHER_LEN], cipher_mode[MAX_CIPHER_LEN];
 
-	if (!cipher_spec || !strcmp(cipher_spec, "null") || !strcmp(cipher_spec, "cipher_null"))
+	if (!cipher_spec || crypt_is_cipher_null(cipher_spec))
 		return 1;
 
 	if (crypt_parse_name_and_mode(cipher_spec, cipher, NULL, cipher_mode) < 0)

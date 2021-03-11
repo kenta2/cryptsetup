@@ -1,9 +1,9 @@
 /*
  * cryptsetup library API check functions
  *
- * Copyright (C) 2009-2020 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2009-2020 Milan Broz
- * Copyright (C) 2016-2020 Ondrej Kozina
+ * Copyright (C) 2009-2021 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2009-2021 Milan Broz
+ * Copyright (C) 2016-2021 Ondrej Kozina
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -487,7 +487,6 @@ static void AddDevicePlain(void)
 	// crypt_set_data_device
 	FAIL_(crypt_set_data_device(cd,H_DEVICE),"can't set data device for plain device");
 	NULL_(crypt_get_metadata_device_name(cd));
-	FAIL_(crypt_header_is_detached(cd), "plain has no header");
 
 	// crypt_get_type
 	OK_(strcmp(crypt_get_type(cd),CRYPT_PLAIN));
@@ -683,6 +682,13 @@ static void SuspendDevice(void)
 	char key[128];
 	size_t key_size;
 	int suspend_status;
+	uint64_t r_payload_offset;
+	const struct crypt_pbkdf_type fast_pbkdf = {
+		.type = "pbkdf2",
+		.hash = "sha256",
+		.iterations = 1000,
+		.flags = CRYPT_PBKDF_NO_BENCHMARK
+	};
 
 	OK_(crypt_init(&cd, DEVICE_1));
 	OK_(crypt_load(cd, CRYPT_LUKS1, NULL));
@@ -743,11 +749,31 @@ static void SuspendDevice(void)
 	FAIL_(crypt_resume_by_volume_key(cd, CDEVICE_1, key, key_size), "wrong key");
 	OK_(crypt_volume_key_get(cd, CRYPT_ANY_SLOT, key, &key_size, KEY1, strlen(KEY1)));
 	OK_(crypt_resume_by_volume_key(cd, CDEVICE_1, key, key_size));
+	OK_(crypt_deactivate(cd, CDEVICE_1));
+	CRYPT_FREE(cd);
 
+	OK_(get_luks_offsets(0, key_size, 1024*2, 0, NULL, &r_payload_offset));
+	OK_(create_dmdevice_over_loop(L_DEVICE_OK, r_payload_offset + 1));
+
+	/* Resume device with cipher_null */
+	OK_(crypt_init(&cd, DMDIR L_DEVICE_OK));
+	OK_(crypt_set_pbkdf_type(cd, &fast_pbkdf));
+	OK_(crypt_format(cd, CRYPT_LUKS1, "cipher_null", "ecb", NULL, key, key_size, NULL));
+	EQ_(0, crypt_keyslot_add_by_volume_key(cd, 0, key, key_size, "", 0));
+	OK_(crypt_activate_by_volume_key(cd, CDEVICE_1, key, key_size, 0));
+	OK_(crypt_suspend(cd, CDEVICE_1));
+	OK_(crypt_resume_by_volume_key(cd, CDEVICE_1, key, key_size));
+	OK_(crypt_get_active_device(cd, CDEVICE_1, &cad));
+	EQ_(0, cad.flags & CRYPT_ACTIVATE_SUSPENDED);
+	OK_(crypt_suspend(cd, CDEVICE_1));
+	OK_(crypt_resume_by_passphrase(cd, CDEVICE_1, 0, "", 0));
+	OK_(crypt_get_active_device(cd, CDEVICE_1, &cad));
+	EQ_(0, cad.flags & CRYPT_ACTIVATE_SUSPENDED);
 	OK_(crypt_deactivate(cd, CDEVICE_1));
 	CRYPT_FREE(cd);
 
 	_remove_keyfiles();
+	_cleanup_dmdevices();
 }
 
 static void AddDeviceLuks(void)
@@ -895,7 +921,6 @@ static void AddDeviceLuks(void)
 	OK_(crypt_init(&cd, DMDIR L_DEVICE_1S));
 	OK_(crypt_format(cd, CRYPT_LUKS1, cipher, cipher_mode, NULL, key, key_size, &params));
 	OK_(crypt_activate_by_volume_key(cd, CDEVICE_1, key, key_size, 0));
-	EQ_(0, crypt_header_is_detached(cd));
 	CRYPT_FREE(cd);
 	params.data_alignment = 0;
 	params.data_device = DEVICE_2;
@@ -910,7 +935,6 @@ static void AddDeviceLuks(void)
 	FAIL_(crypt_activate_by_volume_key(cd, CDEVICE_2, key, key_size, 0), "Device is active");
 	EQ_(crypt_status(cd, CDEVICE_2), CRYPT_INACTIVE);
 	OK_(crypt_deactivate(cd, CDEVICE_1));
-	FAIL_(crypt_header_is_detached(cd), "no header for mismatched device");
 	CRYPT_FREE(cd);
 
 	params.data_device = NULL;
@@ -1218,7 +1242,6 @@ static void LuksHeaderLoad(void)
 	OK_(!crypt_get_metadata_device_name(cd));
 	EQ_(strcmp(DMDIR H_DEVICE, crypt_get_metadata_device_name(cd)), 0);
 	OK_(crypt_deactivate(cd, CDEVICE_1));
-	EQ_(1, crypt_header_is_detached(cd));
 	CRYPT_FREE(cd);
 
 	// repeat with init with two devices
@@ -1229,7 +1252,6 @@ static void LuksHeaderLoad(void)
 	OK_(crypt_load(cd, CRYPT_LUKS1, NULL));
 	OK_(!crypt_get_metadata_device_name(cd));
 	EQ_(strcmp(DMDIR H_DEVICE, crypt_get_metadata_device_name(cd)), 0);
-	EQ_(1, crypt_header_is_detached(cd));
 	CRYPT_FREE(cd);
 
 	// bad header: device too small (payloadOffset > device_size)
@@ -1320,7 +1342,6 @@ static void LuksHeaderBackup(void)
 	OK_(crypt_activate_by_volume_key(cd, CDEVICE_1, key, key_size, 0));
 	EQ_(crypt_status(cd, CDEVICE_1), CRYPT_ACTIVE);
 	OK_(crypt_deactivate(cd, CDEVICE_1));
-	EQ_(0, crypt_header_is_detached(cd));
 	CRYPT_FREE(cd);
 
 	// exercise luksOpen using backup header in file
@@ -1330,7 +1351,6 @@ static void LuksHeaderBackup(void)
 	EQ_(crypt_activate_by_passphrase(cd, CDEVICE_1, 0, passphrase, strlen(passphrase), 0), 0);
 	EQ_(crypt_status(cd, CDEVICE_1), CRYPT_ACTIVE);
 	OK_(crypt_deactivate(cd, CDEVICE_1));
-	EQ_(1, crypt_header_is_detached(cd));
 	CRYPT_FREE(cd);
 
 	OK_(crypt_init(&cd, BACKUP_FILE));

@@ -6,7 +6,6 @@ DISTCLEAN_TARGETS =
 AM_CPPFLAGS = \
 	-include config.h \
 	-I$(top_srcdir)/lib \
-	-I$(top_srcdir)/lib/cli \
         -DDATADIR=\""$(datadir)"\"              \
         -DLOCALEDIR=\""$(datadir)/locale"\"     \
         -DLIBDIR=\""$(libdir)"\"                \
@@ -20,13 +19,10 @@ LDADD = $(LTLIBINTL) -lm
 
 tmpfilesddir = @DEFAULT_TMPFILESDIR@
 
-include_HEADERS =
-lib_LTLIBRARIES =
 noinst_LTLIBRARIES =
 sbin_PROGRAMS =
 man8_MANS =
 tmpfilesd_DATA =
-pkgconfig_DATA =
 
 include man/Makemodule.am
 
@@ -37,7 +33,6 @@ include lib/crypto_backend/argon2/Makemodule.am
 endif
 include lib/crypto_backend/Makemodule.am
 include lib/Makemodule.am
-include lib/cli/Makemodule.am
 
 include src/Makemodule.am
 

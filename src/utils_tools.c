@@ -3,8 +3,8 @@
  *
  * Copyright (C) 2004 Jana Saout <jana@saout.de>
  * Copyright (C) 2004-2007 Clemens Fruhwirth <clemens@endorphin.org>
- * Copyright (C) 2009-2020 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2009-2020 Milan Broz
+ * Copyright (C) 2009-2021 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2009-2021 Milan Broz
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -24,6 +24,12 @@
 #include "cryptsetup.h"
 #include <math.h>
 #include <signal.h>
+
+int opt_verbose = 0;
+int opt_debug = 0;
+int opt_debug_json = 0;
+int opt_batch_mode = 0;
+int opt_progress_frequency = 0;
 
 /* interrupt handling */
 volatile int quit = 0;
@@ -71,17 +77,38 @@ void check_signal(int *r)
 		*r = -EINTR;
 }
 
-void tool_log(int level, const char *msg, void *usrptr)
-{
-	struct tools_log_params *params = (struct tools_log_params *)usrptr;
+#define LOG_MAX_LEN 4096
 
-	switch (level) {
+__attribute__((format(printf, 5, 6)))
+void clogger(struct crypt_device *cd, int level, const char *file, int line,
+	     const char *format, ...)
+{
+	va_list argp;
+	char target[LOG_MAX_LEN + 2];
+
+	va_start(argp, format);
+
+	if (vsnprintf(&target[0], LOG_MAX_LEN, format, argp) > 0) {
+		/* All verbose and error messages in tools end with EOL. */
+		if (level == CRYPT_LOG_VERBOSE || level == CRYPT_LOG_ERROR ||
+		    level == CRYPT_LOG_DEBUG || level == CRYPT_LOG_DEBUG_JSON)
+			strncat(target, "\n", LOG_MAX_LEN);
+
+		crypt_log(cd, level, target);
+	}
+
+	va_end(argp);
+}
+
+void tool_log(int level, const char *msg, void *usrptr __attribute__((unused)))
+{
+	switch(level) {
 
 	case CRYPT_LOG_NORMAL:
 		fprintf(stdout, "%s", msg);
 		break;
 	case CRYPT_LOG_VERBOSE:
-		if (params && params->verbose)
+		if (opt_verbose)
 			fprintf(stdout, "%s", msg);
 		break;
 	case CRYPT_LOG_ERROR:
@@ -89,7 +116,7 @@ void tool_log(int level, const char *msg, void *usrptr)
 		break;
 	case CRYPT_LOG_DEBUG_JSON:
 	case CRYPT_LOG_DEBUG:
-		if (params && params->debug)
+		if (opt_debug)
 			fprintf(stdout, "# %s", msg);
 		break;
 	}
@@ -97,10 +124,8 @@ void tool_log(int level, const char *msg, void *usrptr)
 
 void quiet_log(int level, const char *msg, void *usrptr)
 {
-	struct tools_log_params *params = (struct tools_log_params *)usrptr;
-
-	if ((!params || !params->verbose) && (level == CRYPT_LOG_ERROR || level == CRYPT_LOG_NORMAL))
-		return;
+	if (!opt_verbose && (level == CRYPT_LOG_ERROR || level == CRYPT_LOG_NORMAL))
+		level = CRYPT_LOG_VERBOSE;
 	tool_log(level, msg, usrptr);
 }
 
@@ -115,7 +140,7 @@ static int _dialog(const char *msg, void *usrptr, int default_answer)
 	if (block)
 		set_int_block(0);
 
-	if (isatty(STDIN_FILENO)) {
+	if (isatty(STDIN_FILENO) && !opt_batch_mode) {
 		log_std("\nWARNING!\n========\n");
 		log_std("%s\n\nAre you sure? (Type 'yes' in capital letters): ", msg);
 		fflush(stdout);
@@ -154,8 +179,11 @@ void show_status(int errcode)
 {
 	char *crypt_error;
 
-	if (!errcode) {
-		log_verbose(_("Command successful."));
+	if(!opt_verbose)
+		return;
+
+	if(!errcode) {
+		log_std(_("Command successful.\n"));
 		return;
 	}
 
@@ -175,7 +203,7 @@ void show_status(int errcode)
 	else
 		crypt_error = _("unknown error");
 
-	log_verbose(_("Command failed with code %i (%s)."), -errcode, crypt_error);
+	log_std(_("Command failed with code %i (%s).\n"), -errcode, crypt_error);
 }
 
 const char *uuid_or_device(const char *spec)
@@ -345,13 +373,16 @@ static double time_diff(struct timeval *start, struct timeval *end)
 		+ (end->tv_usec - start->tv_usec) / 1E6;
 }
 
-static void tools_clear_line(void)
+void tools_clear_line(void)
 {
+	if (opt_progress_frequency)
+		return;
 	/* vt100 code clear line */
 	log_std("\33[2K\r");
 }
 
-static void tools_time_progress(uint64_t device_size, uint64_t bytes, struct tools_progress_params *parms)
+static void tools_time_progress(uint64_t device_size, uint64_t bytes, uint64_t *start_bytes,
+			 struct timeval *start_time, struct timeval *end_time)
 {
 	struct timeval now_time;
 	unsigned long long mbytes, eta;
@@ -359,33 +390,36 @@ static void tools_time_progress(uint64_t device_size, uint64_t bytes, struct too
 	int final = (bytes == device_size);
 	const char *eol, *ustr = "";
 
+	if (opt_batch_mode)
+		return;
+
 	gettimeofday(&now_time, NULL);
-	if (parms->start_time.tv_sec == 0 && parms->start_time.tv_usec == 0) {
-		parms->start_time = now_time;
-		parms->end_time = now_time;
-		parms->start_offset = bytes;
+	if (start_time->tv_sec == 0 && start_time->tv_usec == 0) {
+		*start_time = now_time;
+		*end_time = now_time;
+		*start_bytes = bytes;
 		return;
 	}
 
-	if (parms->frequency) {
-		frequency = (double)parms->frequency;
+	if (opt_progress_frequency) {
+		frequency = (double)opt_progress_frequency;
 		eol = "\n";
 	} else {
 		frequency = 0.5;
 		eol = "";
 	}
 
-	if (!final && time_diff(&parms->end_time, &now_time) < frequency)
+	if (!final && time_diff(end_time, &now_time) < frequency)
 		return;
 
-	parms->end_time = now_time;
+	*end_time = now_time;
 
-	tdiff = time_diff(&parms->start_time, &parms->end_time);
+	tdiff = time_diff(start_time, end_time);
 	if (!tdiff)
 		return;
 
 	mbytes = bytes  / 1024 / 1024;
-	uib = (double)(bytes - parms->start_offset) / tdiff;
+	uib = (double)(bytes - *start_bytes) / tdiff;
 
 	/* FIXME: calculate this from last minute only. */
 	eta = (unsigned long long)(device_size / uib - tdiff);
@@ -401,8 +435,7 @@ static void tools_time_progress(uint64_t device_size, uint64_t bytes, struct too
 		ustr = "Ki";
 	}
 
-	if (!parms->frequency)
-		tools_clear_line();
+	tools_clear_line();
 	if (final)
 		log_std("Finished, time %02llu:%02llu.%03llu, "
 			"%4llu MiB written, speed %5.1f %sB/s\n",
@@ -420,28 +453,148 @@ static void tools_time_progress(uint64_t device_size, uint64_t bytes, struct too
 
 int tools_wipe_progress(uint64_t size, uint64_t offset, void *usrptr)
 {
+	static struct timeval start_time = {}, end_time = {};
+	static uint64_t start_offset = 0;
 	int r = 0;
-	struct tools_progress_params *parms = (struct tools_progress_params *)usrptr;
 
-	if (parms && !parms->batch_mode)
-		tools_time_progress(size, offset, parms);
+	tools_time_progress(size, offset, &start_offset, &start_time, &end_time);
 
 	check_signal(&r);
 	if (r) {
-		if (!parms || !parms->frequency)
-			tools_clear_line();
+		tools_clear_line();
 		log_err(_("\nWipe interrupted."));
 	}
 
 	return r;
 }
 
-int tools_is_cipher_null(const char *cipher)
+static void report_partition(const char *value, const char *device)
 {
-	if (!cipher)
-		return 0;
+	if (opt_batch_mode)
+		log_dbg("Device %s already contains a '%s' partition signature.", device, value);
+	else
+		log_std(_("WARNING: Device %s already contains a '%s' partition signature.\n"), device, value);
+}
 
-	return !strcmp(cipher, "cipher_null") ? 1 : 0;
+static void report_superblock(const char *value, const char *device)
+{
+	if (opt_batch_mode)
+		log_dbg("Device %s already contains a '%s' superblock signature.", device, value);
+	else
+		log_std(_("WARNING: Device %s already contains a '%s' superblock signature.\n"), device, value);
+}
+
+int tools_detect_signatures(const char *device, int ignore_luks, size_t *count)
+{
+	int r;
+	size_t tmp_count;
+	struct blkid_handle *h;
+	blk_probe_status pr;
+
+	if (!count)
+		count = &tmp_count;
+
+	*count = 0;
+
+	if (!blk_supported()) {
+		log_dbg("Blkid support disabled.");
+		return 0;
+	}
+
+	if ((r = blk_init_by_path(&h, device))) {
+		log_err(_("Failed to initialize device signature probes."));
+		return -EINVAL;
+	}
+
+	blk_set_chains_for_full_print(h);
+
+	if (ignore_luks && blk_superblocks_filter_luks(h)) {
+		r = -EINVAL;
+		goto out;
+	}
+
+	while ((pr = blk_probe(h)) < PRB_EMPTY) {
+		if (blk_is_partition(h))
+			report_partition(blk_get_partition_type(h), device);
+		else if (blk_is_superblock(h))
+			report_superblock(blk_get_superblock_type(h), device);
+		else {
+			log_dbg("Internal tools_detect_signatures() error.");
+			r = -EINVAL;
+			goto out;
+		}
+		(*count)++;
+	}
+
+	if (pr == PRB_FAIL)
+		r = -EINVAL;
+out:
+	blk_free(h);
+	return r;
+}
+
+int tools_wipe_all_signatures(const char *path)
+{
+	int fd, flags, r;
+	blk_probe_status pr;
+	struct stat st;
+	struct blkid_handle *h = NULL;
+
+	if (!blk_supported()) {
+		log_dbg("Blkid support disabled.");
+		return 0;
+	}
+
+	if (stat(path, &st)) {
+		log_err(_("Failed to stat device %s."), path);
+		return -EINVAL;
+	}
+
+	flags = O_RDWR;
+	if (S_ISBLK(st.st_mode))
+		flags |= O_EXCL;
+
+	/* better than opening regular file with O_EXCL (undefined) */
+	/* coverity[toctou] */
+	fd = open(path, flags);
+	if (fd < 0) {
+		if (errno == EBUSY)
+			log_err(_("Device %s is in use. Can not proceed with format operation."), path);
+		else
+			log_err(_("Failed to open file %s in read/write mode."), path);
+		return -EINVAL;
+	}
+
+	if ((r = blk_init_by_fd(&h, fd))) {
+		log_err(_("Failed to initialize device signature probes."));
+		r = -EINVAL;
+		goto out;
+	}
+
+	blk_set_chains_for_wipes(h);
+
+	while ((pr = blk_probe(h)) < PRB_EMPTY) {
+		if (blk_is_partition(h))
+			log_verbose(_("Existing '%s' partition signature (offset: %" PRIi64 " bytes) on device %s will be wiped."),
+				    blk_get_partition_type(h), blk_get_offset(h), path);
+		if (blk_is_superblock(h))
+			log_verbose(_("Existing '%s' superblock signature (offset: %" PRIi64 " bytes) on device %s will be wiped."),
+				    blk_get_superblock_type(h), blk_get_offset(h), path);
+		if (blk_do_wipe(h)) {
+			log_err(_("Failed to wipe device signature."));
+			r = -EINVAL;
+			goto out;
+		}
+	}
+
+	if (pr != PRB_EMPTY) {
+		log_err(_("Failed to probe device %s for a signature."), path);
+		r = -EINVAL;
+	}
+out:
+	close(fd);
+	blk_free(h);
+	return r;
 }
 
 /*
@@ -457,16 +610,15 @@ int tools_is_stdin(const char *key_file)
 
 int tools_reencrypt_progress(uint64_t size, uint64_t offset, void *usrptr)
 {
+	static struct timeval start_time = {}, end_time = {};
+	static uint64_t start_offset = 0;
 	int r = 0;
-	struct tools_progress_params *parms = (struct tools_progress_params *)usrptr;
 
-	if (parms && !parms->batch_mode)
-		tools_time_progress(size, offset, parms);
+	tools_time_progress(size, offset, &start_offset, &start_time, &end_time);
 
 	check_signal(&r);
 	if (r) {
-		if (!parms || !parms->frequency)
-			tools_clear_line();
+		tools_clear_line();
 		log_err(_("\nReencryption interrupted."));
 	}
 

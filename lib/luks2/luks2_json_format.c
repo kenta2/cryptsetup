@@ -1,8 +1,8 @@
 /*
  * LUKS - Linux Unified Key Setup v2, LUKS2 header format code
  *
- * Copyright (C) 2015-2020 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2015-2020 Milan Broz
+ * Copyright (C) 2015-2021 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2015-2021 Milan Broz
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -41,7 +41,7 @@ static size_t get_min_offset(struct luks2_hdr *hdr)
 
 static size_t get_max_offset(struct luks2_hdr *hdr)
 {
-	return LUKS2_hdr_and_areas_size(hdr);
+	return LUKS2_hdr_and_areas_size(hdr->jobj);
 }
 
 int LUKS2_find_area_max_gap(struct crypt_device *cd, struct luks2_hdr *hdr,
@@ -244,7 +244,8 @@ int LUKS2_generate_hdr(
 		/* Decrease keyslots_size due to metadata device being too small */
 		if (!device_size(crypt_metadata_device(cd), &mdev_size) &&
 		    ((keyslots_size + get_min_offset(hdr)) > mdev_size) &&
-		    device_fallocate(crypt_metadata_device(cd), keyslots_size + get_min_offset(hdr)))
+		    device_fallocate(crypt_metadata_device(cd), keyslots_size + get_min_offset(hdr)) &&
+		    (get_min_offset(hdr) <= mdev_size))
 			keyslots_size = mdev_size - get_min_offset(hdr);
 	}
 
@@ -368,7 +369,7 @@ int LUKS2_wipe_header_areas(struct crypt_device *cd,
 	/* Wipe keyslot area */
 	wipe_block = 1024 * 1024;
 	offset = get_min_offset(hdr);
-	length = LUKS2_keyslots_size(hdr);
+	length = LUKS2_keyslots_size(hdr->jobj);
 
 	log_dbg(cd, "Wiping keyslots area (0x%06" PRIx64 " - 0x%06" PRIx64") with random data.",
 		offset, length + offset);

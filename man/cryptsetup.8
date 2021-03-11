@@ -1,4 +1,4 @@
-.TH CRYPTSETUP "8" "December 2020" "cryptsetup" "Maintenance Commands"
+.TH CRYPTSETUP "8" "January 2021" "cryptsetup" "Maintenance Commands"
 .SH NAME
 cryptsetup - manage plain dm-crypt and LUKS encrypted volumes
 .SH SYNOPSIS
@@ -101,7 +101,7 @@ For backward compatibility there are \fBclose\fR command aliases:
 \fBtcryptClose\fR (all behaves exactly the same, device type is
 determined automatically from active device).
 
-\fB<options>\fR can be [\-\-deferred] or [\-\-cancel\-deferred]
+\fB<options>\fR can be [\-\-deferred]
 
 .PP
 \fIstatus\fR <name>
@@ -717,16 +717,11 @@ a mapping <name>.
 
 \fB<options>\fR can be [\-\-key\-file, \-\-tcrypt\-hidden,
 \-\-tcrypt\-system, \-\-tcrypt\-backup, \-\-readonly, \-\-test\-passphrase,
-\-\-allow-discards, \-\-veracrypt, \-\-veracrypt\-pim, \-\-veracrypt\-query\-pim,
-\-\-header, \-\-cipher, \-\-hash].
+\-\-allow-discards, \-\-veracrypt, \-\-veracrypt\-pim, \-\-veracrypt\-query\-pim].
 
 The keyfile parameter allows a combination of file content with the
 passphrase and can be repeated. Note that using keyfiles is compatible
 with TCRYPT and is different from LUKS keyfile logic.
-
-If \fB\-\-\cipher\fR or  \fB\-\-hash\fR options are used, only cipher chains or
-PBKDF2 variants with the specified hash algorithms are checked. This could speed
-up unlocking the device (but also it reveals some information about the container).
 
 \fBWARNING:\fR Option \fB\-\-allow\-discards\fR cannot be combined with
 option \fB\-\-tcrypt\-hidden\fR. For normal mapping, it can cause
@@ -747,7 +742,7 @@ This means that if the master key is compromised, the whole device has
 to be erased to prevent further access. Use this option carefully.
 
 \fB<options>\fR can be [\-\-dump\-master\-key, \-\-key\-file,
-\-\-tcrypt\-hidden, \-\-tcrypt\-system, \-\-tcrypt\-backup, \-\-cipher, \-\-hash].
+\-\-tcrypt\-hidden, \-\-tcrypt\-system, \-\-tcrypt\-backup].
 
 The keyfile parameter allows a combination of file content with the
 passphrase and can be repeated.
@@ -777,16 +772,8 @@ Linux kernel version 5.3 and for devices using Elephant diffuser kernel 5.6.
 The \fBbitlkDump\fR command should work for all recognized BITLK devices
 and doesn't require superuser privilege.
 
-For unlocking with the \fBopen\fR a password or a recovery passphrase or
-a startup key must be provided.
-
-Additionally unlocking using master key is
-supported. You must provide BitLocker Full Volume Encryption Key (FVEK)
-using the \-\-master\-key\-file option. The key must be decrypted and
-without the header (only 128/256/512 bits of key data depending on used
-cipher and mode).
-
-Other unlocking methods (TPM, SmartCard) are not supported.
+For unlocking with the \fBopen\fR a password or a recovery passphrase must
+be provided. Other unlocking methods (TPM, SmartCard) are not supported.
 
 .PP
 \fIopen\fR \-\-type bitlk <device> <name>
@@ -797,19 +784,15 @@ Opens the BITLK (a BitLocker-compatible) <device> and sets up
 a mapping <name>.
 
 \fB<options>\fR can be [\-\-key\-file, \-\-readonly, \-\-test\-passphrase,
-\-\-allow\-discards \-\-master\-key\-file].
+\-\-allow-discards].
 
 .PP
 \fIbitlkDump\fR <device>
 .IP
 Dump the header information of a BITLK device.
 
-\fB<options>\fR can be [\-\-dump\-master\-key \-\-master\-key\-file].
-
-.PP
 Please note that cryptsetup does not use any Windows BitLocker code, please report
 all problems related to this compatibility extension to the cryptsetup project.
-
 .SH MISCELLANEOUS
 .PP
 \fIrepair\fR <device>
@@ -1283,9 +1266,6 @@ for \fBpwquality.conf(5)\fR and \fBpasswdqc.conf(5)\fR.
 .TP
 .B "\-\-deferred"
 Defers device removal in \fIclose\fR command until the last user closes it.
-.TP
-.B "\-\-cancel\-deferred"
-Removes a previously configured deferred device removal in \fIclose\fR command.
 .TP
 .B "\-\-disable\-locks"
 Disable lock protection for metadata on disk.
@@ -1762,9 +1742,9 @@ Copyright \(co 2004-2006 Clemens Fruhwirth
 .br
 Copyright \(co 2012-2014 Arno Wagner
 .br
-Copyright \(co 2009-2020 Red Hat, Inc.
+Copyright \(co 2009-2021 Red Hat, Inc.
 .br
-Copyright \(co 2009-2020 Milan Broz
+Copyright \(co 2009-2021 Milan Broz
 
 This is free software; see the source for copying conditions.  There is NO
 warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.

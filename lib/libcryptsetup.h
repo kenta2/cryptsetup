@@ -3,8 +3,8 @@
  *
  * Copyright (C) 2004 Jana Saout <jana@saout.de>
  * Copyright (C) 2004-2007 Clemens Fruhwirth <clemens@endorphin.org>
- * Copyright (C) 2009-2020 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2009-2020 Milan Broz
+ * Copyright (C) 2009-2021 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2009-2021 Milan Broz
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -215,15 +215,6 @@ void crypt_set_log_callback(struct crypt_device *cd,
  * @param msg log message
  */
 void crypt_log(struct crypt_device *cd, int level, const char *msg);
-
-/**
- * Log function with variable arguments.
- *
- * @param cd crypt device handle
- * @param level log level
- * @param format formatted log message
- */
-void crypt_logf(struct crypt_device *cd, int level, const char *format, ...);
 /** @} */
 
 /**
@@ -661,6 +652,10 @@ uint32_t crypt_get_compatibility(struct crypt_device *cd);
 
 /** dm-integrity device uses less effective (legacy) padding (old kernels) */
 #define CRYPT_COMPAT_LEGACY_INTEGRITY_PADDING (1 << 0)
+/** dm-integrity device does not protect superblock with HMAC (old kernels) */
+#define CRYPT_COMPAT_LEGACY_INTEGRITY_HMAC (1 << 1)
+/** dm-integrity allow recalculating of volumes with HMAC keys (old kernels) */
+#define CRYPT_COMPAT_LEGACY_INTEGRITY_RECALC (1 << 2)
 
 /**
  * Convert to new type for already existing device.
@@ -1360,8 +1355,6 @@ int crypt_activate_by_keyring(struct crypt_device *cd,
 #define CRYPT_DEACTIVATE_DEFERRED (1 << 0)
 /** force deactivation - if the device is busy, it is replaced by error device */
 #define CRYPT_DEACTIVATE_FORCE    (1 << 1)
-/** if set, remove lazy deactivation */
-#define CRYPT_DEACTIVATE_DEFERRED_CANCEL (1 << 2)
 
 /**
  * Deactivate crypt device. This function tries to remove active device-mapper
@@ -1556,21 +1549,6 @@ int crypt_get_volume_key_size(struct crypt_device *cd);
  *
  */
 int crypt_get_sector_size(struct crypt_device *cd);
-
-/**
- * Check if initialized LUKS context uses detached header
- * (LUKS header located on a different device than data.)
- *
- * @param cd crypt device handle
- *
- * @return @e 1 if detached header is used, @e 0 if not
- * or negative errno value otherwise.
- *
- * @note This is a runtime attribute, it does not say
- * 	 if a LUKS device requires detached header.
- * 	 This function works only with LUKS devices.
- */
-int crypt_header_is_detached(struct crypt_device *cd);
 
 /**
  * Get device parameters for VERITY device.
@@ -1969,19 +1947,6 @@ int crypt_wipe(struct crypt_device *cd,
  * @{
  */
 
-/**
- * Get number of tokens supported for device type.
- *
- * @param type crypt device type
- *
- * @return token count or negative errno otherwise if device
- * doesn't not support tokens.
- *
- * @note Real number of supported tokens for a particular device depends
- *       on usable metadata area size.
- */
-int crypt_token_max(const char *type);
-
 /** Iterate through all tokens */
 #define CRYPT_ANY_TOKEN -1
 
@@ -2148,27 +2113,6 @@ typedef int (*crypt_token_open_func) (
 	void *usrptr);
 
 /**
- * Token handler open with passphrase/PIN function prototype.
- * This function retrieves password from a token and return allocated buffer
- * containing this password. This buffer has to be deallocated by calling
- * free() function and content should be wiped before deallocation.
- *
- * @param cd crypt device handle
- * @param token token id
- * @param pin passphrase (or PIN) to unlock token
- * @param buffer returned allocated buffer with password
- * @param buffer_len length of the buffer
- * @param usrptr user data in @link crypt_activate_by_token @endlink
- */
-typedef int (*crypt_token_open_pin_func) (
-	struct crypt_device *cd,
-	int token,
-	const char *pin,
-	char **buffer,
-	size_t *buffer_len,
-	void *usrptr);
-
-/**
  * Token handler buffer free function prototype.
  * This function is used by library to free the buffer with keyslot
  * passphrase when it's no longer needed. If not defined the library
@@ -2214,7 +2158,6 @@ typedef struct  {
 	crypt_token_buffer_free_func buffer_free; /**< token handler buffer_free function (optional) */
 	crypt_token_validate_func validate; /**< token handler validate function (optional) */
 	crypt_token_dump_func dump; /**< token handler dump function (optional) */
-	crypt_token_open_pin_func open_pin; /**< open with passphrase function (optional) */
 } crypt_token_handler;
 
 /**
@@ -2226,20 +2169,6 @@ typedef struct  {
  */
 int crypt_token_register(const crypt_token_handler *handler);
 
-/** ABI version for external token in libcryptsetup-token-<name>.so */
-#define CRYPT_TOKEN_ABI_VERSION1 "CRYPTSETUP_TOKEN_1.0"
-/** ABI exported symbol for external token */
-#define CRYPT_TOKEN_ABI_HANDLER  "cryptsetup_token_handler"
-
-/**
- * Find external library, load and register token handler
- *
- * @param name token name to register
- *
- * @return @e 0 on success or negative errno value otherwise.
- */
-int crypt_token_load(struct crypt_device *cd, const char *name);
-
 /**
  * Activate device or check key using a token.
  *
@@ -2250,32 +2179,10 @@ int crypt_token_load(struct crypt_device *cd, const char *name);
  * @param flags activation flags
  *
  * @return unlocked key slot number or negative errno otherwise.
- *
- * @note EAGAIN errno means that token is PIN protected and you should call
- *       @link crypt_activate_by_pin_token @endlink with PIN
  */
 int crypt_activate_by_token(struct crypt_device *cd,
 	const char *name,
 	int token,
-	void *usrptr,
-	uint32_t flags);
-
-/**
- * Activate device or check key using a token with PIN.
- *
- * @param cd crypt device handle
- * @param name name of device to create, if @e NULL only check token
- * @param token requested token to check or CRYPT_ANY_TOKEN to check all
- * @param pin passphrase (or PIN) to unlock token
- * @param usrptr provided identification in callback
- * @param flags activation flags
- *
- * @return unlocked key slot number or negative errno otherwise.
- */
-int crypt_activate_by_pin_token(struct crypt_device *cd,
-	const char *name,
-	int token,
-	const char *pin,
 	void *usrptr,
 	uint32_t flags);
 /** @} */
@@ -2394,13 +2301,11 @@ int crypt_reencrypt_init_by_keyring(struct crypt_device *cd,
  * @param cd crypt device handle
  * @param progress is a callback function reporting device \b size,
  * current \b offset of reencryption and provided \b usrptr identification
- * @param usrptr progress specific data
  *
  * @return @e 0 on success or negative errno value otherwise.
  */
 int crypt_reencrypt(struct crypt_device *cd,
-		    int (*progress)(uint64_t size, uint64_t offset, void *usrptr),
-		    void *usrptr);
+		    int (*progress)(uint64_t size, uint64_t offset, void *usrptr));
 
 /**
  * Reencryption status info
