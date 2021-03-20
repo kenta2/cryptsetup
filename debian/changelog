@@ -1,6 +1,6 @@
 cryptsetup (2:2.3.5-1) unstable; urgency=medium
 
-  * New upstream bugfix release.
+  * New upstream bugfix release.  (Closes: #985581)
   * d/watch: Monitor upstream tags rather than tarballs.
   * d/gbp.conf: Set 'upstream-vcs-tag' to add upstream tag as additional
     parent.
