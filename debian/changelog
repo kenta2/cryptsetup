@@ -6,7 +6,7 @@ cryptsetup (2:2.3.5-1+exp1) experimental; urgency=medium
 
 cryptsetup (2:2.3.5-1) unstable; urgency=medium
 
-  * New upstream bugfix release.
+  * New upstream bugfix release.  (Closes: #985581)
   * d/watch: Monitor upstream tags rather than tarballs.
   * d/gbp.conf: Set 'upstream-vcs-tag' to add upstream tag as additional
     parent.
@@ -15,8 +15,9 @@ cryptsetup (2:2.3.5-1) unstable; urgency=medium
     is now able to verify git tags.
   * encrypted-boot.md: Clarify how to solve double password prompt for the
     device holding /boot.
+  * d/copyright: Update copyright year.
 
- -- Guilhem Moulin <guilhem@debian.org>  Thu, 11 Mar 2021 23:33:13 +0100
+ -- Guilhem Moulin <guilhem@debian.org>  Fri, 02 Apr 2021 23:43:41 +0200
 
 cryptsetup (2:2.3.4-2+exp1) experimental; urgency=medium
 
