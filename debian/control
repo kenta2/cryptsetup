@@ -57,7 +57,7 @@ Description: disk encryption support - startup scripts
  file /etc/crypttab. Additional features are cryptoroot support through
  initramfs-tools and several supported ways to read a passphrase or key.
  .
- This package provides the cryptdisk_start and stop wrappers and
+ This package provides the cryptdisks_start and _stop wrappers, as well as
  luksformat.
 
 Package: cryptsetup-bin

@@ -8,7 +8,7 @@
 	     xmlns:xi="http://www.w3.org/2001/XInclude"/>
 
  <refmeta>
-  <refentrytitle>cryptdisk_stop</refentrytitle>
+  <refentrytitle>cryptdisks_stop</refentrytitle>
   <manvolnum>8</manvolnum>
   <xi:include href="variables.xml"
 	      xpointer="xpointer(/refentry/refmeta/*)"

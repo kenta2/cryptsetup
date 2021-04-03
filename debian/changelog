@@ -2145,7 +2145,7 @@ cryptsetup (2:1.0.6-5) unstable; urgency=high
   * Remove duplicated configuration of --key-file in $PARAMS at do_noluks().
     (closes: #493848).
   * Invoke mount_fs() and umount_fs() in cryptdisks_start, add
-    log_action_begin_msg() and log_action_end_msg() to both cryptdisk_start
+    log_action_begin_msg() and log_action_end_msg() to both cryptdisks_start
     and cryptdisks_stop.
   * Copy fd 3 code from do_start and do_stop to cryptdisks_start and
     cryptdisks_stop  to fix "keyscript | cryptsetup". (closes: #493622)
