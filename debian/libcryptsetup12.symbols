@@ -1,6 +1,7 @@
 libcryptsetup.so.12 libcryptsetup12 #MINVER#
 * Build-Depends-Package: libcryptsetup-dev
  CRYPTSETUP_2.0@CRYPTSETUP_2.0 2:2.0
+ CRYPTSETUP_2.4@CRYPTSETUP_2.4 2:2.4
  crypt_activate_by_keyfile@CRYPTSETUP_2.0 2:1.4
  crypt_activate_by_keyfile_offset@CRYPTSETUP_2.0 2:1.4.3
  crypt_activate_by_keyring@CRYPTSETUP_2.0 2:2.0
@@ -8,6 +9,7 @@ libcryptsetup.so.12 libcryptsetup12 #MINVER#
  crypt_activate_by_passphrase@CRYPTSETUP_2.0 2:1.4
  crypt_activate_by_signed_key@CRYPTSETUP_2.0 2:2.3
  crypt_activate_by_token@CRYPTSETUP_2.0 2:2.0
+ crypt_activate_by_token_pin@CRYPTSETUP_2.4 2:2.4
  crypt_activate_by_volume_key@CRYPTSETUP_2.0 2:1.4
  crypt_keyslot_add_by_keyfile_device_offset@CRYPTSETUP_2.0 2:2.0.1
  crypt_benchmark@CRYPTSETUP_2.0 2:1.6
@@ -16,7 +18,9 @@ libcryptsetup.so.12 libcryptsetup12 #MINVER#
  crypt_deactivate@CRYPTSETUP_2.0 2:1.4
  crypt_deactivate_by_name@CRYPTSETUP_2.0 2:2.0
  crypt_dump@CRYPTSETUP_2.0 2:1.4
+ crypt_dump_json@CRYPTSETUP_2.4 2:2.4
  crypt_format@CRYPTSETUP_2.0 2:1.4
+ crypt_format@CRYPTSETUP_2.4 2:2.4
  crypt_free@CRYPTSETUP_2.0 2:1.4
  crypt_get_active_device@CRYPTSETUP_2.0 2:1.4
  crypt_get_active_integrity_failures@CRYPTSETUP_2.0 2:2.0.3
@@ -41,6 +45,7 @@ libcryptsetup.so.12 libcryptsetup12 #MINVER#
  crypt_get_verity_info@CRYPTSETUP_2.0 2:1.5
  crypt_get_volume_key_size@CRYPTSETUP_2.0 2:1.4
  crypt_header_backup@CRYPTSETUP_2.0 2:1.4
+ crypt_header_is_detached@CRYPTSETUP_2.4 2:2.4
  crypt_header_restore@CRYPTSETUP_2.0 2:1.4
  crypt_init@CRYPTSETUP_2.0 2:1.4
  crypt_init_by_name@CRYPTSETUP_2.0 2:1.4
@@ -66,11 +71,13 @@ libcryptsetup.so.12 libcryptsetup12 #MINVER#
  crypt_keyslot_status@CRYPTSETUP_2.0 2:1.4
  crypt_load@CRYPTSETUP_2.0 2:1.4
  crypt_log@CRYPTSETUP_2.0 2:1.4
+ crypt_logf@CRYPTSETUP_2.4 2:2.4
  crypt_memory_lock@CRYPTSETUP_2.0 2:1.4
  crypt_metadata_locking@CRYPTSETUP_2.0 2:2.0
  crypt_persistent_flags_get@CRYPTSETUP_2.0 2:2.0
  crypt_persistent_flags_set@CRYPTSETUP_2.0 2:2.0
  crypt_reencrypt@CRYPTSETUP_2.0 2:2.2
+ crypt_reencrypt@CRYPTSETUP_2.4 2:2.4
  crypt_reencrypt_init_by_keyring@CRYPTSETUP_2.0 2:2.2
  crypt_reencrypt_init_by_passphrase@CRYPTSETUP_2.0 2:2.2
  crypt_reencrypt_status@CRYPTSETUP_2.0 2:2.2
@@ -100,11 +107,14 @@ libcryptsetup.so.12 libcryptsetup12 #MINVER#
  crypt_status@CRYPTSETUP_2.0 2:1.4
  crypt_suspend@CRYPTSETUP_2.0 2:1.4
  crypt_token_assign_keyslot@CRYPTSETUP_2.0 2:2.0
+ crypt_token_external_disable@CRYPTSETUP_2.4 2:2.4
+ crypt_token_external_path@CRYPTSETUP_2.4 2:2.4
  crypt_token_is_assigned@CRYPTSETUP_2.0 2:2.0.2
  crypt_token_json_get@CRYPTSETUP_2.0 2:2.0
  crypt_token_json_set@CRYPTSETUP_2.0 2:2.0
  crypt_token_luks2_keyring_get@CRYPTSETUP_2.0 2:2.0
  crypt_token_luks2_keyring_set@CRYPTSETUP_2.0 2:2.0
+ crypt_token_max@CRYPTSETUP_2.4 2:2.4
  crypt_token_register@CRYPTSETUP_2.0 2:2.0
  crypt_token_status@CRYPTSETUP_2.0 2:2.0
  crypt_token_unassign_keyslot@CRYPTSETUP_2.0 2:2.0
