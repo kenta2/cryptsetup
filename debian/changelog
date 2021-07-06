@@ -9,6 +9,24 @@ cryptsetup (2:2.4.0-1) UNRELEASED; urgency=medium
 
  -- Guilhem Moulin <guilhem@debian.org>  Sun, 18 Jul 2021 18:58:04 +0200
 
+cryptsetup (2:2.4.0~rc0-1+exp1) experimental; urgency=medium
+
+  * New upstream release candidate 2.4.0.  Highlights include:
+    + Support for external libraries (plugins) for handling LUKS2 token
+      objects.
+    + Experimental SSH token handler and cryptsetup-ssh(8) utility (both
+      shipped in the 'cryptsetup' binary package) as a demonstration of the
+      external LUKS2 token interface.  This adds libssh-dev to build-depends.
+    + Change default LUKS2 PBKDF to Argon2id from Argon2i.
+    + Increase minimal memory cost for Argon2 benchmark to 64MiB (suggested
+      value in Argon2 RFC).
+    + Autodetect optimal encryption sector size on LUKS2 format.
+    + integritysetup: add integrity-recalculate-reset flag.
+    + cryptsetup: retains keyslot number in luksChangeKey for LUKS2.
+    + Add close --deferred and --cancel-deferred options.
+
+ -- Guilhem Moulin <guilhem@debian.org>  Tue, 06 Jul 2021 10:18:17 +0200
+
 cryptsetup (2:2.3.5-1) unstable; urgency=medium
 
   * New upstream bugfix release.  (Closes: #985581)
