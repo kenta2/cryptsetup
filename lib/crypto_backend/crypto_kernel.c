@@ -29,7 +29,6 @@
 #include <linux/if_alg.h>
 #include "crypto_backend_internal.h"
 
-/* FIXME: remove later */
 #ifndef AF_ALG
 #define AF_ALG 38
 #endif
@@ -330,7 +329,8 @@ void crypt_hmac_destroy(struct crypt_hmac *ctx)
 }
 
 /* RNG - N/A */
-int crypt_backend_rng(char *buffer, size_t length, int quality, int fips)
+int crypt_backend_rng(char *buffer __attribute__((unused)), size_t length __attribute__((unused)),
+	int quality __attribute__((unused)), int fips __attribute__((unused)))
 {
 	return -EINVAL;
 }
@@ -403,7 +403,7 @@ int crypt_cipher_decrypt(struct crypt_cipher *ctx,
 	return crypt_cipher_decrypt_kernel(&ctx->ck, in, out, length, iv, iv_length);
 }
 
-bool crypt_cipher_kernel_only(struct crypt_cipher *ctx)
+bool crypt_cipher_kernel_only(struct crypt_cipher *ctx __attribute__((unused)))
 {
 	return true;
 }

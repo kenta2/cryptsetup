@@ -23,7 +23,7 @@
 
 #include "luks2_internal.h"
 
-static int keyring_open(struct crypt_device *cd,
+int keyring_open(struct crypt_device *cd,
 				int token,
 				char **buffer,
 				size_t *buffer_len,
@@ -45,16 +45,16 @@ static int keyring_open(struct crypt_device *cd,
 	r = keyring_get_passphrase(json_object_get_string(jobj_key), buffer, buffer_len);
 	if (r == -ENOTSUP) {
 		log_dbg(cd, "Kernel keyring features disabled.");
-		return -EINVAL;
+		return -ENOENT;
 	} else if (r < 0) {
 		log_dbg(cd, "keyring_get_passphrase failed (error %d)", r);
-		return -EINVAL;
+		return -EPERM;
 	}
 
 	return 0;
 }
 
-static int keyring_validate(struct crypt_device *cd __attribute__((unused)),
+int keyring_validate(struct crypt_device *cd __attribute__((unused)),
 				    const char *json)
 {
 	enum json_tokener_error jerr;
@@ -92,7 +92,7 @@ out:
 	return r;
 }
 
-static void keyring_dump(struct crypt_device *cd, const char *json)
+void keyring_dump(struct crypt_device *cd, const char *json)
 {
 	enum json_tokener_error jerr;
 	json_object *jobj_token, *jobj_key;
@@ -111,47 +111,25 @@ static void keyring_dump(struct crypt_device *cd, const char *json)
 	json_object_put(jobj_token);
 }
 
-int token_keyring_set(json_object **jobj_builtin_token,
-	const void *params)
+int LUKS2_token_keyring_json(char *buffer, size_t buffer_size,
+	const struct crypt_token_params_luks2_keyring *keyring_params)
 {
-	json_object *jobj_token, *jobj;
-	const struct crypt_token_params_luks2_keyring *keyring_params = (const struct crypt_token_params_luks2_keyring *) params;
+	int r;
 
-	jobj_token = json_object_new_object();
-	if (!jobj_token)
-		return -ENOMEM;
+	r = snprintf(buffer, buffer_size, "{ \"type\": \"%s\", \"keyslots\":[],\"key_description\":\"%s\"}",
+		 LUKS2_TOKEN_KEYRING, keyring_params->key_description);
+	if (r < 0 || (size_t)r >= buffer_size)
+		return -EINVAL;
 
-	jobj = json_object_new_string(LUKS2_TOKEN_KEYRING);
-	if (!jobj) {
-		json_object_put(jobj_token);
-		return -ENOMEM;
-	}
-	json_object_object_add(jobj_token, "type", jobj);
-
-	jobj = json_object_new_array();
-	if (!jobj) {
-		json_object_put(jobj_token);
-		return -ENOMEM;
-	}
-	json_object_object_add(jobj_token, "keyslots", jobj);
-
-	jobj = json_object_new_string(keyring_params->key_description);
-	if (!jobj) {
-		json_object_put(jobj_token);
-		return -ENOMEM;
-	}
-	json_object_object_add(jobj_token, "key_description", jobj);
-
-	*jobj_builtin_token = jobj_token;
 	return 0;
 }
 
-int token_keyring_get(json_object *jobj_token,
-	void *params)
+int LUKS2_token_keyring_get(struct crypt_device *cd __attribute__((unused)), struct luks2_hdr *hdr,
+	int token, struct crypt_token_params_luks2_keyring *keyring_params)
 {
-	json_object *jobj;
-	struct crypt_token_params_luks2_keyring *keyring_params = (struct crypt_token_params_luks2_keyring *) params;
+	json_object *jobj_token, *jobj;
 
+	jobj_token = LUKS2_get_token_jobj(hdr, token);
 	json_object_object_get_ex(jobj_token, "type", &jobj);
 	assert(!strcmp(json_object_get_string(jobj), LUKS2_TOKEN_KEYRING));
 
@@ -159,12 +137,5 @@ int token_keyring_get(json_object *jobj_token,
 
 	keyring_params->key_description = json_object_get_string(jobj);
 
-	return 0;
+	return token;
 }
-
-const crypt_token_handler keyring_handler = {
-	.name = LUKS2_TOKEN_KEYRING,
-	.open = keyring_open,
-	.validate = keyring_validate,
-	.dump = keyring_dump
-};

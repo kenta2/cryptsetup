@@ -403,7 +403,8 @@ static json_bool validate_intervals(struct crypt_device *cd,
 	return 1;
 }
 
-static int LUKS2_keyslot_validate(struct crypt_device *cd, json_object *hdr_jobj, json_object *hdr_keyslot, const char *key)
+static int LUKS2_keyslot_validate(struct crypt_device *cd, json_object *hdr_jobj __attribute__((unused)),
+				  json_object *hdr_keyslot, const char *key)
 {
 	json_object *jobj_key_size;
 
@@ -516,7 +517,7 @@ static int hdr_validate_tokens(struct crypt_device *cd, json_object *hdr_jobj)
 
 static int hdr_validate_crypt_segment(struct crypt_device *cd,
 				      json_object *jobj, const char *key, json_object *jobj_digests,
-	uint64_t offset, uint64_t size)
+				      uint64_t offset __attribute__((unused)), uint64_t size)
 {
 	json_object *jobj_ivoffset, *jobj_sector_size, *jobj_integrity;
 	uint32_t sector_size;
@@ -720,7 +721,7 @@ static int hdr_validate_segments(struct crypt_device *cd, json_object *hdr_jobj)
 	return 0;
 }
 
-uint64_t LUKS2_metadata_size(json_object *jobj)
+static uint64_t LUKS2_metadata_size_jobj(json_object *jobj)
 {
 	json_object *jobj1, *jobj2;
 	uint64_t json_size;
@@ -730,6 +731,11 @@ uint64_t LUKS2_metadata_size(json_object *jobj)
 	json_str_to_uint64(jobj2, &json_size);
 
 	return json_size + LUKS2_HDR_BIN_LEN;
+}
+
+uint64_t LUKS2_metadata_size(struct luks2_hdr *hdr)
+{
+	return LUKS2_metadata_size_jobj(hdr->jobj);
 }
 
 static int hdr_validate_areas(struct crypt_device *cd, json_object *hdr_jobj)
@@ -747,7 +753,7 @@ static int hdr_validate_areas(struct crypt_device *cd, json_object *hdr_jobj)
 		return 1;
 
 	/* config is already validated */
-	metadata_size = LUKS2_metadata_size(hdr_jobj);
+	metadata_size = LUKS2_metadata_size_jobj(hdr_jobj);
 
 	length = json_object_object_length(jobj_keyslots);
 
@@ -793,7 +799,7 @@ static int hdr_validate_areas(struct crypt_device *cd, json_object *hdr_jobj)
 		return 1;
 	}
 
-	ret = validate_intervals(cd, length, intervals, metadata_size, LUKS2_hdr_and_areas_size(hdr_jobj)) ? 0 : 1;
+	ret = validate_intervals(cd, length, intervals, metadata_size, LUKS2_hdr_and_areas_size_jobj(hdr_jobj)) ? 0 : 1;
 
 	free(intervals);
 
@@ -1041,7 +1047,7 @@ void LUKS2_hdr_free(struct crypt_device *cd, struct luks2_hdr *hdr)
 		log_dbg(cd, "LUKS2 header still in use");
 }
 
-uint64_t LUKS2_keyslots_size(json_object *jobj)
+static uint64_t LUKS2_keyslots_size_jobj(json_object *jobj)
 {
 	json_object *jobj1, *jobj2;
 	uint64_t keyslots_size;
@@ -1053,9 +1059,19 @@ uint64_t LUKS2_keyslots_size(json_object *jobj)
 	return keyslots_size;
 }
 
-uint64_t LUKS2_hdr_and_areas_size(json_object *jobj)
+uint64_t LUKS2_keyslots_size(struct luks2_hdr *hdr)
 {
-	return 2 * LUKS2_metadata_size(jobj) + LUKS2_keyslots_size(jobj);
+	return LUKS2_keyslots_size_jobj(hdr->jobj);
+}
+
+uint64_t LUKS2_hdr_and_areas_size_jobj(json_object *jobj)
+{
+	return 2 * LUKS2_metadata_size_jobj(jobj) + LUKS2_keyslots_size_jobj(jobj);
+}
+
+uint64_t LUKS2_hdr_and_areas_size(struct luks2_hdr *hdr)
+{
+	return LUKS2_hdr_and_areas_size_jobj(hdr->jobj);
 }
 
 int LUKS2_hdr_backup(struct crypt_device *cd, struct luks2_hdr *hdr,
@@ -1067,7 +1083,7 @@ int LUKS2_hdr_backup(struct crypt_device *cd, struct luks2_hdr *hdr,
 	ssize_t ret, buffer_size;
 	char *buffer = NULL;
 
-	hdr_size = LUKS2_hdr_and_areas_size(hdr->jobj);
+	hdr_size = LUKS2_hdr_and_areas_size(hdr);
 	buffer_size = size_round_up(hdr_size, crypt_getpagesize());
 
 	buffer = crypt_safe_alloc(buffer_size);
@@ -1178,7 +1194,7 @@ int LUKS2_hdr_restore(struct crypt_device *cd, struct luks2_hdr *hdr,
 		goto out;
 	}
 
-	buffer_size = LUKS2_hdr_and_areas_size(hdr_file.jobj);
+	buffer_size = LUKS2_hdr_and_areas_size(&hdr_file);
 	buffer = crypt_safe_alloc(buffer_size);
 	if (!buffer) {
 		r = -ENOMEM;
@@ -1218,7 +1234,7 @@ int LUKS2_hdr_restore(struct crypt_device *cd, struct luks2_hdr *hdr,
 				goto out;
 			}
 			/* FIXME: what could go wrong? Erase if we're fine with consequences */
-			if (buffer_size != (ssize_t) LUKS2_hdr_and_areas_size(tmp_hdr.jobj)) {
+			if (buffer_size != (ssize_t) LUKS2_hdr_and_areas_size(&tmp_hdr)) {
 				log_err(cd, _("Binary header with keyslot areas size differ on device and backup, restore failed."));
 				r = -EINVAL;
 				goto out;
@@ -1620,7 +1636,7 @@ static void hdr_dump_tokens(struct crypt_device *cd, json_object *hdr_jobj)
 		json_object_object_get_ex(val, "keyslots", &jobj2);
 		for (i = 0; i < (int) json_object_array_length(jobj2); i++) {
 			jobj3 = json_object_array_get_idx(jobj2, i);
-			log_std(cd, "\tKeyslot:  %s\n", json_object_get_string(jobj3));
+			log_std(cd, "\tKeyslot:    %s\n", json_object_get_string(jobj3));
 		}
 	}
 }
@@ -1714,8 +1730,8 @@ int LUKS2_hdr_dump(struct crypt_device *cd, struct luks2_hdr *hdr)
 	log_std(cd, "LUKS header information\n");
 	log_std(cd, "Version:       \t%u\n", hdr->version);
 	log_std(cd, "Epoch:         \t%" PRIu64 "\n", hdr->seqid);
-	log_std(cd, "Metadata area: \t%" PRIu64 " [bytes]\n", LUKS2_metadata_size(hdr->jobj));
-	log_std(cd, "Keyslots area: \t%" PRIu64 " [bytes]\n", LUKS2_keyslots_size(hdr->jobj));
+	log_std(cd, "Metadata area: \t%" PRIu64 " [bytes]\n", LUKS2_metadata_size(hdr));
+	log_std(cd, "Keyslots area: \t%" PRIu64 " [bytes]\n", LUKS2_keyslots_size(hdr));
 	log_std(cd, "UUID:          \t%s\n", *hdr->uuid ? hdr->uuid : "(no UUID)");
 	log_std(cd, "Label:         \t%s\n", *hdr->label ? hdr->label : "(no label)");
 	log_std(cd, "Subsystem:     \t%s\n", *hdr->subsystem ? hdr->subsystem : "(no subsystem)");
@@ -1725,6 +1741,24 @@ int LUKS2_hdr_dump(struct crypt_device *cd, struct luks2_hdr *hdr)
 	hdr_dump_keyslots(cd, hdr->jobj);
 	hdr_dump_tokens(cd, hdr->jobj);
 	hdr_dump_digests(cd, hdr->jobj);
+
+	return 0;
+}
+
+int LUKS2_hdr_dump_json(struct crypt_device *cd, struct luks2_hdr *hdr, const char **json)
+{
+	const char *json_buf;
+
+	json_buf = json_object_to_json_string_ext(hdr->jobj,
+		JSON_C_TO_STRING_PRETTY | JSON_C_TO_STRING_NOSLASHESCAPE);
+
+	if (!json_buf)
+		return -EINVAL;
+
+	if (json)
+		*json = json_buf;
+	else
+		crypt_log(cd, CRYPT_LOG_NORMAL, json_buf);
 
 	return 0;
 }
@@ -1774,7 +1808,7 @@ uint64_t LUKS2_get_data_offset(struct luks2_hdr *hdr)
 	crypt_reencrypt_info ri;
 	json_object *jobj;
 
-	ri = LUKS2_reenc_status(hdr);
+	ri = LUKS2_reencrypt_status(hdr);
 	if (ri == CRYPT_REENCRYPT_CLEAN || ri == CRYPT_REENCRYPT_CRASH) {
 		jobj = LUKS2_get_segment_by_flag(hdr, "backup-final");
 		if (jobj)
@@ -1802,7 +1836,7 @@ const char *LUKS2_get_cipher(struct luks2_hdr *hdr, int segment)
 	return json_segment_get_cipher(jobj_segment) ?: "null";
 }
 
-crypt_reencrypt_info LUKS2_reenc_status(struct luks2_hdr *hdr)
+crypt_reencrypt_info LUKS2_reencrypt_status(struct luks2_hdr *hdr)
 {
 	uint32_t reqs;
 
@@ -2245,7 +2279,7 @@ int LUKS2_deactivate(struct crypt_device *cd, const char *name, struct luks2_hdr
 		goto out;
 
 	if (contains_reencryption_helper(deps)) {
-		r = crypt_reencrypt_lock_by_dm_uuid(cd, dmd->uuid, &reencrypt_lock);
+		r = LUKS2_reencrypt_lock_by_dm_uuid(cd, dmd->uuid, &reencrypt_lock);
 		if (r) {
 			if (r == -EBUSY)
 				log_err(cd, _("Reencryption in-progress. Cannot deactivate device."));
@@ -2324,7 +2358,7 @@ int LUKS2_deactivate(struct crypt_device *cd, const char *name, struct luks2_hdr
 	}
 
 out:
-	crypt_reencrypt_unlock(cd, reencrypt_lock);
+	LUKS2_reencrypt_unlock(cd, reencrypt_lock);
 	dep = deps;
 	while (*dep)
 		free(*dep++);
