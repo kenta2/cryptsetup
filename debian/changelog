@@ -4,6 +4,7 @@ cryptsetup (2:2.3.6-1) UNRELEASED; urgency=medium
   * Remove obsolete upstart configuration files on upgrade and purge.
     (Closes: #990490)
   * Adjust d/copyright.
+  * d/cryptsetup.docs: Add upstream's README.md.
 
  -- Guilhem Moulin <guilhem@debian.org>  Sun, 18 Jul 2021 18:58:04 +0200
 
