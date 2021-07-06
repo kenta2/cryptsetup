@@ -1,4 +1,4 @@
-cryptsetup (2:2.4.0~rc0-1+exp1) UNRELEASED; urgency=medium
+cryptsetup (2:2.4.0~rc0-1+exp1) experimental; urgency=medium
 
   * New upstream release candidate 2.4.0.  Highlights include:
     + Support for external libraries (plugins) for handling LUKS2 token
@@ -14,7 +14,7 @@ cryptsetup (2:2.4.0~rc0-1+exp1) UNRELEASED; urgency=medium
     + cryptsetup: retains keyslot number in luksChangeKey for LUKS2.
     + Add close --deferred and --cancel-deferred options.
 
- -- Guilhem Moulin <guilhem@debian.org>  Tue, 06 Jul 2021 08:37:34 +0200
+ -- Guilhem Moulin <guilhem@debian.org>  Tue, 06 Jul 2021 10:18:17 +0200
 
 cryptsetup (2:2.3.6-1+exp1) experimental; urgency=medium
 
