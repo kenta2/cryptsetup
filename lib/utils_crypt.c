@@ -23,6 +23,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <strings.h>
+#include <unistd.h>
 #include <ctype.h>
 #include <errno.h>
 
@@ -99,8 +101,6 @@ int crypt_parse_integrity_mode(const char *s, char *integrity,
 
 	if (!s || !integrity)
 		return -EINVAL;
-
-	// FIXME: do not hardcode it here
 
 	/* AEAD modes */
 	if (!strcmp(s, "aead") ||

@@ -301,8 +301,6 @@ static int hdr_write_disk(struct crypt_device *cd,
 	log_dbg(cd, "Trying to write LUKS2 header (%zu bytes) at offset %" PRIu64 ".",
 		hdr->hdr_size, offset);
 
-	/* FIXME: read-only device silent fail? */
-
 	devfd = device_open_locked(cd, device, O_RDWR);
 	if (devfd < 0)
 		return devfd == -1 ? -EINVAL : devfd;
@@ -385,7 +383,7 @@ int LUKS2_device_write_lock(struct crypt_device *cd, struct luks2_hdr *hdr, stru
 	}
 
 	/* run sequence id check only on first write lock (r == 1) and w/o LUKS2 reencryption in-progress */
-	if (r == 1 && !crypt_get_reenc_context(cd)) {
+	if (r == 1 && !crypt_get_luks2_reencrypt(cd)) {
 		log_dbg(cd, "Checking context sequence id matches value stored on disk.");
 		if (LUKS2_check_sequence_id(cd, hdr, device)) {
 			device_write_unlock(cd, device);
@@ -413,7 +411,7 @@ int LUKS2_disk_hdr_write(struct crypt_device *cd, struct luks2_hdr *hdr, struct 
 		return -EINVAL;
 	}
 
-	r = device_check_size(cd, crypt_metadata_device(cd), LUKS2_hdr_and_areas_size(hdr->jobj), 1);
+	r = device_check_size(cd, crypt_metadata_device(cd), LUKS2_hdr_and_areas_size(hdr), 1);
 	if (r)
 		return r;
 
@@ -669,9 +667,9 @@ int LUKS2_disk_hdr_read(struct crypt_device *cd, struct luks2_hdr *hdr,
 
 	/* check header with keyslots to fit the device */
 	if (state_hdr1 == HDR_OK)
-		hdr_size = LUKS2_hdr_and_areas_size(jobj_hdr1);
+		hdr_size = LUKS2_hdr_and_areas_size_jobj(jobj_hdr1);
 	else if (state_hdr2 == HDR_OK)
-		hdr_size = LUKS2_hdr_and_areas_size(jobj_hdr2);
+		hdr_size = LUKS2_hdr_and_areas_size_jobj(jobj_hdr2);
 	else {
 		r = (state_hdr1 == HDR_FAIL_IO && state_hdr2 == HDR_FAIL_IO) ? -EIO : -EINVAL;
 		goto err;
@@ -788,14 +786,11 @@ int LUKS2_hdr_version_unlocked(struct crypt_device *cd, const char *backup_file)
 		flags |= O_DIRECT;
 
 	devfd = open(device_path(device), flags);
-	if (devfd < 0)
-		goto err;
-
-	if ((read_lseek_blockwise(devfd, device_block_size(cd, device),
+	if (devfd != -1 && (read_lseek_blockwise(devfd, device_block_size(cd, device),
 	     device_alignment(device), &hdr, sizeof(hdr), 0) == sizeof(hdr)) &&
 	    !memcmp(hdr.magic, LUKS2_MAGIC_1ST, LUKS2_MAGIC_L))
 		r = (int)be16_to_cpu(hdr.version);
-err:
+
 	if (devfd != -1)
 		close(devfd);
 

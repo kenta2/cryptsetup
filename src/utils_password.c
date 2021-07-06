@@ -22,8 +22,6 @@
 #include "cryptsetup.h"
 #include <termios.h>
 
-int opt_force_password = 0;
-
 #if defined ENABLE_PWQUALITY
 #include <pwquality.h>
 
@@ -31,7 +29,7 @@ static int tools_check_pwquality(const char *password)
 {
 	int r;
 	void *auxerror;
-	pwquality_settings_t *pwq; 
+	pwquality_settings_t *pwq;
 
 	log_dbg("Checking new password using default pwquality settings.");
 	pwq = pwquality_default_settings();
@@ -181,13 +179,13 @@ static int interactive_pass(const char *prompt, char *pass, size_t maxlen,
 		outfd = infd;
 
 	if (tcgetattr(infd, &orig))
-		goto out_err;
+		goto out;
 
 	memcpy(&tmp, &orig, sizeof(tmp));
 	tmp.c_lflag &= ~ECHO;
 
 	if (prompt && write(outfd, prompt, strlen(prompt)) < 0)
-		goto out_err;
+		goto out;
 
 	tcsetattr(infd, TCSAFLUSH, &tmp);
 	if (timeout)
@@ -195,8 +193,7 @@ static int interactive_pass(const char *prompt, char *pass, size_t maxlen,
 	else
 		failed = untimed_read(infd, pass, maxlen);
 	tcsetattr(infd, TCSAFLUSH, &orig);
-
-out_err:
+out:
 	if (!failed && write(outfd, "\n", 1)) {};
 
 	if (infd != STDIN_FILENO)
@@ -206,8 +203,7 @@ out_err:
 
 static int crypt_get_key_tty(const char *prompt,
 			     char **key, size_t *key_size,
-			     int timeout, int verify,
-			     struct crypt_device *cd)
+			     int timeout, int verify)
 {
 	int key_size_max = DEFAULT_PASSPHRASE_SIZE_MAX;
 	int r = -EINVAL;
@@ -226,7 +222,7 @@ static int crypt_get_key_tty(const char *prompt,
 
 	if (interactive_pass(prompt, pass, key_size_max, timeout)) {
 		log_err(_("Error reading passphrase from terminal."));
-		goto out_err;
+		goto out;
 	}
 
 	if (verify) {
@@ -234,26 +230,26 @@ static int crypt_get_key_tty(const char *prompt,
 		if (!pass_verify) {
 			log_err(_("Out of memory while reading passphrase."));
 			r = -ENOMEM;
-			goto out_err;
+			goto out;
 		}
 
 		if (interactive_pass(_("Verify passphrase: "),
 		    pass_verify, key_size_max, timeout)) {
 			log_err(_("Error reading passphrase from terminal."));
-			goto out_err;
+			goto out;
 		}
 
 		if (strncmp(pass, pass_verify, key_size_max)) {
 			log_err(_("Passphrases do not match."));
 			r = -EPERM;
-			goto out_err;
+			goto out;
 		}
 	}
 
 	*key = pass;
 	*key_size = strlen(pass);
 	r = 0;
-out_err:
+out:
 	crypt_safe_free(pass_verify);
 	if (r)
 		crypt_safe_free(pass);
@@ -290,7 +286,7 @@ int tools_get_key(const char *prompt,
 					snprintf(tmp, sizeof(tmp), _("Enter passphrase for %s: "), backing_file ?: crypt_get_device_name(cd));
 					free(backing_file);
 				}
-				r = crypt_get_key_tty(prompt ?: tmp, key, key_size, timeout, verify, cd);
+				r = crypt_get_key_tty(prompt ?: tmp, key, key_size, timeout, verify);
 			}
 		} else {
 			log_dbg("STDIN descriptor passphrase entry requested.");
@@ -309,7 +305,7 @@ int tools_get_key(const char *prompt,
 		set_int_block(1);
 
 	/* Check pwquality for password (not keyfile) */
-	if (pwquality && !opt_force_password && !key_file && !r)
+	if (pwquality && !key_file && !r)
 		r = tools_check_password(*key);
 
 	return r;
@@ -325,7 +321,7 @@ void tools_passphrase_msg(int r)
 
 int tools_read_mk(const char *file, char **key, int keysize)
 {
-	int fd;
+	int fd = -1, r = -EINVAL;
 
 	if (keysize <= 0 || !key)
 		return -EINVAL;
@@ -337,20 +333,24 @@ int tools_read_mk(const char *file, char **key, int keysize)
 	fd = open(file, O_RDONLY);
 	if (fd == -1) {
 		log_err(_("Cannot read keyfile %s."), file);
-		goto fail;
+		goto out;
 	}
 
 	if (read_buffer(fd, *key, keysize) != keysize) {
 		log_err(_("Cannot read %d bytes from keyfile %s."), keysize, file);
-		close(fd);
-		goto fail;
+		goto out;
 	}
-	close(fd);
-	return 0;
-fail:
-	crypt_safe_free(*key);
-	*key = NULL;
-	return -EINVAL;
+	r = 0;
+out:
+	if (fd != -1)
+		close(fd);
+
+	if (r) {
+		crypt_safe_free(*key);
+		*key = NULL;
+	}
+
+	return r;
 }
 
 int tools_write_mk(const char *file, const char *key, int keysize)
