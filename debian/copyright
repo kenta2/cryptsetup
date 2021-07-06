@@ -52,7 +52,13 @@ Files: lib/base64.c
 Copyright: © 1999-2001, 2004-2006, 2009-2018 Free Software Foundation, Inc.
 License: GPL-2+
 
-Files: lib/crypto_backend/* lib/loopaes/* lib/tcrypt/* lib/verity/*
+Files: lib/bitlk/*
+Copyright: © 2019-2021 Red Hat, Inc.
+           © 2019-2021 Milan Broz <gmazyland@gmail.com>
+           © 2019-2021 Vojtech Trefny
+License: LGPL-2.1+
+
+Files: lib/crypto_backend/* lib/integrity/* lib/loopaes/* lib/tcrypt/* lib/verity/*
 Copyright: © 2009-2021 Red Hat, Inc.
            © 2010-2021 Milan Broz <gmazyland@gmail.com>
 License: LGPL-2.1+
@@ -80,6 +86,14 @@ License: public-domain
  .
  You may use this program, or code or tables extracted from it, as
  desired without restriction.
+
+Files: lib/bitops.h
+Copyright: © Karel Zak <kzak@redhat.com>
+License: public-domain
+ Karel Zak's licence is as follows:
+ .
+ No copyright is claimed.  This code is in the public domain; do with it
+ what you wish.
 
 License: GPL-2+
  This package is free software; you can redistribute it and/or modify
