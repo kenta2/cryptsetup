@@ -1,5 +1,6 @@
 AUTHORS
 FAQ
+README.md
 debian/README.debug
 debian/README.gnupg
 debian/README.gnupg-sc
