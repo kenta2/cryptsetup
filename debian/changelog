@@ -5,6 +5,7 @@ cryptsetup (2:2.3.6-1) UNRELEASED; urgency=medium
     (Closes: #990490)
   * Adjust d/copyright.
   * d/cryptsetup.docs: Add upstream's README.md.
+  * d/*.{pre,post}*: Explicitly exit with status code 0.
 
  -- Guilhem Moulin <guilhem@debian.org>  Sun, 18 Jul 2021 18:58:04 +0200
 
