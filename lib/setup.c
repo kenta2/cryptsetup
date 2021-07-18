@@ -657,7 +657,7 @@ int crypt_set_data_device(struct crypt_device *cd, const char *device)
 	log_dbg(cd, "Setting ciphertext data device to %s.", device ?: "(none)");
 
 	if (!isLUKS1(cd->type) && !isLUKS2(cd->type) && !isVERITY(cd->type) &&
-	    !isINTEGRITY(cd->type)) {
+	    !isINTEGRITY(cd->type) && !isTCRYPT(cd->type)) {
 		log_err(cd, _("This operation is not supported for this device type."));
 		return -EINVAL;
 	}
@@ -844,11 +844,6 @@ static int _crypt_load_tcrypt(struct crypt_device *cd, struct crypt_params_tcryp
 
 	if (!params)
 		return -EINVAL;
-
-	if (cd->metadata_device) {
-		log_err(cd, _("Detached metadata device is not supported for this crypt type."));
-		return -EINVAL;
-	}
 
 	r = init_crypto(cd);
 	if (r < 0)
@@ -1084,10 +1079,15 @@ static int _init_by_name_crypt_none(struct crypt_device *cd)
 					      _mode);
 
 	if (!r) {
-		snprintf(cd->u.none.cipher_spec, sizeof(cd->u.none.cipher_spec),
+		r = snprintf(cd->u.none.cipher_spec, sizeof(cd->u.none.cipher_spec),
 			 "%s-%s", cd->u.none.cipher, _mode);
-		cd->u.none.cipher_mode = cd->u.none.cipher_spec + strlen(cd->u.none.cipher) + 1;
-		cd->u.none.key_size = tgt->u.crypt.vk->keylength;
+		if (r < 0 || (size_t)r >= sizeof(cd->u.none.cipher_spec))
+			r = -EINVAL;
+		else {
+			cd->u.none.cipher_mode = cd->u.none.cipher_spec + strlen(cd->u.none.cipher) + 1;
+			cd->u.none.key_size = tgt->u.crypt.vk->keylength;
+			r = 0;
+		}
 	}
 
 	dm_targets_free(cd, &dmd);
@@ -4976,6 +4976,9 @@ const char *crypt_get_cipher_mode(struct crypt_device *cd)
 /* INTERNAL only */
 const char *crypt_get_integrity(struct crypt_device *cd)
 {
+	if (!cd)
+		return NULL;
+
 	if (isINTEGRITY(cd->type))
 		return cd->u.integrity.params.integrity;
 
