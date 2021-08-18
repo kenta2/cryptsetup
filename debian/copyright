@@ -44,7 +44,7 @@ Copyright: © 2005-2015 Jonas Meurer <jonas@freesources.org>
            © 2018 Erik Nellessen
 License: GPL-2+
 
-Files: docs/examples/*
+Files: docs/examples/* tests/all-symbols-test.c
 Copyright: © 2011-2021 Red Hat, Inc.
 License: LGPL-2.1+
 
@@ -56,6 +56,11 @@ Files: lib/bitlk/*
 Copyright: © 2019-2021 Red Hat, Inc.
            © 2019-2021 Milan Broz <gmazyland@gmail.com>
            © 2019-2021 Vojtech Trefny
+License: LGPL-2.1+
+
+Files: tokens/ssh/*
+Copyright: © 2016-2021 Milan Broz <gmazyland@gmail.com>
+           © 2020-2021 Vojtech Trefny
 License: LGPL-2.1+
 
 Files: lib/crypto_backend/* lib/integrity/* lib/loopaes/* lib/tcrypt/* lib/verity/*
