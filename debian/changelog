@@ -1,4 +1,4 @@
-cryptsetup (2:2.3.6-1) UNRELEASED; urgency=medium
+cryptsetup (2:2.4.0-1) UNRELEASED; urgency=medium
 
   * New upstream bugfix release.  (Closes: #949336)
   * Remove obsolete upstart configuration files on upgrade and purge.
