@@ -14,14 +14,14 @@ scsi_debug_teardown() {
 	local _tries=15;
 
 	while [ -b "$1" -a $_tries -gt 0 ]; do
-		rmmod scsi_debug 2> /dev/null
+		rmmod scsi_debug >/dev/null 2>&1
 		if [ -b "$1" ]; then
 			sleep .1
 			_tries=$((_tries-1))
 		fi
 	done
 
-	test ! -b "$1" || rmmod scsi_debug
+	test ! -b "$1" || rmmod scsi_debug >/dev/null 2>&1
 }
 
 cleanup() {
@@ -60,7 +60,12 @@ skip()
 }
 
 add_device() {
-	modprobe scsi_debug $@ delay=0
+	rmmod scsi_debug >/dev/null 2>&1
+	if [ -d /sys/module/scsi_debug ] ; then
+		echo "Cannot use scsi_debug module (in use or compiled-in), test skipped."
+		exit 77
+	fi
+	modprobe scsi_debug $@ delay=0 >/dev/null 2>&1
 	if [ $? -ne 0 ] ; then
 		echo "This kernel seems to not support proper scsi_debug module, test skipped."
 		exit 77
@@ -116,8 +121,8 @@ RUN() {
 		_fsize=$(stat -c "%s" $_dev)
 	}
 
-        case "$_res" in
-        P)
+	case "$_res" in
+	P)
 		MSG="Testing $_fn on $_type with params $@ [expecting TRUE]..."
 		$BW_UNIT $_dev $_fn $@
 		if [ $? -ne 0 ]; then
@@ -131,8 +136,8 @@ RUN() {
 		else
 			MSG="$MSG[OK]"
 		fi
-                ;;
-        F)
+		;;
+	F)
 		MSG="Testing $_fn on $_type with params $@ [expecting FALSE]..."
 		$BW_UNIT $_dev $_fn $@ 2> /dev/null
 		if [ $? -eq 0 ]; then
@@ -146,11 +151,11 @@ RUN() {
 		else
 			MSG="$MSG[OK]"
 		fi
-                ;;
-        *)
-                fail "Internal test error"
-                ;;
-        esac
+		;;
+	*)
+		fail "Internal test error"
+		;;
+	esac
 
 	trunc_file $_fsize $_dev
 }

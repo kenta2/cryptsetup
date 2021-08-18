@@ -215,6 +215,15 @@ void crypt_set_log_callback(struct crypt_device *cd,
  * @param msg log message
  */
 void crypt_log(struct crypt_device *cd, int level, const char *msg);
+
+/**
+ * Log function with variable arguments.
+ *
+ * @param cd crypt device handle
+ * @param level log level
+ * @param format formatted log message
+ */
+void crypt_logf(struct crypt_device *cd, int level, const char *format, ...);
 /** @} */
 
 /**
@@ -590,7 +599,7 @@ struct crypt_params_luks2 {
 	const struct crypt_params_integrity *integrity_params; /**< Data integrity parameters or @e NULL*/
 	size_t data_alignment;   /**< data area alignment in 512B sectors, data offset is multiple of this */
 	const char *data_device; /**< detached encrypted data device or @e NULL */
-	uint32_t sector_size;    /**< encryption sector size */
+	uint32_t sector_size;    /**< encryption sector size, 0 triggers auto-detection for optimal encryption sector size */
 	const char *label;       /**< header label or @e NULL*/
 	const char *subsystem;   /**< header subsystem label or @e NULL*/
 };
@@ -1113,6 +1122,8 @@ int crypt_keyslot_destroy(struct crypt_device *cd, int keyslot);
 #define CRYPT_ACTIVATE_NO_READ_WORKQUEUE (1 << 24)
 /** dm-crypt: bypass internal workqueue and process write requests synchronously. */
 #define CRYPT_ACTIVATE_NO_WRITE_WORKQUEUE (1 << 25)
+/** dm-integrity: reset automatic recalculation */
+#define CRYPT_ACTIVATE_RECALCULATE_RESET (1 << 26)
 
 /**
  * Active device runtime attributes
@@ -1355,6 +1366,8 @@ int crypt_activate_by_keyring(struct crypt_device *cd,
 #define CRYPT_DEACTIVATE_DEFERRED (1 << 0)
 /** force deactivation - if the device is busy, it is replaced by error device */
 #define CRYPT_DEACTIVATE_FORCE    (1 << 1)
+/** if set, remove lazy deactivation */
+#define CRYPT_DEACTIVATE_DEFERRED_CANCEL (1 << 2)
 
 /**
  * Deactivate crypt device. This function tries to remove active device-mapper
@@ -1459,6 +1472,17 @@ crypt_status_info crypt_status(struct crypt_device *cd, const char *name);
 int crypt_dump(struct crypt_device *cd);
 
 /**
+ * Dump JSON-formatted information about LUKS2 device
+ *
+ * @param cd crypt device handle (only LUKS2 format supported)
+ * @param json buffer with JSON, if NULL use log callback for output
+ * @param flags dump flags (reserved)
+ *
+ * @return @e 0 on success or negative errno value otherwise.
+ */
+int crypt_dump_json(struct crypt_device *cd, const char **json, uint32_t flags);
+
+/**
  * Get cipher used in device.
  *
  * @param cd crypt device handle
@@ -1549,6 +1573,21 @@ int crypt_get_volume_key_size(struct crypt_device *cd);
  *
  */
 int crypt_get_sector_size(struct crypt_device *cd);
+
+/**
+ * Check if initialized LUKS context uses detached header
+ * (LUKS header located on a different device than data.)
+ *
+ * @param cd crypt device handle
+ *
+ * @return @e 1 if detached header is used, @e 0 if not
+ * or negative errno value otherwise.
+ *
+ * @note This is a runtime attribute, it does not say
+ * 	 if a LUKS device requires detached header.
+ * 	 This function works only with LUKS devices.
+ */
+int crypt_header_is_detached(struct crypt_device *cd);
 
 /**
  * Get device parameters for VERITY device.
@@ -1947,6 +1986,19 @@ int crypt_wipe(struct crypt_device *cd,
  * @{
  */
 
+/**
+ * Get number of tokens supported for device type.
+ *
+ * @param type crypt device type
+ *
+ * @return token count or negative errno otherwise if device
+ * doesn't not support tokens.
+ *
+ * @note Real number of supported tokens for a particular device depends
+ *       on usable metadata area size.
+ */
+int crypt_token_max(const char *type);
+
 /** Iterate through all tokens */
 #define CRYPT_ANY_TOKEN -1
 
@@ -2104,10 +2156,51 @@ int crypt_token_is_assigned(struct crypt_device *cd,
  * @param buffer returned allocated buffer with password
  * @param buffer_len length of the buffer
  * @param usrptr user data in @link crypt_activate_by_token @endlink
+ *
+ * @return 0 on success (token passed LUKS2 keyslot passphrase in buffer) or
+ *         negative errno otherwise.
+ *
+ * @note Negative ENOANO errno means that token is PIN protected and caller should
+ *       use @link crypt_activate_by_token_pin @endlink with PIN provided.
+ *
+ * @note Negative EAGAIN errno means token handler requires additional hardware
+ *       not present in the system.
  */
 typedef int (*crypt_token_open_func) (
 	struct crypt_device *cd,
 	int token,
+	char **buffer,
+	size_t *buffer_len,
+	void *usrptr);
+
+/**
+ * Token handler open with passphrase/PIN function prototype.
+ * This function retrieves password from a token and return allocated buffer
+ * containing this password. This buffer has to be deallocated by calling
+ * free() function and content should be wiped before deallocation.
+ *
+ * @param cd crypt device handle
+ * @param token token id
+ * @param pin passphrase (or PIN) to unlock token (may be binary data)
+ * @param pin_size size of @e pin
+ * @param buffer returned allocated buffer with password
+ * @param buffer_len length of the buffer
+ * @param usrptr user data in @link crypt_activate_by_token @endlink
+ *
+ * @return 0 on success (token passed LUKS2 keyslot passphrase in buffer) or
+ *         negative errno otherwise.
+ *
+ * @note Negative ENOANO errno means that token is PIN protected and PIN was
+ *       missing or wrong.
+ *
+ * @note Negative EAGAIN errno means token handler requires additional hardware
+ *       not present in the system.
+ */
+typedef int (*crypt_token_open_pin_func) (
+	struct crypt_device *cd,
+	int token,
+	const char *pin,
+	size_t pin_size,
 	char **buffer,
 	size_t *buffer_len,
 	void *usrptr);
@@ -2150,6 +2243,16 @@ typedef int (*crypt_token_validate_func) (struct crypt_device *cd, const char *j
 typedef void (*crypt_token_dump_func) (struct crypt_device *cd, const char *json);
 
 /**
+ * Token handler version function prototype.
+ * This function is supposed to return pointer to version string information.
+ *
+ * @note The returned string is advised to contain only version.
+ *	 For example '1.0.0' or 'v1.2.3.4'.
+ *
+ */
+typedef const char * (*crypt_token_version_func) (void);
+
+/**
  * Token handler
  */
 typedef struct  {
@@ -2170,6 +2273,30 @@ typedef struct  {
 int crypt_token_register(const crypt_token_handler *handler);
 
 /**
+ * Report configured path where library searches for external token handlers
+ *
+ * @return @e absolute path when external tokens are enabled or @e NULL otherwise.
+ */
+const char *crypt_token_external_path(void);
+
+/**
+ * Disable external token handlers (plugins) support
+ * If disabled, it cannot be enabled again.
+ */
+void crypt_token_external_disable(void);
+
+/** ABI version for external token in libcryptsetup-token-<name>.so */
+#define CRYPT_TOKEN_ABI_VERSION1    "CRYPTSETUP_TOKEN_1.0"
+
+/** ABI exported symbol for external token */
+#define CRYPT_TOKEN_ABI_OPEN        "cryptsetup_token_open" /* mandatory */
+#define CRYPT_TOKEN_ABI_OPEN_PIN    "cryptsetup_token_open_pin"
+#define CRYPT_TOKEN_ABI_BUFFER_FREE "cryptsetup_token_buffer_free"
+#define CRYPT_TOKEN_ABI_VALIDATE    "cryptsetup_token_validate"
+#define CRYPT_TOKEN_ABI_DUMP        "cryptsetup_token_dump"
+#define CRYPT_TOKEN_ABI_VERSION     "cryptsetup_token_version"
+
+/**
  * Activate device or check key using a token.
  *
  * @param cd crypt device handle
@@ -2179,10 +2306,69 @@ int crypt_token_register(const crypt_token_handler *handler);
  * @param flags activation flags
  *
  * @return unlocked key slot number or negative errno otherwise.
+ *
+ * @note EPERM errno means token provided passphrase successfully, but
+ *       passphrase did not unlock any keyslot associated with the token.
+ *
+ * @note ENOENT errno means no token (or subsequently assigned keyslot) was
+ *       eligible to unlock device.
+ *
+ * @note ENOANO errno means that token is PIN protected and you should call
+ *       @link crypt_activate_by_token_pin @endlink with PIN
+ *
+ * @note Negative EAGAIN errno means token handler requires additional hardware
+ *       not present in the system.
+ *
+ * @note with @param token set to CRYPT_ANY_TOKEN libcryptsetup runs best effort loop
+ *       to unlock device using any available token. It may happen that various token handlers
+ *       return different error codes. At the end loop returns error codes in the following
+ *       order (from the most significant to the least) any negative errno except those
+ *       listed below, non negative token id (success), -ENOANO, -EAGAIN, -EPERM, -ENOENT.
  */
 int crypt_activate_by_token(struct crypt_device *cd,
 	const char *name,
 	int token,
+	void *usrptr,
+	uint32_t flags);
+
+/**
+ * Activate device or check key using a token with PIN.
+ *
+ * @param cd crypt device handle
+ * @param name name of device to create, if @e NULL only check token
+ * @param type restrict type of token, if @e NULL all types are allowed
+ * @param token requested token to check or CRYPT_ANY_TOKEN to check all
+ * @param pin passphrase (or PIN) to unlock token (may be binary data)
+ * @param pin_size size of @e pin
+ * @param usrptr provided identification in callback
+ * @param flags activation flags
+ *
+ * @return unlocked key slot number or negative errno otherwise.
+ *
+ * @note EPERM errno means token provided passphrase successfully, but
+ *       passphrase did not unlock any keyslot associated with the token.
+ *
+ * @note ENOENT errno means no token (or subsequently assigned keyslot) was
+ *       eligible to unlock device.
+ *
+ * @note ENOANO errno means that token is PIN protected and was either missing
+ *       (NULL) or wrong.
+ *
+ * @note Negative EAGAIN errno means token handler requires additional hardware
+ *       not present in the system.
+ *
+ * @note with @param token set to CRYPT_ANY_TOKEN libcryptsetup runs best effort loop
+ *       to unlock device using any available token. It may happen that various token handlers
+ *       return different error codes. At the end loop returns error codes in the following
+ *       order (from the most significant to the least) any negative errno except those
+ *       listed below, non negative token id (success), -ENOANO, -EAGAIN, -EPERM, -ENOENT.
+ */
+int crypt_activate_by_token_pin(struct crypt_device *cd,
+	const char *name,
+	const char *type,
+	int token,
+	const char *pin,
+	size_t pin_size,
 	void *usrptr,
 	uint32_t flags);
 /** @} */
@@ -2296,16 +2482,33 @@ int crypt_reencrypt_init_by_keyring(struct crypt_device *cd,
 	const struct crypt_params_reencrypt *params);
 
 /**
- * Run data reencryption.
+ * Legacy data reencryption function.
  *
  * @param cd crypt device handle
  * @param progress is a callback function reporting device \b size,
  * current \b offset of reencryption and provided \b usrptr identification
  *
  * @return @e 0 on success or negative errno value otherwise.
+ *
+ * @deprecated Use @link crypt_reencrypt_run @endlink instead.
  */
 int crypt_reencrypt(struct crypt_device *cd,
-		    int (*progress)(uint64_t size, uint64_t offset, void *usrptr));
+		    int (*progress)(uint64_t size, uint64_t offset, void *usrptr))
+__attribute__((deprecated));
+
+/**
+ * Run data reencryption.
+ *
+ * @param cd crypt device handle
+ * @param progress is a callback function reporting device \b size,
+ * current \b offset of reencryption and provided \b usrptr identification
+ * @param usrptr progress specific data
+ *
+ * @return @e 0 on success or negative errno value otherwise.
+ */
+int crypt_reencrypt_run(struct crypt_device *cd,
+		    int (*progress)(uint64_t size, uint64_t offset, void *usrptr),
+		    void *usrptr);
 
 /**
  * Reencryption status info

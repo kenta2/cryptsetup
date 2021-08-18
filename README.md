@@ -10,7 +10,7 @@ These include **plain** **dm-crypt** volumes, **LUKS** volumes, **loop-AES**,
 
 The project also includes a **veritysetup** utility used to conveniently setup
 [DMVerity](https://gitlab.com/cryptsetup/cryptsetup/wikis/DMVerity) block integrity checking kernel module
-and, since version 2.0,  **integritysetup** to setup
+and **integritysetup** to setup
 [DMIntegrity](https://gitlab.com/cryptsetup/cryptsetup/wikis/DMIntegrity) block integrity kernel module.
 
 
@@ -44,16 +44,16 @@ Download
 --------
 All release tarballs and release notes are hosted on [kernel.org](https://www.kernel.org/pub/linux/utils/cryptsetup/).
 
-**The latest stable cryptsetup version is 2.3.5**
-  * [cryptsetup-2.3.5.tar.xz](https://www.kernel.org/pub/linux/utils/cryptsetup/v2.3/cryptsetup-2.3.5.tar.xz)
-  * Signature [cryptsetup-2.3.5.tar.sign](https://www.kernel.org/pub/linux/utils/cryptsetup/v2.3/cryptsetup-2.3.5.tar.sign)
+**The latest stable cryptsetup version is 2.4.0**
+  * [cryptsetup-2.4.0.tar.xz](https://www.kernel.org/pub/linux/utils/cryptsetup/v2.4/cryptsetup-2.4.0.tar.xz)
+  * Signature [cryptsetup-2.4.0.tar.sign](https://www.kernel.org/pub/linux/utils/cryptsetup/v2.4/cryptsetup-2.4.0.tar.sign)
     _(You need to decompress file first to check signature.)_
-  * [Cryptsetup 2.3.5 Release Notes](https://www.kernel.org/pub/linux/utils/cryptsetup/v2.3/v2.3.5-ReleaseNotes).
+  * [Cryptsetup 2.4.0 Release Notes](https://www.kernel.org/pub/linux/utils/cryptsetup/v2.4/v2.4.0-ReleaseNotes).
 
 Previous versions
- * [Version 2.0.6](https://www.kernel.org/pub/linux/utils/cryptsetup/v2.0/cryptsetup-2.0.6.tar.xz) -
-   [Signature](https://www.kernel.org/pub/linux/utils/cryptsetup/v2.0/cryptsetup-2.0.6.tar.sign) -
-   [Release Notes](https://www.kernel.org/pub/linux/utils/cryptsetup/v2.0/v2.0.6-ReleaseNotes).
+ * [Version 2.3.6](https://www.kernel.org/pub/linux/utils/cryptsetup/v2.3/cryptsetup-2.3.6.tar.xz) -
+   [Signature](https://www.kernel.org/pub/linux/utils/cryptsetup/v2.3/cryptsetup-2.3.6.tar.sign) -
+   [Release Notes](https://www.kernel.org/pub/linux/utils/cryptsetup/v2.3/v2.3.6-ReleaseNotes).
  * [Version 1.7.5](https://www.kernel.org/pub/linux/utils/cryptsetup/v1.7/cryptsetup-1.7.5.tar.xz) -
    [Signature](https://www.kernel.org/pub/linux/utils/cryptsetup/v1.7/cryptsetup-1.7.5.tar.sign) -
    [Release Notes](https://www.kernel.org/pub/linux/utils/cryptsetup/v1.7/v1.7.5-ReleaseNotes).
@@ -69,9 +69,22 @@ The libcryptsetup API/ABI changes are tracked in [compatibility report](https://
 
 NLS PO files are maintained by [TranslationProject](https://translationproject.org/domain/cryptsetup.html).
 
+Required packages
+-----------------
+All distributions provide cryptsetup as distro package. If you need to compile cryptsetup youfself, some packages are required for compilation. Please always prefer distro specific build tools to manually configuring cryptsetup.
+Fo available compile options, check ``configure --help`` for more info. If you are using a git snapshot, you need to generate configure script with ``autogen.sh`` script.
+
+Here is the list of packages needed for the compilation of project for particular distributions:
+ * For Fedora: `git gcc make autoconf automake gettext-devel pkgconfig openssl-devel popt-devel device-mapper-devel libuuid-devel json-c-devel libblkid-devel findutils libtool libssh-devel tar`. Optionally `libargon2-devel libpwquality-devel`. To run internal testsuite you also need `sharutils device-mapper jq vim-common expect keyutils netcat shadow-utils openssh-clients openssh sshpass`.
+
+ * For Debian and Ubuntu: `git gcc make autoconf automake autopoint pkg-config libtool gettext libssl-dev libdevmapper-dev libpopt-dev uuid-dev libsepol1-dev libjson-c-dev libssh-dev libblkid-dev tar`. Optionally `libargon2-0-dev libpwquality-dev`. To run internal testsuite you also need `sharutils dmsetup jq xxd expect keyutils netcat passwd openssh-client sshpass`
+
+Note that the list could change as distributions evolve.
+
 Help!
 -----
-Please always read [FAQ](https://gitlab.com/cryptsetup/cryptsetup/wikis/FrequentlyAskedQuestions) first.
+Please read the [FAQ](https://gitlab.com/cryptsetup/cryptsetup/wikis/FrequentlyAskedQuestions) and search the manuals (man page, man-page) before posting questions in the mailing list.   You will be able to ask better questions and better understand the answers.  The FAQ is online and in the source code.  The man pages are in source and should be available after installation using standard man commands.  e.g.  man cryptsetup
+
 For cryptsetup and LUKS related questions, please use the dm-crypt mailing list, [dm-crypt@saout.de](mailto:dm-crypt@saout.de).
 
 If you want to subscribe just send an empty mail to [dm-crypt-subscribe@saout.de](mailto:dm-crypt-subscribe@saout.de).

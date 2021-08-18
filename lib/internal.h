@@ -41,49 +41,25 @@
 #include "utils_fips.h"
 #include "utils_keyring.h"
 #include "utils_io.h"
-#include "crypto_backend.h"
+#include "crypto_backend/crypto_backend.h"
 #include "utils_storage_wrappers.h"
 
 #include "libcryptsetup.h"
 
-/* to silent gcc -Wcast-qual for const cast */
-#define CONST_CAST(x) (x)(uintptr_t)
+#include "libcryptsetup_macros.h"
+#include "libcryptsetup_symver.h"
 
-#define SHIFT_4K		12
-#define SECTOR_SHIFT		9
-#define SECTOR_SIZE		(1 << SECTOR_SHIFT)
-#define MAX_SECTOR_SIZE		4096 /* min page size among all platforms */
-#define DEFAULT_DISK_ALIGNMENT	1048576 /* 1MiB */
-#define DEFAULT_MEM_ALIGNMENT	4096
 #define LOG_MAX_LEN		4096
 #define MAX_DM_DEPS		32
 
 #define CRYPT_SUBDEV           "SUBDEV" /* prefix for sublayered devices underneath public crypt types */
-
-#define at_least(a, b) ({ __typeof__(a) __at_least = (a); (__at_least >= (b))?__at_least:(b); })
-
-#define MISALIGNED(a, b)	((a) & ((b) - 1))
-#define MISALIGNED_4K(a)	MISALIGNED((a), 1 << SHIFT_4K)
-#define MISALIGNED_512(a)	MISALIGNED((a), 1 << SECTOR_SHIFT)
-#define NOTPOW2(a)		MISALIGNED((a), (a))
-
-#ifndef ARRAY_SIZE
-# define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
-#endif
-
-#define MOVE_REF(x, y) \
-	do { \
-		typeof (x) *_px = &(x), *_py = &(y); \
-		*_px = *_py; \
-		*_py = NULL; \
-	} while (0)
 
 #ifndef O_CLOEXEC
 #define O_CLOEXEC 0
 #endif
 
 struct crypt_device;
-struct luks2_reenc_context;
+struct luks2_reencrypt;
 
 struct volume_key {
 	int id;
@@ -144,6 +120,8 @@ void device_sync(struct crypt_device *cd, struct device *device);
 int device_check_size(struct crypt_device *cd,
 		      struct device *device,
 		      uint64_t req_offset, int falloc);
+void device_set_block_size(struct device *device, size_t size);
+size_t device_optimal_encryption_sector_size(struct crypt_device *cd, struct device *device);
 
 int device_open_locked(struct crypt_device *cd, struct device *device, int flags);
 int device_read_lock(struct crypt_device *cd, struct device *device);
@@ -184,7 +162,7 @@ char *crypt_get_partition_device(const char *dev_path, uint64_t offset, uint64_t
 char *crypt_get_base_device(const char *dev_path);
 uint64_t crypt_dev_partition_offset(const char *dev_path);
 int lookup_by_disk_id(const char *dm_uuid);
-int lookup_by_sysfs_uuid_field(const char *dm_uuid, size_t max_len);
+int lookup_by_sysfs_uuid_field(const char *dm_uuid);
 int crypt_uuid_cmp(const char *dm_uuid, const char *hdr_uuid);
 
 size_t crypt_getpagesize(void);
@@ -193,11 +171,10 @@ uint64_t crypt_getphysmemory_kb(void);
 
 int init_crypto(struct crypt_device *ctx);
 
-void logger(struct crypt_device *cd, int level, const char *file, int line, const char *format, ...) __attribute__ ((format (printf, 5, 6)));
-#define log_dbg(c, x...) logger(c, CRYPT_LOG_DEBUG, __FILE__, __LINE__, x)
-#define log_std(c, x...) logger(c, CRYPT_LOG_NORMAL, __FILE__, __LINE__, x)
-#define log_verbose(c, x...) logger(c, CRYPT_LOG_VERBOSE, __FILE__, __LINE__, x)
-#define log_err(c, x...) logger(c, CRYPT_LOG_ERROR, __FILE__, __LINE__, x)
+#define log_dbg(c, x...) crypt_logf(c, CRYPT_LOG_DEBUG, x)
+#define log_std(c, x...) crypt_logf(c, CRYPT_LOG_NORMAL, x)
+#define log_verbose(c, x...) crypt_logf(c, CRYPT_LOG_VERBOSE, x)
+#define log_err(c, x...) crypt_logf(c, CRYPT_LOG_ERROR, x)
 
 int crypt_get_debug_level(void);
 
@@ -222,8 +199,8 @@ int PLAIN_activate(struct crypt_device *cd,
 		     uint32_t flags);
 
 void *crypt_get_hdr(struct crypt_device *cd, const char *type);
-void crypt_set_reenc_context(struct crypt_device *cd, struct luks2_reenc_context *rh);
-struct luks2_reenc_context *crypt_get_reenc_context(struct crypt_device *cd);
+void crypt_set_luks2_reencrypt(struct crypt_device *cd, struct luks2_reencrypt *rh);
+struct luks2_reencrypt *crypt_get_luks2_reencrypt(struct crypt_device *cd);
 
 int onlyLUKS2(struct crypt_device *cd);
 int onlyLUKS2mask(struct crypt_device *cd, uint32_t mask);
@@ -249,7 +226,7 @@ int crypt_use_keyring_for_vk(struct crypt_device *cd);
 void crypt_drop_keyring_key_by_description(struct crypt_device *cd, const char *key_description, key_type_t ktype);
 void crypt_drop_keyring_key(struct crypt_device *cd, struct volume_key *vks);
 
-static inline uint64_t version(uint16_t major, uint16_t minor, uint16_t patch, uint16_t release)
+static inline uint64_t compact_version(uint16_t major, uint16_t minor, uint16_t patch, uint16_t release)
 {
 	return (uint64_t)release | ((uint64_t)patch << 16) | ((uint64_t)minor << 32) | ((uint64_t)major << 48);
 }

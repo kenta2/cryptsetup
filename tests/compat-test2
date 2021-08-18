@@ -56,7 +56,7 @@ function remove_mapping()
 	[ -n "$TEST_KEYRING" ] && keyctl unlink $TEST_KEYRING "@u" >/dev/null
 	unset TEST_KEYRING
 
-	rmmod scsi_debug 2> /dev/null
+	rmmod scsi_debug >/dev/null 2>&1
 	scsi_debug_teardown $DEV
 }
 
@@ -82,7 +82,7 @@ function fips_mode()
 
 function can_fail_fips()
 {
-        # Ignore this fail if running in FIPS mode
+	# Ignore this fail if running in FIPS mode
 	fips_mode || fail $1
 }
 
@@ -252,27 +252,31 @@ scsi_debug_teardown() {
 	local _tries=15;
 
 	while [ -b "$1" -a $_tries -gt 0 ]; do
-		rmmod scsi_debug 2> /dev/null
+		rmmod scsi_debug >/dev/null 2>&1
 		if [ -b "$1" ]; then
 			sleep .1
 			_tries=$((_tries-1))
 		fi
 	done
 
-	test ! -b "$1" || rmmod scsi_debug 2> /dev/null
+	test ! -b "$1" || rmmod scsi_debug >/dev/null 2>&1
 }
 
 function add_scsi_device() {
 	scsi_debug_teardown $DEV
-        modprobe scsi_debug $@ delay=0
-        if [ $? -ne 0 ] ; then
-                echo "This kernel seems to not support proper scsi_debug module, test skipped."
-                exit 77
-        fi
+	if [ -d /sys/module/scsi_debug ] ; then
+		echo "Cannot use scsi_debug module (in use or compiled-in), test skipped."
+		exit 77
+	fi
+	modprobe scsi_debug $@ delay=0 >/dev/null 2>&1
+	if [ $? -ne 0 ] ; then
+		echo "This kernel seems to not support proper scsi_debug module, test skipped."
+		exit 77
+	fi
 
-        sleep 1
-        DEV="/dev/"$(grep -l -e scsi_debug /sys/block/*/device/model | cut -f4 -d /)
-        [ -b $DEV ] || fail "Cannot find $DEV."
+	sleep 1
+	DEV="/dev/"$(grep -l -e scsi_debug /sys/block/*/device/model | cut -f4 -d /)
+	[ -b $DEV ] || fail "Cannot find $DEV."
 }
 
 export LANG=C
@@ -317,6 +321,8 @@ echo $PWD1 | $CRYPTSETUP -q $FAST_PBKDF_OPT -c aes-cbc-essiv:sha256 -s 128 luksF
 prepare "[4] format using hash sha512" wipe
 echo $PWD1 | $CRYPTSETUP $FAST_PBKDF_OPT -h sha512 -c aes-cbc-essiv:sha256 -s 128 luksFormat --type luks2 $LOOPDEV || fail
 $CRYPTSETUP -q luksDump  $LOOPDEV | grep "0: pbkdf2" -A2 | grep "Hash:" | grep -qe sha512 || fail
+# Check JSON dump for some mandatory section
+$CRYPTSETUP -q luksDump  $LOOPDEV --dump-json-metadata | grep -q '\"tokens\":' || fail
 
 prepare "[5] open"
 echo $PWD1 | $CRYPTSETUP luksOpen $LOOPDEV $DEV_NAME --test-passphrase || fail
@@ -543,10 +549,10 @@ $CRYPTSETUP close $DEV_NAME || fail
 add_scsi_device dev_size_mb=32 sector_size=4096
 echo $PWD1 | $CRYPTSETUP luksFormat --type luks2 $FAST_PBKDF_OPT $DEV || fail
 echo $PWD1 | $CRYPTSETUP open $DEV $DEV_NAME || fail
-OLD_SIZE=$($CRYPTSETUP status $DEV_NAME | grep "^ \+size:" | sed 's/.* \([0-9]\+\) .*/\1/')
+OLD_SIZE=$($CRYPTSETUP status $DEV_NAME | grep "^ \+size:" | sed 's/.* \([0-9]\+\) .*/\1/') #'
 echo $PWD1 | $CRYPTSETUP resize $DEV_NAME -b 7 2> /dev/null && fail
 dmsetup info $DEV_NAME | grep -q SUSPENDED && fail
-NEW_SIZE=$($CRYPTSETUP status $DEV_NAME | grep "^ \+size:" | sed 's/.* \([0-9]\+\) .*/\1/')
+NEW_SIZE=$($CRYPTSETUP status $DEV_NAME | grep "^ \+size:" | sed 's/.* \([0-9]\+\) .*/\1/') #'
 test $OLD_SIZE -eq $NEW_SIZE || fail
 $CRYPTSETUP close $DEV_NAME || fail
 
@@ -588,29 +594,24 @@ dmsetup remove --retry $DEV_NAME || fail
 
 prepare "[23] ChangeKey passphrase and keyfile" wipe
 # [0]$KEY1 [1]key0
-$CRYPTSETUP -q luksFormat --type luks2 $LOOPDEV $KEY1 $FAST_PBKDF_OPT --key-slot 0 || fail
+$CRYPTSETUP -q luksFormat --type luks2 $LOOPDEV $KEY1 $FAST_PBKDF_OPT --key-slot 0 --key-size 256 --luks2-keyslots-size 256k >/dev/null || fail
 echo $PWD1 | $CRYPTSETUP luksAddKey $LOOPDEV $FAST_PBKDF_OPT -d $KEY1 --key-slot 1 || fail
 # keyfile [0] / keyfile [0]
 $CRYPTSETUP luksChangeKey $LOOPDEV $FAST_PBKDF_OPT -d $KEY1 $KEY2 --key-slot 0 || fail
 # passphrase [1] / passphrase [1]
 echo -e "$PWD1\n$PWD2\n" | $CRYPTSETUP luksChangeKey $LOOPDEV $FAST_PBKDF_OPT --key-slot 1 || fail
-# keyfile [0] / keyfile [new]
+# keyfile [0] / keyfile [new] - with LUKS2 it should stay
 $CRYPTSETUP luksChangeKey $LOOPDEV $FAST_PBKDF_OPT -d $KEY2 $KEY1 || fail
-$CRYPTSETUP luksDump $LOOPDEV | grep -q "0: luks2" && fail
+$CRYPTSETUP luksDump $LOOPDEV | grep -q "0: luks2" || fail
+$CRYPTSETUP luksDump $LOOPDEV | grep -q "2: luks2" && fail
 # passphrase [1] / passphrase [new]
 echo -e "$PWD2\n$PWD1\n" | $CRYPTSETUP luksChangeKey $FAST_PBKDF_OPT $LOOPDEV || fail
-$CRYPTSETUP luksDump $LOOPDEV | grep -q "1: luks2" && fail
-# use all slots
-$CRYPTSETUP luksAddKey $LOOPDEV -d $KEY1 $KEY2 $FAST_PBKDF_OPT || fail
-$CRYPTSETUP luksAddKey $LOOPDEV -d $KEY1 $KEY2 $FAST_PBKDF_OPT || fail
-$CRYPTSETUP luksAddKey $LOOPDEV -d $KEY1 $KEY2 $FAST_PBKDF_OPT || fail
-$CRYPTSETUP luksAddKey $LOOPDEV -d $KEY1 $KEY2 $FAST_PBKDF_OPT || fail
-$CRYPTSETUP luksAddKey $LOOPDEV -d $KEY1 $KEY2 $FAST_PBKDF_OPT || fail
-$CRYPTSETUP luksAddKey $LOOPDEV -d $KEY1 $KEY2 $FAST_PBKDF_OPT || fail
-# still allows replace
-#FIXME
-#$CRYPTSETUP luksChangeKey $LOOPDEV $FAST_PBKDF_OPT -d $KEY1 $KEY2 || fail
-#$CRYPTSETUP luksChangeKey $LOOPDEV $FAST_PBKDF_OPT -d $KEY1 $KEY2 2>/dev/null && fail
+$CRYPTSETUP luksDump $LOOPDEV | grep -q "1: luks2" || fail
+$CRYPTSETUP luksDump $LOOPDEV | grep -q "2: luks2" && fail
+# test out of raw area, change in-place (space only for 2 keyslots)
+$CRYPTSETUP luksChangeKey $LOOPDEV $FAST_PBKDF_OPT -d $KEY1 $KEY2 || fail
+$CRYPTSETUP luksDump $LOOPDEV | grep -q "0: luks2" || fail
+$CRYPTSETUP luksChangeKey $LOOPDEV $FAST_PBKDF_OPT -d $KEY1 $KEY2 2>/dev/null && fail
 
 prepare "[24] Keyfile limit" wipe
 $CRYPTSETUP -q luksFormat $FAST_PBKDF_OPT --type luks2 $LOOPDEV $KEY1 --key-slot 0 -l 13 || fail
@@ -714,7 +715,7 @@ echo $PWD1 | $CRYPTSETUP luksFormat $FAST_PBKDF_OPT --type luks2 $LOOPDEV --head
 echo $PWD1 | $CRYPTSETUP -q luksFormat $FAST_PBKDF_OPT --type luks2 $LOOPDEV --header $HEADER_IMG --align-payload 8192 || fail
 echo $PWD1 | $CRYPTSETUP -q luksFormat $FAST_PBKDF_OPT --type luks2 $LOOPDEV --header $HEADER_IMG --align-payload 4096 >/dev/null || fail
 $CRYPTSETUP luksDump $HEADER_IMG | grep -e "0: crypt" -A1 | grep -qe $((4096*512)) || fail
-echo $PWD1 | $CRYPTSETUP -q luksFormat $FAST_PBKDF_OPT --type luks2 $LOOPDEV --header $HEADER_IMG --align-payload 0 || fail
+echo $PWD1 | $CRYPTSETUP -q luksFormat $FAST_PBKDF_OPT --type luks2 $LOOPDEV --header $HEADER_IMG --align-payload 0 --sector-size 512 || fail
 echo $PWD1 | $CRYPTSETUP luksOpen $LOOPDEV-missing --header $HEADER_IMG $DEV_NAME 2>/dev/null && fail
 echo $PWD1 | $CRYPTSETUP luksOpen $LOOPDEV --header $HEADER_IMG $DEV_NAME || fail
 echo $PWD1 | $CRYPTSETUP -q resize  $DEV_NAME --size 100 --header $HEADER_IMG || fail
@@ -762,6 +763,7 @@ $CRYPTSETUP luksDump $LOOPDEV | grep -q "5: luks2" && fail
 prepare "[31] LUKS convert" wipe
 $CRYPTSETUP -q luksFormat $FAST_PBKDF_OPT --type luks1 $LOOPDEV $KEY5 --key-slot 5 || fail
 $CRYPTSETUP luksAddKey $FAST_PBKDF_OPT -S 1 -d $KEY5 $LOOPDEV $KEY1 || fail
+$CRYPTSETUP -q luksDump  $LOOPDEV --dump-json-metadata >/dev/null 2>&1 && fail
 $CRYPTSETUP -q convert --type luks1 $LOOPDEV >/dev/null 2>&1 && fail
 $CRYPTSETUP luksDump $LOOPDEV | grep -q "Key Slot 1: ENABLED" || fail
 $CRYPTSETUP luksDump $LOOPDEV | grep -q "Key Slot 5: ENABLED" || fail
@@ -794,7 +796,7 @@ if dm_crypt_keyring_flawed; then
 	$CRYPTSETUP -q status $DEV_NAME | grep "key location:" | grep -q "dm-crypt" || fail
 	$CRYPTSETUP close $DEV_NAME || fail
 	# key must not load in kernel key even when dm-crypt module is missing
-	if rmmod dm-crypt > /dev/null 2>&1; then
+	if rmmod dm-crypt >/dev/null 2>&1; then
 		echo $PWD1 | $CRYPTSETUP open $LOOPDEV --header $HEADER_IMG $DEV_NAME || fail
 		$CRYPTSETUP -q status $DEV_NAME | grep "key location:" | grep -q "dm-crypt" || fail
 		$CRYPTSETUP close $DEV_NAME || fail
@@ -806,7 +808,7 @@ if dm_crypt_keyring_support && dm_crypt_keyring_new_kernel; then
 	echo $PWD1 | $CRYPTSETUP luksFormat $FAST_PBKDF_OPT --type luks2 $LOOPDEV --header $HEADER_IMG || fail
 
 	# check keyring support detection works as expected
-	rmmod dm-crypt > /dev/null 2>&1 || true
+	rmmod dm-crypt >/dev/null 2>&1 || true
 	echo $PWD1 | $CRYPTSETUP open $LOOPDEV --header $HEADER_IMG $DEV_NAME || fail
 	$CRYPTSETUP -q status $DEV_NAME | grep "key location:" | grep -q "keyring" || fail
 	$CRYPTSETUP close $DEV_NAME || fail
@@ -849,6 +851,14 @@ if [ $HAVE_KEYRING -gt 0 -a -d /proc/sys/kernel/keys ]; then
 	$CRYPTSETUP open --token-only $LOOPDEV $DEV_NAME || fail
 	$CRYPTSETUP status $DEV_NAME > /dev/null || fail
 	$CRYPTSETUP close $DEV_NAME || fail
+
+	# check --token-type sort of works (TODO: extend tests when native systemd tokens are available)
+	echo -n "$IMPORT_TOKEN" | $CRYPTSETUP token import $LOOPDEV --token-id 22 || fail
+	# this excludes keyring tokens from unlocking device
+	$CRYPTSETUP open --token-only --token-type some_type $LOOPDEV --test-passphrase && fail
+	$CRYPTSETUP open --token-only --token-type some_type $LOOPDEV $DEV_NAME && fail
+	$CRYPTSETUP status $DEV_NAME > /dev/null && fail
+
 	$CRYPTSETUP token remove --token-id 3 $LOOPDEV || fail
 	$CRYPTSETUP luksDump $LOOPDEV | grep -q -e "3: luks2-keyring" && fail
 

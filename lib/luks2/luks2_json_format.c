@@ -30,7 +30,7 @@ struct area {
 
 static size_t get_area_size(size_t keylength)
 {
-	//FIXME: calculate this properly, for now it is AF_split_sectors
+	/* for now it is AF_split_sectors */
 	return size_round_up(keylength * 4000, 4096);
 }
 
@@ -41,7 +41,7 @@ static size_t get_min_offset(struct luks2_hdr *hdr)
 
 static size_t get_max_offset(struct luks2_hdr *hdr)
 {
-	return LUKS2_hdr_and_areas_size(hdr->jobj);
+	return LUKS2_hdr_and_areas_size(hdr);
 }
 
 int LUKS2_find_area_max_gap(struct crypt_device *cd, struct luks2_hdr *hdr,
@@ -177,8 +177,11 @@ int LUKS2_find_area_gap(struct crypt_device *cd, struct luks2_hdr *hdr,
 
 	log_dbg(cd, "Found area %zu -> %zu", offset, length + offset);
 
-	*area_offset = offset;
-	*area_length = length;
+	if (area_offset)
+		*area_offset = offset;
+	if (area_length)
+		*area_length = length;
+
 	return 0;
 }
 
@@ -371,7 +374,7 @@ int LUKS2_wipe_header_areas(struct crypt_device *cd,
 	/* Wipe keyslot area */
 	wipe_block = 1024 * 1024;
 	offset = get_min_offset(hdr);
-	length = LUKS2_keyslots_size(hdr->jobj);
+	length = LUKS2_keyslots_size(hdr);
 
 	log_dbg(cd, "Wiping keyslots area (0x%06" PRIx64 " - 0x%06" PRIx64") with random data.",
 		offset, length + offset);
@@ -380,8 +383,7 @@ int LUKS2_wipe_header_areas(struct crypt_device *cd,
 				 offset, length, wipe_block, NULL, NULL);
 }
 
-/* FIXME: what if user wanted to keep original keyslots size? */
-int LUKS2_set_keyslots_size(struct crypt_device *cd,
+int LUKS2_set_keyslots_size(struct crypt_device *cd __attribute__((unused)),
 		struct luks2_hdr *hdr,
 		uint64_t data_offset)
 {

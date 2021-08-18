@@ -3,9 +3,8 @@
 [ -z "$CRYPTSETUP_PATH" ] && CRYPTSETUP_PATH=".."
 CRYPTSETUP=$CRYPTSETUP_PATH/cryptsetup
 REENC=$CRYPTSETUP_PATH/cryptsetup-reencrypt
-FAST_PBKDF_ARGON="--pbkdf-force-iterations 4 --pbkdf-memory 32 --pbkdf-parallel 1"
+FAST_PBKDF_ARGON="--pbkdf argon2i --pbkdf-force-iterations 4 --pbkdf-memory 32 --pbkdf-parallel 1"
 FAST_PBKDF_PBKDF2="--pbkdf-force-iterations 1000 --pbkdf pbkdf2"
-DEFAULT_ARGON="argon2i"
 
 DEV_NAME=reenc9768
 DEV_NAME2=reenc1273
@@ -43,7 +42,7 @@ function dm_crypt_features()
 
 function del_scsi_device()
 {
-	rmmod scsi_debug 2>/dev/null
+	rmmod scsi_debug >/dev/null 2>&1
 	sleep 2
 }
 
@@ -75,15 +74,19 @@ function skip()
 
 function add_scsi_device() {
 	del_scsi_device
-        modprobe scsi_debug $@ delay=0
-        if [ $? -ne 0 ] ; then
-                echo "This kernel seems to not support proper scsi_debug module, test skipped."
-                exit 77
-        fi
+	if [ -d /sys/module/scsi_debug ] ; then
+		echo "Cannot use scsi_debug module (in use or compiled-in), test skipped."
+		exit 77
+	fi
+	modprobe scsi_debug $@ delay=0 >/dev/null 2>&1
+	if [ $? -ne 0 ] ; then
+		echo "This kernel seems to not support proper scsi_debug module, test skipped."
+		exit 77
+	fi
 
-        sleep 2
-        SCSI_DEV="/dev/"$(grep -l -e scsi_debug /sys/block/*/device/model | cut -f4 -d /)
-        [ -b $SCSI_DEV ] || fail "Cannot find $SCSI_DEV."
+	sleep 2
+	SCSI_DEV="/dev/"$(grep -l -e scsi_debug /sys/block/*/device/model | cut -f4 -d /)
+	[ -b $SCSI_DEV ] || fail "Cannot find $SCSI_DEV."
 }
 
 function open_crypt() # $1 pwd, $2 hdr
@@ -360,7 +363,7 @@ check_hash $PWD1 $HASH5
 [ "$($CRYPTSETUP luksDump $IMG | grep -A8 -m1 "0: luks2" | grep Hash:  | sed -e 's/[[:space:]]\+Hash:\ \+//g')" = "sha512" ] || fail
 echo $PWD1 | $REENC $IMG -q --keep-key $FAST_PBKDF_ARGON
 check_hash $PWD1 $HASH5
-[ "$($CRYPTSETUP luksDump $IMG | grep -A8 -m1 "0: luks2" | grep PBKDF:      | sed -e 's/[[:space:]]\+PBKDF:\ \+//g')" = $DEFAULT_ARGON ] || fail
+[ "$($CRYPTSETUP luksDump $IMG | grep -A8 -m1 "0: luks2" | grep PBKDF:      | sed -e 's/[[:space:]]\+PBKDF:\ \+//g')" = argon2i ] || fail
 [ "$($CRYPTSETUP luksDump $IMG | grep -A8 -m1 "0: luks2" | grep "Time cost" | sed -e 's/[[:space:]]\+Time\ cost:\ \+//g')" -eq 4 ] || fail
 [ "$($CRYPTSETUP luksDump $IMG | grep -A8 -m1 "0: luks2" | grep Memory      | sed -e 's/[[[:space:]]\+Memory:\ \+//g')" -eq 32 ] || fail
 [ "$($CRYPTSETUP luksDump $IMG | grep -A8 -m1 "0: luks2" | grep Threads     | sed -e 's/[[[:space:]]\+Threads:\ \+//g')" -eq 1 ] || fail
@@ -462,7 +465,7 @@ check_hash $PWD1 $HASH1
 $CRYPTSETUP -q convert --type luks2 $IMG || fail
 echo $PWD1 | $REENC $IMG -q $FAST_PBKDF_PBKDF2 || fail
 check_hash $PWD1 $HASH1
-echo $PWD1 | $CRYPTSETUP -q luksFormat --type luks2 $FAST_PBKDF_PBKDF2 $IMG --offset 8192 || fail
+echo $PWD1 | $CRYPTSETUP -q luksFormat --sector-size 512 --type luks2 $FAST_PBKDF_PBKDF2 $IMG --offset 8192 || fail
 wipe $PWD1
 check_hash $PWD1 $HASH5
 $CRYPTSETUP -q convert --type luks1 $IMG || fail

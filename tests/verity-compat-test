@@ -6,6 +6,7 @@ VERITYSETUP_VALGRIND=../.libs/veritysetup
 VERITYSETUP_LIB_VALGRIND=../.libs
 
 DEV_NAME=verity3273
+DEV_NAME2=verity3273x
 DEV_OUT="$DEV_NAME.out"
 IMG=verity-data
 IMG_HASH=verity-hash
@@ -17,9 +18,10 @@ DEV_UUID=a60c98d2-ae9b-4865-bfcb-b4e3ace11033
 
 function remove_mapping()
 {
+	[ -b /dev/mapper/$DEV_NAME2 ] && dmsetup remove $DEV_NAME2 >/dev/null 2>&1
 	[ -b /dev/mapper/$DEV_NAME ] && dmsetup remove $DEV_NAME >/dev/null 2>&1
 	[ ! -z "$LOOPDEV1" ] && losetup -d $LOOPDEV1 >/dev/null 2>&1
-	rm -f $IMG $IMG_HASH $DEV_OUT $FEC_DEV $IMG_TMP  >/dev/null 2>&1
+	rm -f $IMG $IMG.roothash $IMG_HASH $DEV_OUT $FEC_DEV $IMG_TMP >/dev/null 2>&1
 	LOOPDEV1=""
 	LOOPDEV2=""
 }
@@ -110,6 +112,10 @@ function check_root_hash_fail()
 
 function check_root_hash() # $1 size, $2 hash, $3 salt, $4 version, $5 hash, [$6 offset]
 {
+	local FORMAT_PARAMS
+	local VERIFY_PARAMS
+	local ROOT_HASH
+
 	if [ -z "$LOOPDEV2" ] ; then
 		BLOCKS=$(($6 / $1))
 		DEV_PARAMS="$LOOPDEV1 $LOOPDEV1 \
@@ -119,6 +125,7 @@ function check_root_hash() # $1 size, $2 hash, $3 salt, $4 version, $5 hash, [$6
 		DEV_PARAMS="$LOOPDEV1 $LOOPDEV2"
 	fi
 
+	for root_hash_as_file in yes no; do
 	for sb in yes no; do
 	FORMAT_PARAMS="--format=$4 --data-block-size=$1 --hash-block-size=$1 --hash=$5 --salt=$3"
 	if [ $sb == yes ] ; then
@@ -127,20 +134,28 @@ function check_root_hash() # $1 size, $2 hash, $3 salt, $4 version, $5 hash, [$6
 		FORMAT_PARAMS="$FORMAT_PARAMS --no-superblock"
 		VERIFY_PARAMS=$FORMAT_PARAMS
 	fi
+	if [ $root_hash_as_file == yes ] ; then
+		echo -n $2 > $IMG.roothash
+		FORMAT_PARAMS="$FORMAT_PARAMS --root-hash-file=$IMG.roothash"
+		VERIFY_PARAMS="$VERIFY_PARAMS --root-hash-file=$IMG.roothash"
+		ROOT_HASH=""
+	else
+		ROOT_HASH="$2"
+	fi
 
 	for fail in data hash; do
 	wipe
-	echo -n "V$4(sb=$sb) $5 block size $1: "
+	echo -n "V$4(sb=$sb root_hash_as_file=$root_hash_as_file) $5 block size $1: "
 	$VERITYSETUP format $DEV_PARAMS $FORMAT_PARAMS >$DEV_OUT || fail
 
 	echo -n "[root hash]"
 	compare_out "root hash" $2
 	compare_out "salt" "$3"
 
-	$VERITYSETUP verify $DEV_PARAMS $VERIFY_PARAMS $2 >>$DEV_OUT 2>&1 || fail
+	$VERITYSETUP verify $DEV_PARAMS $VERIFY_PARAMS $ROOT_HASH >>$DEV_OUT 2>&1 || fail
 	echo -n "[verify]"
 
-	$VERITYSETUP create $DEV_NAME $DEV_PARAMS $VERIFY_PARAMS $2  >>$DEV_OUT 2>&1 || fail
+	$VERITYSETUP create $DEV_NAME $DEV_PARAMS $VERIFY_PARAMS $ROOT_HASH  >>$DEV_OUT 2>&1 || fail
 	check_exists
 	echo -n "[activate]"
 
@@ -165,15 +180,16 @@ function check_root_hash() # $1 size, $2 hash, $3 salt, $4 version, $5 hash, [$6
 		;;
 	esac
 
-	$VERITYSETUP verify $DEV_PARAMS $VERIFY_PARAMS $2 >>$DEV_OUT 2>&1 && \
+	$VERITYSETUP verify $DEV_PARAMS $VERIFY_PARAMS $ROOT_HASH >>$DEV_OUT 2>&1 && \
 		fail "userspace check for $TXT corruption"
-	$VERITYSETUP create $DEV_NAME $DEV_PARAMS $VERIFY_PARAMS $2 >>$DEV_OUT 2>&1 || \
+	$VERITYSETUP create $DEV_NAME $DEV_PARAMS $VERIFY_PARAMS $ROOT_HASH >>$DEV_OUT 2>&1 || \
 		fail "activation"
 	dd if=/dev/mapper/$DEV_NAME of=/dev/null bs=$1 2>/dev/null
 	dmsetup status $DEV_NAME | grep "verity V" >/dev/null && \
 		fail "in-kernel check for $TXT corruption"
 	$VERITYSETUP close $DEV_NAME >/dev/null 2>&1 || fail "deactivation"
 	echo "[$TXT corruption]"
+	done
 	done
 	done
 }
@@ -217,9 +233,9 @@ function check_fec()
 	if [ "${11}" == "n" ]; then
 		INDEX=24
 		echo -n "[no-superblock]"
-		PARAMS="$PARAMS --no-superblock -s=${12}"
+		PARAMS="$PARAMS --no-superblock --salt=${12}"
 	elif [ -n "${12}" ]; then
-		PARAMS="$PARAMS -s=${12}"
+		PARAMS="$PARAMS --salt=${12}"
 	fi
 
 	if [[ "$1" == "$2" && "$1" == "$3" ]]; then
@@ -380,6 +396,31 @@ function checkUserSpaceRepair()
 	echo "[OK]"
 }
 
+function check_concurrent() # $1 hash
+{
+	DEV_PARAMS="$LOOPDEV1 $LOOPDEV2"
+
+	# First check that with two sequential opens, we are returning the expected -EEXIST
+	$VERITYSETUP format $DEV_PARAMS >/dev/null 2>&1 || fail
+	$VERITYSETUP create $DEV_NAME $DEV_PARAMS $1 >/dev/null 2>&1 || fail
+	check_exists
+	$VERITYSETUP create $DEV_NAME $DEV_PARAMS $1 2>&1 >/dev/null | grep -q "Device $DEV_NAME already exists" || fail
+	$VERITYSETUP close $DEV_NAME >/dev/null 2>&1 || fail
+
+	# Then do two concurrent opens, and check that libdevmapper did not return -EINVAL, which is
+	# not gracefully recoverable. Either could fail depending on scheduling, so just check that
+	# the libdevmapper error does not appear in either of the outputs.
+	exec {out_1}< <($VERITYSETUP create -v $DEV_NAME $DEV_PARAMS $1 2>&1)
+	exec {out_2}< <($VERITYSETUP create -v $DEV_NAME $DEV_PARAMS $1 2>&1)
+	wait
+	cat <&${out_1} | grep -q "Command failed with code .* (wrong or missing parameters)" && fail
+	cat <&${out_2} | grep -q "Command failed with code .* (wrong or missing parameters)" && fail
+	check_exists
+	$VERITYSETUP close $DEV_NAME >/dev/null 2>&1 || fail
+
+	echo "[OK]"
+}
+
 [ $(id -u) != 0 ] && skip "WARNING: You must be root to run this test, test skipped."
 [ ! -x "$VERITYSETUP" ] && skip "Cannot find $VERITYSETUP, test skipped."
 
@@ -479,6 +520,33 @@ checkUserSpaceRepair 500 512  2 2457600  4915200  1 1
 checkUserSpaceRepair -1  4096 2 0       0       3 10
 checkUserSpaceRepair 400 4096 2 2048000 0       2 1
 checkUserSpaceRepair 500 4096 2 2457600 4915200 1 2
+
+echo -n "Verity concurrent opening tests:"
+prepare 8192 1024
+check_concurrent 9de18652fe74edfb9b805aaed72ae2aa48f94333f1ba5c452ac33b1c39325174
+
+echo -n "Deferred removal of device:"
+prepare 8192 1024
+$VERITYSETUP format $LOOPDEV1 $IMG_HASH --format=1 --data-block-size=512 --hash-block-size=512 --hash=sha256 --salt=$SALT >/dev/null 2>&1 || fail "Cannot format device."
+$VERITYSETUP open $LOOPDEV1 $DEV_NAME $DEV $IMG_HASH 9de18652fe74edfb9b805aaed72ae2aa48f94333f1ba5c452ac33b1c39325174 || fail "Cannot activate device."
+dmsetup create $DEV_NAME2 --table "0 8 linear /dev/mapper/$DEV_NAME 0"
+[ ! -b /dev/mapper/$DEV_NAME2 ] && fail
+$VERITYSETUP close $DEV_NAME >/dev/null 2>&1 && fail
+$VERITYSETUP status $DEV_NAME >/dev/null 2>&1 || fail
+$VERITYSETUP close --deferred $DEV_NAME >/dev/null 2>&1
+if [ $? -eq 0 ] ; then
+  dmsetup info $DEV_NAME | grep -q "DEFERRED REMOVE" || fail
+  $VERITYSETUP close --cancel-deferred $DEV_NAME >/dev/null 2>&1
+  dmsetup info $DEV_NAME | grep -q "DEFERRED REMOVE" >/dev/null 2>&1 && fail
+  $VERITYSETUP close --deferred $DEV_NAME >/dev/null 2>&1
+  dmsetup remove $DEV_NAME2 || fail
+  $VERITYSETUP status $DEV_NAME >/dev/null 2>&1 && fail
+  echo "[OK]"
+else
+  dmsetup remove $DEV_NAME2 >/dev/null 2>&1
+  $VERITYSETUP close $DEV_NAME >/dev/null 2>&1
+  echo "[N/A]"
+fi
 
 remove_mapping
 exit 0

@@ -1,9 +1,9 @@
 AC_PREREQ([2.67])
-AC_INIT([cryptsetup],[2.3.6])
+AC_INIT([cryptsetup],[2.4.0])
 
 dnl library version from <major>.<minor>.<release>[-<suffix>]
 LIBCRYPTSETUP_VERSION=$(echo $PACKAGE_VERSION | cut -f1 -d-)
-LIBCRYPTSETUP_VERSION_INFO=18:0:6
+LIBCRYPTSETUP_VERSION_INFO=19:0:7
 
 AM_SILENT_RULES([yes])
 AC_CONFIG_SRCDIR(src/cryptsetup.c)
@@ -16,7 +16,7 @@ AC_CONFIG_HEADERS([config.h:config.h.in])
 
 # For old automake use this
 #AM_INIT_AUTOMAKE(dist-xz subdir-objects)
-AM_INIT_AUTOMAKE([dist-xz 1.12 serial-tests subdir-objects])
+AM_INIT_AUTOMAKE([dist-xz 1.12 serial-tests subdir-objects foreign])
 
 if test "x$prefix" = "xNONE"; then
 	sysconfdir=/etc
@@ -30,6 +30,7 @@ AM_PROG_CC_C_O
 AC_PROG_CPP
 AC_PROG_INSTALL
 AC_PROG_MAKE_SET
+AC_PROG_MKDIR_P
 AC_ENABLE_STATIC(no)
 LT_INIT
 PKG_PROG_PKG_CONFIG
@@ -114,6 +115,25 @@ AC_SYS_LARGEFILE
 AC_FUNC_FSEEKO
 AC_PROG_GCC_TRADITIONAL
 AC_FUNC_STRERROR_R
+
+dnl ==========================================================================
+dnl LUKS2 external tokens
+
+AC_ARG_ENABLE([external-tokens],
+	AS_HELP_STRING([--disable-external-tokens], [disable external LUKS2 tokens]),
+	[], [enable_external_tokens=yes])
+if test "x$enable_external_tokens" = "xyes"; then
+	AC_DEFINE(USE_EXTERNAL_TOKENS, 1, [Use external tokens])
+fi
+
+AC_ARG_ENABLE([ssh-token],
+	AS_HELP_STRING([--disable-ssh-token], [disable LUKS2 ssh-token]),
+	[], [enable_ssh_token=yes])
+AM_CONDITIONAL(SSHPLUGIN_TOKEN, test "x$enable_ssh_token" = "xyes")
+
+if test "x$enable_ssh_token" = "xyes" -a "x$enable_external_tokens" = "xno"; then
+	AC_MSG_ERROR([Requested LUKS2 ssh-token build, but external tokens are disabled.])
+fi
 
 dnl ==========================================================================
 
@@ -380,6 +400,12 @@ PKG_CHECK_MODULES([JSON_C], [json-c])
 AC_CHECK_DECLS([json_object_object_add_ex], [], [], [#include <json-c/json.h>])
 AC_CHECK_DECLS([json_object_deep_copy], [], [], [#include <json-c/json.h>])
 
+dnl Check for libssh for SSH plugin
+if test "x$enable_ssh_token" = "xyes"; then
+	PKG_CHECK_MODULES([LIBSSH], [libssh])
+	AC_CHECK_DECLS([ssh_session_is_known_server], [], [], [#include <libssh/libssh.h>])
+fi
+
 dnl Crypto backend configuration.
 AC_ARG_WITH([crypto_backend],
 	AS_HELP_STRING([--with-crypto_backend=BACKEND], [crypto backend (gcrypt/openssl/nss/kernel/nettle) [openssl]]),
@@ -536,6 +562,8 @@ AC_SUBST([JSON_C_LIBS])
 AC_SUBST([LIBARGON2_LIBS])
 AC_SUBST([BLKID_LIBS])
 
+AC_SUBST([LIBSSH_LIBS])
+
 AC_SUBST([LIBCRYPTSETUP_VERSION])
 AC_SUBST([LIBCRYPTSETUP_VERSION_INFO])
 
@@ -591,7 +619,7 @@ if test "x$enable_luks_adjust_xts_keysize" = "xyes"; then
 	AC_DEFINE(ENABLE_LUKS_ADJUST_XTS_KEYSIZE, 1, [XTS mode - double default LUKS keysize if needed])
 fi
 
-CS_STR_WITH([luks2-pbkdf],           [Default PBKDF algorithm (pbkdf2 or argon2i/argon2id) for LUKS2], [argon2i])
+CS_STR_WITH([luks2-pbkdf],           [Default PBKDF algorithm (pbkdf2 or argon2i/argon2id) for LUKS2], [argon2id])
 CS_NUM_WITH([luks1-iter-time],       [PBKDF2 iteration time for LUKS1 (in ms)], [2000])
 CS_NUM_WITH([luks2-iter-time],       [Argon2 PBKDF iteration time for LUKS2 (in ms)], [2000])
 CS_NUM_WITH([luks2-memory-kb],       [Argon2 PBKDF memory cost for LUKS2 (in kB)], [1048576])
@@ -632,6 +660,15 @@ CS_NUM_WITH([luks2-lock-dir-perms], [default luks2 locking directory permissions
 test -z "$with_luks2_lock_dir_perms" && with_luks2_lock_dir_perms=0700
 DEFAULT_LUKS2_LOCK_DIR_PERMS=$with_luks2_lock_dir_perms
 AC_SUBST(DEFAULT_LUKS2_LOCK_DIR_PERMS)
+
+CS_STR_WITH([luks2-external-tokens-path], [path to directory with LUKSv2 external token handlers (plugins)], [LIBDIR/cryptsetup])
+if test -n "$with_luks2_external_tokens_path"; then
+	CS_ABSPATH([${with_luks2_external_tokens_path}],[with-luks2-external-tokens-path])
+	EXTERNAL_LUKS2_TOKENS_PATH=$with_luks2_external_tokens_path
+else
+	EXTERNAL_LUKS2_TOKENS_PATH="\${libdir}/cryptsetup"
+fi
+AC_SUBST(EXTERNAL_LUKS2_TOKENS_PATH)
 
 dnl Override default LUKS format version (for cryptsetup or cryptsetup-reencrypt format actions only).
 AC_ARG_WITH([default_luks_format],
