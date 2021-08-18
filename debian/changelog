@@ -4,6 +4,7 @@ cryptsetup (2:2.4.0-1) UNRELEASED; urgency=medium
   * Remove obsolete upstart configuration files on upgrade and purge.
     (Closes: #990490)
   * d/*.{pre,post}*: Explicitly exit with status code 0.
+  * d/control: Bump Standards-Version to 4.5.1 (no changes necessary).
 
  -- Guilhem Moulin <guilhem@debian.org>  Wed, 18 Aug 2021 22:40:02 +0200
 

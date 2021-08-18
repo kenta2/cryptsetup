@@ -30,7 +30,7 @@ Build-Depends: autoconf,
                uuid-dev,
                xsltproc,
                xxd <!nocheck>
-Standards-Version: 4.5.1
+Standards-Version: 4.6.0
 Homepage: https://gitlab.com/cryptsetup/cryptsetup
 Vcs-Browser: https://salsa.debian.org/cryptsetup-team/cryptsetup
 Vcs-Git: https://salsa.debian.org/cryptsetup-team/cryptsetup.git -b debian/latest
