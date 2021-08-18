@@ -1,13 +1,20 @@
 cryptsetup (2:2.4.0-1) UNRELEASED; urgency=medium
 
-  * New upstream bugfix release.  (Closes: #949336)
+  * New upstream release.
   * Remove obsolete upstart configuration files on upgrade and purge.
     (Closes: #990490)
-  * Adjust d/copyright.
-  * d/cryptsetup.docs: Add upstream's README.md.
   * d/*.{pre,post}*: Explicitly exit with status code 0.
 
- -- Guilhem Moulin <guilhem@debian.org>  Sun, 18 Jul 2021 18:58:04 +0200
+ -- Guilhem Moulin <guilhem@debian.org>  Wed, 18 Aug 2021 22:40:02 +0200
+
+cryptsetup (2:2.4.0~rc1-1+exp1) experimental; urgency=medium
+
+  * New upstream release candidate.
+  * d/copyright: update file.
+  * d/cryptsetup.docs: Add upstream's README.md.
+  * d/TODO.md: Remove implemented `luksSuspend` integration.
+
+ -- Guilhem Moulin <guilhem@debian.org>  Fri, 30 Jul 2021 02:37:32 +0200
 
 cryptsetup (2:2.4.0~rc0-1+exp1) experimental; urgency=medium
 
@@ -26,6 +33,12 @@ cryptsetup (2:2.4.0~rc0-1+exp1) experimental; urgency=medium
     + Add close --deferred and --cancel-deferred options.
 
  -- Guilhem Moulin <guilhem@debian.org>  Tue, 06 Jul 2021 10:18:17 +0200
+
+cryptsetup (2:2.3.6-1+exp1) experimental; urgency=medium
+
+  * New upstream bugfix release.  (Closes: #949336)
+
+ -- Guilhem Moulin <guilhem@debian.org>  Fri, 28 May 2021 22:54:20 +0200
 
 cryptsetup (2:2.3.5-1) unstable; urgency=medium
 
