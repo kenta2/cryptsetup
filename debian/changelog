@@ -1,5 +1,6 @@
 cryptsetup (2:2.4.0-1) UNRELEASED; urgency=medium
 
+  [ Guilhem Moulin ]
   * New upstream release.
   * Remove obsolete upstart configuration files on upgrade and purge.
     (Closes: #990490)
@@ -7,7 +8,10 @@ cryptsetup (2:2.4.0-1) UNRELEASED; urgency=medium
   * d/copyright: Set field Upstream-Name.
   * d/control: Bump Standards-Version to 4.5.1 (no changes necessary).
 
- -- Guilhem Moulin <guilhem@debian.org>  Wed, 18 Aug 2021 22:40:02 +0200
+  [ Ayla Ounce ]
+  * Add support for --perf_* flags to initramfs.
+
+ -- Guilhem Moulin <guilhem@debian.org>  Wed, 18 Aug 2021 23:49:12 +0200
 
 cryptsetup (2:2.4.0~rc1-1+exp1) experimental; urgency=medium
 
