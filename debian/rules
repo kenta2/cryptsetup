@@ -32,6 +32,7 @@ execute_after_dh_auto_build:
 	$(CC) -o debian/askpass debian/askpass.c $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -pedantic
 	$(CC) -o debian/scripts/passdev debian/scripts/passdev.c $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -pedantic
 
+ifeq (,$(findstring nodoc,$(DEB_BUILD_OPTIONS)))
 	# generate manpages
 	sed 's/VERSION/$(DEB_VERSION)/;s/DATE/$(DEB_DATE)/' \
 		debian/doc/variables.xml.in >debian/doc/variables.xml
@@ -41,6 +42,7 @@ execute_after_dh_auto_build:
 	pod2man --section=8 --center="Administrative commands" \
 		--release="$(DEB_VERSION)" debian/scripts/luksformat \
 		debian/doc/luksformat.8
+endif
 
 	# generate gettext po files (for luksformat)
 	$(MAKE) -C debian/scripts/po all luksformat.pot
