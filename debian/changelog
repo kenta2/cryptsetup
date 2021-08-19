@@ -1,4 +1,4 @@
-cryptsetup (2:2.4.0-1) UNRELEASED; urgency=medium
+cryptsetup (2:2.4.0-1) unstable; urgency=low
 
   [ Guilhem Moulin ]
   * New upstream release.
@@ -18,14 +18,13 @@ cryptsetup (2:2.4.0-1) UNRELEASED; urgency=medium
   [ Ayla Ounce ]
   * Add support for --perf_* flags to initramfs.
 
- -- Guilhem Moulin <guilhem@debian.org>  Wed, 18 Aug 2021 23:49:12 +0200
+ -- Guilhem Moulin <guilhem@debian.org>  Thu, 19 Aug 2021 03:11:11 +0200
 
 cryptsetup (2:2.4.0~rc1-1+exp1) experimental; urgency=medium
 
   * New upstream release candidate.
-  * d/copyright: update file.
+  * d/copyright: Update file.
   * d/cryptsetup.docs: Add upstream's README.md.
-  * d/TODO.md: Remove implemented `luksSuspend` integration.
 
  -- Guilhem Moulin <guilhem@debian.org>  Fri, 30 Jul 2021 02:37:32 +0200
 
