@@ -326,6 +326,33 @@
    </varlistentry>
 
    <varlistentry>
+    <term><emphasis>same-cpu-crypt</emphasis></term>
+    <listitem>
+     <simpara>
+        Perform encryption using the same cpu that IO was submitted on.
+     </simpara>
+    </listitem>
+   </varlistentry>
+
+   <varlistentry>
+    <term><emphasis>submit-from-crypt-cpus</emphasis></term>
+    <listitem>
+     <simpara>
+       Disable offloading writes to a separate thread after encryption.
+     </simpara>
+    </listitem>
+   </varlistentry>
+
+   <varlistentry>
+    <term><emphasis>no-read-workqueue</emphasis>, <emphasis>no-write-workqueue</emphasis></term>
+    <listitem>
+     <simpara>
+        Bypass dm-crypt internal workqueue and process read or write requests synchronously.
+     </simpara>
+    </listitem>
+   </varlistentry>
+
+   <varlistentry>
     <term><emphasis>swap</emphasis></term>
     <listitem>
      <simpara>

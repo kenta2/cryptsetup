@@ -80,7 +80,11 @@ crypttab_parse_options() {
              CRYPTTAB_OPTION_keyscript \
              CRYPTTAB_OPTION_keyslot \
              CRYPTTAB_OPTION_header \
-             CRYPTTAB_OPTION_tcrypthidden
+             CRYPTTAB_OPTION_tcrypthidden \
+             CRYPTTAB_OPTION_same_cpu_crypt \
+             CRYPTTAB_OPTION_submit_from_crypt_cpus \
+             CRYPTTAB_OPTION_no_read_workqueue \
+             CRYPTTAB_OPTION_no_write_workqueue
     # use $_CRYPTTAB_OPTIONS not $CRYPTTAB_OPTIONS as options values may
     # contain '\054' which is decoded to ',' in the latter
     for x in $_CRYPTTAB_OPTIONS; do
@@ -152,6 +156,10 @@ crypttab_validate_option() {
         keyfile-offset) OPTION="keyfile_offset";;
         keyfile-size) OPTION="keyfile_size";;
         sector-size) OPTION="sector_size";;
+        same-cpu-crypt) OPTION="same_cpu_crypt";;
+        submit-from-crypt-cpus) OPTION="submit_from_crypt_cpus";;
+        no-read-workqueue) OPTION="no_read_workqueue";;
+        no-write-workqueue) OPTION="no_write_workqueue";;
     esac
 
     case "$o" in
@@ -231,6 +239,10 @@ crypttab_validate_option() {
         veracrypt) ;;
         tcrypthidden) ;;
         bitlk) ;;
+        same-cpu-crypt) ;;
+        submit-from-crypt-cpus) ;;
+        no-read-workqueue) ;;
+        no-write-workqueue) ;;
         *)
             if [ "${quiet:-n}" = "n" ]; then
                 cryptsetup_message "WARNING: $CRYPTTAB_NAME: ignoring unknown option '$o'";
@@ -361,6 +373,10 @@ unlock_mapping() {
         ${CRYPTTAB_OPTION_tcrypthidden:+--tcrypt-hidden} \
         ${CRYPTTAB_OPTION_keyfile_size:+--keyfile-size="$CRYPTTAB_OPTION_keyfile_size"} \
         ${CRYPTTAB_OPTION_keyfile_offset:+--keyfile-offset="$CRYPTTAB_OPTION_keyfile_offset"} \
+        ${CRYPTTAB_OPTION_same_cpu_crypt:+--perf-same_cpu_crypt} \
+        ${CRYPTTAB_OPTION_submit_from_crypt_cpus:+--perf-submit_from_crypt_cpus} \
+        ${CRYPTTAB_OPTION_no_read_workqueue:+--perf-no_read_workqueue} \
+        ${CRYPTTAB_OPTION_no_write_workqueue:+--perf-no_write_workqueue} \
         --type="$CRYPTTAB_TYPE" --key-file="$keyfile" \
         open -- "$CRYPTTAB_SOURCE" "$CRYPTTAB_NAME"
 }
