@@ -8,7 +8,7 @@ cryptsetup (2:2.4.0-1) unstable; urgency=low
     (Closes: #990490)
   * d/*.{pre,post}*: Explicitly exit with status code 0.
   * d/copyright: Set field Upstream-Name.
-  * d/control: Bump Standards-Version to 4.5.1 (no changes necessary).
+  * d/control: Bump Standards-Version to 4.6.0 (no changes necessary).
   * d/control: Remove cryptsetup-run from cryptsetup's Recommends.
     (Closes: #987769)
   * d/control: Demote cryptsetup-initramfs from cryptsetup's Recommends to
