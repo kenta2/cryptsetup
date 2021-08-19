@@ -2,6 +2,8 @@ cryptsetup (2:2.4.0-1) UNRELEASED; urgency=medium
 
   [ Guilhem Moulin ]
   * New upstream release.
+  * Salsa CI: Set SALSA_CI_BLHC_ARGS to avoid failing when *test* files are
+    built without the "right" LDFLAGS.
   * Remove obsolete upstart configuration files on upgrade and purge.
     (Closes: #990490)
   * d/*.{pre,post}*: Explicitly exit with status code 0.
