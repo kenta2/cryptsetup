@@ -42,9 +42,8 @@ Depends: cryptsetup-bin (>= 2:1.6.0),
          dmsetup,
          ${misc:Depends},
          ${shlibs:Depends}
-Suggests: dosfstools, keyutils, liblocale-gettext-perl
+Suggests: cryptsetup-initramfs, dosfstools, keyutils, liblocale-gettext-perl
 Replaces: cryptsetup-run (<< 2:2.1.0-6)
-Recommends: cryptsetup-initramfs
 Breaks: cryptsetup-run (<< 2:2.1.0-6)
 Description: disk encryption support - startup scripts
  Cryptsetup provides an interface for configuring encryption on block
