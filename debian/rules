@@ -27,9 +27,7 @@ override_dh_auto_configure:
 		--enable-shared \
 		--enable-cryptsetup-reencrypt
 
-override_dh_auto_build:
-	dh_auto_build
-
+execute_after_dh_auto_build:
 	# build askpass and passdev keyscripts
 	$(CC) -o debian/askpass debian/askpass.c $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -pedantic
 	$(CC) -o debian/scripts/passdev debian/scripts/passdev.c $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -pedantic
@@ -47,13 +45,11 @@ override_dh_auto_build:
 	# generate gettext po files (for luksformat)
 	$(MAKE) -C debian/scripts/po all luksformat.pot
 
-override_dh_auto_install:
-	dh_auto_install
+execute_after_dh_auto_install:
 	# install gettext po files (for luksformat)
 	$(MAKE) -C debian/scripts/po DESTDIR=$(CURDIR)/debian/cryptsetup-bin install
 
-override_dh_install:
-	dh_install
+execute_after_dh_install:
 	# install apport files when building on Ubuntu
 ifeq ($(shell dpkg-vendor --is Ubuntu && echo yes),yes)
 	mkdir -p $(CURDIR)/debian/cryptsetup/usr/share/apport/package-hooks
@@ -77,8 +73,7 @@ override_dh_installinit:
 	dh_installinit -pcryptsetup --no-start --name=cryptdisks
 	dh_installinit -pcryptsetup --no-start --name=cryptdisks-early
 
-override_dh_auto_clean:
-	dh_auto_clean
+execute_after_dh_auto_clean:
 	$(MAKE) -C debian/scripts/po update clean
 	if [ -f $(CURDIR)/debian/cryptsetup-initramfs.preinst.in ]; then \
 		mv -fT $(CURDIR)/debian/cryptsetup-initramfs.preinst.in $(CURDIR)/debian/cryptsetup-initramfs.preinst; \
@@ -87,15 +82,13 @@ override_dh_auto_clean:
 override_dh_bugfiles:
 	dh_bugfiles -A
 
-override_dh_fixperms-arch:
-	dh_fixperms
+execute_after_dh_fixperms-arch:
 	chmod 0755 debian/cryptsetup/lib/cryptsetup/checks/*
 	chmod 0755 debian/cryptsetup/lib/cryptsetup/scripts/decrypt_*
 	chmod 0755 debian/cryptsetup-udeb/lib/cryptsetup/checks/*
 	chmod 0755 debian/cryptsetup-udeb/lib/cryptsetup/scripts/decrypt_*
 
-override_dh_fixperms-indep:
-	dh_fixperms
+execute_after_dh_fixperms-indep:
 	chmod 0755 debian/cryptsetup-initramfs/usr/share/cryptsetup/initramfs/bin/*
 	chmod 0755 debian/cryptsetup-initramfs/usr/share/initramfs-tools/hooks/*
 	chmod 0755 debian/cryptsetup-initramfs/usr/share/initramfs-tools/scripts/*/*
