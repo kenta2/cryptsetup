@@ -9,6 +9,8 @@ cryptsetup (2:2.4.0-1) UNRELEASED; urgency=medium
   * d/*.{pre,post}*: Explicitly exit with status code 0.
   * d/copyright: Set field Upstream-Name.
   * d/control: Bump Standards-Version to 4.5.1 (no changes necessary).
+  * d/control: Remove cryptsetup-run from cryptsetup's Recommends.
+    (Closes: #987769)
 
   [ Ayla Ounce ]
   * Add support for --perf_* flags to initramfs.
