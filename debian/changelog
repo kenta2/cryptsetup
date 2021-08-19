@@ -1,10 +1,10 @@
-cryptsetup (2:2.4.0-1+exp1) UNRELEASED; urgency=medium
+cryptsetup (2:2.4.0-1+exp1) experimental; urgency=medium
 
   * Upload to experimental.
   * d/rules: Prefix /lib/systemd/system-shutdown/cryptsetup-suspend.shutdown
     with /usr to fix FTBS with debhelper 13.4; see #992469.
 
- -- Guilhem Moulin <guilhem@debian.org>  Thu, 19 Aug 2021 13:23:01 +0200
+ -- Guilhem Moulin <guilhem@debian.org>  Thu, 19 Aug 2021 22:55:02 +0200
 
 cryptsetup (2:2.4.0-1) unstable; urgency=low
 
