@@ -1,5 +1,5 @@
 AC_PREREQ([2.67])
-AC_INIT([cryptsetup],[2.4.0-rc1])
+AC_INIT([cryptsetup],[2.4.0])
 
 dnl library version from <major>.<minor>.<release>[-<suffix>]
 LIBCRYPTSETUP_VERSION=$(echo $PACKAGE_VERSION | cut -f1 -d-)
@@ -30,6 +30,7 @@ AM_PROG_CC_C_O
 AC_PROG_CPP
 AC_PROG_INSTALL
 AC_PROG_MAKE_SET
+AC_PROG_MKDIR_P
 AC_ENABLE_STATIC(no)
 LT_INIT
 PKG_PROG_PKG_CONFIG

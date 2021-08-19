@@ -1,7 +1,29 @@
+cryptsetup (2:2.4.0-1) unstable; urgency=low
+
+  [ Guilhem Moulin ]
+  * New upstream release.
+  * Salsa CI: Set SALSA_CI_BLHC_ARGS to avoid failing when *test* files are
+    built without the "right" LDFLAGS.
+  * Remove obsolete upstart configuration files on upgrade and purge.
+    (Closes: #990490)
+  * d/*.{pre,post}*: Explicitly exit with status code 0.
+  * d/copyright: Set field Upstream-Name.
+  * d/control: Bump Standards-Version to 4.5.1 (no changes necessary).
+  * d/control: Remove cryptsetup-run from cryptsetup's Recommends.
+    (Closes: #987769)
+  * d/control: Demote cryptsetup-initramfs from cryptsetup's Recommends to
+    Suggests.  This concludes the package split started in 2:2.0.3-1 during
+    the Buster release cycle.
+
+  [ Ayla Ounce ]
+  * Add support for --perf_* flags to initramfs.
+
+ -- Guilhem Moulin <guilhem@debian.org>  Thu, 19 Aug 2021 03:11:11 +0200
+
 cryptsetup (2:2.4.0~rc1-1+exp1) experimental; urgency=medium
 
   * New upstream release candidate.
-  * d/copyright: update file.
+  * d/copyright: Update file.
   * d/cryptsetup.docs: Add upstream's README.md.
   * d/TODO.md: Remove implemented `luksSuspend` integration.
 
@@ -2240,7 +2262,7 @@ cryptsetup (2:1.0.6-5) unstable; urgency=high
   * Remove duplicated configuration of --key-file in $PARAMS at do_noluks().
     (closes: #493848).
   * Invoke mount_fs() and umount_fs() in cryptdisks_start, add
-    log_action_begin_msg() and log_action_end_msg() to both cryptdisk_start
+    log_action_begin_msg() and log_action_end_msg() to both cryptdisks_start
     and cryptdisks_stop.
   * Copy fd 3 code from do_start and do_stop to cryptdisks_start and
     cryptdisks_stop  to fix "keyscript | cryptsetup". (closes: #493622)

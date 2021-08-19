@@ -5,6 +5,8 @@ include:
 
 variables:
   RELEASE: 'unstable'
+  # it seems variable expansion does some quoting already
+  SALSA_CI_BLHC_ARGS: '--ignore-line=gcc\s.*\s\.\./tests/.*'
 
 # Disable the cryptsetup testsuite by setting DEB_BUILD_OPTIONS 'nocheck' for
 # the reprotest job for now. It fails because reprotest builds as root, which

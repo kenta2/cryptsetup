@@ -17,7 +17,7 @@ disk.  It is especially interesting when GRUB is installed to a read-only
 media, for instance as [coreboot payload](https://doc.coreboot.org/payloads.html#grub2)
 flashed to a write-protected chip.  On the other hand, it is *incompatible*
 with some other features that only enabled later at initramfs stage, such
-as slash screens or remote unlocking.
+as splash screens or remote unlocking.
 
 Since enabling unlocking LUKS devices from GRUB [isn't exposed to the d-i
 interface](https://bugs.debian.org/814798) (as of Buster), people have
@@ -260,7 +260,7 @@ have any LUKS2-only features left, and can be converted to LUKS1.
 
 (The moving operation can be done from the normal system.  No need to
 reboot into a live CD or an initramfs shell if the root file system
-resides in a LUK1 device.)
+resides in a LUKS1 device.)
 
  1. To ensure data is not modified while it's being copied, remount
     `/boot` read-only.

@@ -30,7 +30,7 @@ Build-Depends: autoconf,
                uuid-dev,
                xsltproc,
                xxd <!nocheck>
-Standards-Version: 4.5.1
+Standards-Version: 4.6.0
 Homepage: https://gitlab.com/cryptsetup/cryptsetup
 Vcs-Browser: https://salsa.debian.org/cryptsetup-team/cryptsetup
 Vcs-Git: https://salsa.debian.org/cryptsetup-team/cryptsetup.git -b debian/latest
@@ -42,9 +42,8 @@ Depends: cryptsetup-bin (>= 2:1.6.0),
          dmsetup,
          ${misc:Depends},
          ${shlibs:Depends}
-Suggests: dosfstools, keyutils, liblocale-gettext-perl
+Suggests: cryptsetup-initramfs, dosfstools, keyutils, liblocale-gettext-perl
 Replaces: cryptsetup-run (<< 2:2.1.0-6)
-Recommends: cryptsetup-initramfs, cryptsetup-run
 Breaks: cryptsetup-run (<< 2:2.1.0-6)
 Description: disk encryption support - startup scripts
  Cryptsetup provides an interface for configuring encryption on block
@@ -58,7 +57,7 @@ Description: disk encryption support - startup scripts
  file /etc/crypttab. Additional features are cryptoroot support through
  initramfs-tools and several supported ways to read a passphrase or key.
  .
- This package provides the cryptdisk_start and stop wrappers and
+ This package provides the cryptdisks_start and _stop wrappers, as well as
  luksformat.
 
 Package: cryptsetup-bin

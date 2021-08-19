@@ -19,3 +19,5 @@ if [ "$1" = "install" -o "$1" = "upgrade" ] &&
 fi
 
 #DEBHELPER#
+
+exit 0
