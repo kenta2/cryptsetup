@@ -1,0 +1,44 @@
+# Simple LVM-on-LUKS2 layout -- more or less emulates what one gets out
+# of d-i with the "encrypted LVM" partioning method.
+
+# format the target disk with three partitions
+sfdisk /dev/vda <<-EOF
+	label: gpt
+	unit: sectors
+
+	start=$((1024*2)), size=$((1024*2)), type=${GUID_TYPE_BIOS_boot}
+	start=$(((1+1)*1024*2)), size=$((128*1024*2)), type=${GUID_TYPE_Linux_FS}
+	start=$(((1+1+128)*1024*2)), type=${GUID_TYPE_LUKS}
+EOF
+
+# initialize a new LUKS partition and open it
+echo -n "topsecret" >/rootfs.key
+cryptsetup luksFormat --batch-mode \
+    --key-file=/rootfs.key \
+    --type=luks2 \
+    --pbkdf=argon2id \
+    --pbkdf-force-iterations=4 \
+    --pbkdf-memory=32 \
+    -- /dev/vda3
+cryptsetup luksOpen --key-file=/rootfs.key --allow-discards \
+    -- /dev/vda3 "vda3_crypt"
+
+lvm pvcreate /dev/mapper/vda3_crypt
+lvm vgcreate "testvg" /dev/mapper/vda3_crypt
+lvm lvcreate -Zn --size 64m --name "swap" "testvg"
+lvm lvcreate -Zn -l100%FREE --name "root" "testvg"
+lvm vgchange -ay "testvg"
+lvm vgmknodes
+
+mkdir /target
+mke2fs -Ft ext4 /dev/testvg/root
+mount -t ext4 /dev/testvg/root /target
+
+mkdir /target/boot
+mke2fs -Ft ext2 -m0 /dev/vda2
+mount -t ext2 /dev/vda2 /target/boot
+
+mkswap /dev/testvg/swap
+swapon /dev/testvg/swap
+
+# vim: set filetype=sh :

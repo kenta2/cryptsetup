@@ -1,0 +1,156 @@
+#!/bin/sh
+
+# PID1 at initramfs stage
+#
+# Copyright © 2021-2022 Guilhem Moulin <guilhem@debian.org>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+set -eux
+PATH="/usr/sbin:/usr/bin:/sbin:/bin"
+export PATH
+
+trap "echo \"ALERT!  Couldn't setup system, dropping to a shell.\" >&2; sh -i" 0
+
+# set VT100 autowrap mode again (QEMU might mess the terminal up)
+printf '\033[?7h'
+
+mount -t devtmpfs -o noexec,nosuid,mode=0755 udev /dev
+
+mkdir /dev/pts /proc /run /sys
+mount -t devpts -o noexec,nosuid,gid=5,mode=0620 devpts /dev/pts
+mount -t proc -o nodev,noexec,nosuid proc /proc
+mount -t tmpfs -o nodev,noexec,nosuid,size=5%,mode=0755 tmpfs /run
+mount -t sysfs -o nodev,noexec,nosuid sysfs /sys
+
+modprobe virtio_rng # /dev/hwrng (avoid entropy starvation)
+modprobe virtio_pci
+modprobe virtio_blk # /dev/vd[a-z]
+
+. /init.conf
+
+GUID_TYPE_BIOS_boot="21686148-6449-6E6F-744E-656564454649" # BIOS boot partition
+GUID_TYPE_Linux_FS="0FC63DAF-8483-4772-8E79-3D69D8477DE4"  # Linux filesystem data
+GUID_TYPE_LUKS="CA7D7CCB-63ED-4C53-861C-1742536059CC"      # LUKS partition
+
+. /init.setup
+
+mkdir /media
+DEBIAN_DIST="$(blkid -l -t LABEL="debian_dist" -o device)"
+mount -t ext2 -o ro "$DEBIAN_DIST" /media
+for pkg in /media/__stage1__/*.deb; do
+    dpkg-deb --extract "$pkg" /target
+done
+
+# setup hosts(5) and hostname(5)
+echo "$HOSTNAME" >/target/etc/hostname
+echo "127.0.0.1 localhost $HOSTNAME" >/target/etc/hosts
+
+# move pseudo and temporary filesystems to /target
+mount -no move /dev /target/dev
+mount -no move /proc /target/proc
+mount -no move /run /target/run
+mount -no move /sys /target/sys
+
+# prevent any services from starting during package installation, taken
+# from debootstrap(8)
+cat >/target/usr/sbin/policy-rc.d <<-EOF
+	#!/bin/sh
+	exit 101
+EOF
+chmod +x /target/usr/sbin/policy-rc.d
+
+mv /target/sbin/start-stop-daemon /target/sbin/start-stop-daemon.REAL
+cat >/target/sbin/start-stop-daemon <<-EOF
+	#!/bin/sh
+	echo
+	echo "Warning: Fake start-stop-daemon called, doing nothing"
+EOF
+chmod +x /target/usr/sbin/policy-rc.d /target/sbin/start-stop-daemon
+
+DEBIAN_FRONTEND="noninteractive"
+DEBCONF_NONINTERACTIVE_SEEN="true"
+export DEBIAN_FRONTEND DEBCONF_NONINTERACTIVE_SEEN
+
+# debootstrap the target system
+mkdir /target/media
+mount -no move /media /target/media
+cp -p /debootstrap /target/debootstrap
+chroot /target /debootstrap
+rm -f /target/debootstrap
+
+# use MODULES=dep (if it works with fewer modules then it also works
+# with the default MODULES=most)
+mkdir -p /target/etc/initramfs-tools/conf.d
+echo "MODULES=dep" >/target/etc/initramfs-tools/conf.d/modules
+
+cp /init.preinst /target/init.preinst
+chroot /target /bin/sh -eux /init.preinst
+rm -f /target/init.preinst
+
+# install extra packages
+chroot /target apt-get -oAPT::Sandbox::User="root" install --yes $PACKAGES
+rm -f /target/etc/apt/sources.list
+
+# configure and install GRUB
+cat >/target/etc/default/grub <<-EOF
+	GRUB_DEFAULT=0
+	GRUB_TIMEOUT=0
+	GRUB_CMDLINE_LINUX_DEFAULT=""
+	GRUB_CMDLINE_LINUX="console=tty0 console=hvc0 console=ttyS0,115200n8"
+	GRUB_DISABLE_RECOVERY=true
+	GRUB_TERMINAL="console serial"
+	GRUB_SERIAL_COMMAND="serial --speed=115200"
+EOF
+chroot /target grub-install --no-floppy --modules=part_gpt /dev/vda
+chroot /target update-grub
+
+chroot /target passwd --delete root # make root account passwordless
+
+# show some system info right after login to ease troubleshooting
+cat >/target/root/.profile <<-EOF
+	run_verbose() {
+	    printf "\\\`%s\\\` output:\\\\n" "\$*"
+	    "\$@"
+	}
+	stty cols 150
+	run_verbose dmsetup table
+	run_verbose lsblk
+	run_verbose df -h
+EOF
+
+if [ -f /init.postinst ]; then
+    cp /init.postinst /target/init.postinst
+    chroot /target /bin/sh -eux /init.postinst
+    rm -f /target/init.postinst
+fi
+
+# allow service startup again
+mv /target/sbin/start-stop-daemon.REAL /target/sbin/start-stop-daemon
+rm /target/usr/sbin/policy-rc.d
+
+# move pseudo and temporary filesystems back
+mount -no move /target/dev /dev
+mount -no move /target/proc /proc
+mount -no move /target/run /run
+mount -no move /target/sys /sys
+
+umount /target/media
+sh -eux /init.bottom
+
+# exiting this script yields "Kernel panic - not syncing: Attempted to
+# kill init!", so give the asyncronous SysRq trigger a chance to power
+# off (sending a racy C-d would still trigger a panic but we don't care)
+echo o >/proc/sysrq-trigger
+exec cat >/dev/null

@@ -45,6 +45,10 @@ Copyright: © 2005-2015 Jonas Meurer <jonas@freesources.org>
            © 2018 Erik Nellessen
 License: GPL-2+
 
+Files: debian/tests/*
+Copyright: © 2021-2022 Guilhem Moulin <guilhem@debian.org>
+License: GPL-2+
+
 Files: docs/examples/* tests/all-symbols-test.c
 Copyright: © 2011-2022 Red Hat, Inc.
 License: LGPL-2.1+

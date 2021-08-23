@@ -46,3 +46,24 @@ Restrictions: needs-root, isolation-machine
 Tests: cryptdisks, cryptdisks.init
 Depends: cryptsetup, xxd
 Restrictions: allow-stderr, needs-root, isolation-machine
+
+Tests: cryptroot-lvm
+# Only dependencies required to set the VM here are listed here;
+# cryptsetup is not listed since we only install it in the VM.
+Depends: cryptsetup-bin,
+         fdisk,
+         genext2fs,
+         initramfs-tools-core,
+         lvm2,
+         qemu-system-x86
+# We only need root to create /dev/kvm, really.  And while it works
+# locally and on debci, it doesn't work on salsa CI..
+Restrictions: allow-stderr, needs-root
+Architecture: amd64 i386
+
+# Dummy test so that kernel updates trigger our other autopkgtests on debci
+Features: test-name=hint-testsuite-triggers
+Test-Command: false
+Depends: linux-image-generic, linux-image-amd64 [amd64], linux-image-686-pae [i386]
+Restrictions: hint-testsuite-triggers
+Architecture: amd64 i386

@@ -1,0 +1,18 @@
+#!/usr/bin/perl -T
+
+BEGIN {
+    require "./debian/tests/utils/mock.pm";
+    Cryptsetup::Mock::->import();
+}
+
+unlock_disk("topsecret");
+login_nopassword("root");
+
+# make sure the root FS and swap are help by dm-crypt devices
+assert_command(q{cryptsetup luksOpen --test-passphrase /dev/vda3 <<<topsecret});
+my $out = shell_command(q{lsblk -in -oNAME,TYPE,MOUNTPOINT /dev/vda3});
+die unless $out =~ m#^`-vda3_crypt\s+crypt\s*$#m;
+die unless $out =~ m#^\s{2}[`|]-testvg-root\s+lvm\s+/\s*$#m;
+die unless $out =~ m#^\s{2}[`|]-testvg-swap\s+lvm\s+\[SWAP\]\s*$#m;
+
+poweroff();
