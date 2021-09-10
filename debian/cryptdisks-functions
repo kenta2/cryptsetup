@@ -114,8 +114,8 @@ setup_mapping() {
         # fail if the device has a filesystem and the disk encryption format doesn't
         # verify the key digest (unlike LUKS); unless it's swap, otherwise people can't
         # easily convert an existing plainttext swap partition to an encrypted one
-        if ! out="$(/lib/cryptsetup/checks/un_blkid "$CRYPTTAB_SOURCE" 2>/dev/null)" &&
-                ! /lib/cryptsetup/checks/blkid "$CRYPTTAB_SOURCE" swap >/dev/null; then
+        if ! out="$(/lib/cryptsetup/checks/un_blkid "$CRYPTTAB_SOURCE" "" "$CRYPTTAB_OPTION_offset" 2>/dev/null)" &&
+                ! /lib/cryptsetup/checks/blkid "$CRYPTTAB_SOURCE" swap "$CRYPTTAB_OPTION_offset" >/dev/null; then
             log_warning_msg "$CRYPTTAB_NAME: the precheck for '$CRYPTTAB_SOURCE' failed: $out"
             return 1
         fi
@@ -145,8 +145,8 @@ setup_mapping() {
             continue
         fi
         if [ "${CRYPTTAB_OPTION_swap+x}" ]; then
-            if out="$(/lib/cryptsetup/checks/un_blkid "$tmpdev" 2>/dev/null)" ||
-                    /lib/cryptsetup/checks/blkid "$tmpdev" swap >/dev/null 2>&1; then
+            if out="$(/lib/cryptsetup/checks/un_blkid "$tmpdev" "" "$CRYPTTAB_OPTION_offset" 2>/dev/null)" ||
+                    /lib/cryptsetup/checks/blkid "$tmpdev" swap "$CRYPTTAB_OPTION_offset" >/dev/null 2>&1; then
                 mkswap "$tmpdev" >/dev/null 2>&1
             else
                 log_warning_msg "$target: the check for '$CRYPTTAB_NAME' failed. $CRYPTTAB_NAME contains data: $out"
