@@ -24,17 +24,22 @@
   <title>DESCRIPTION</title>
   <simpara>
    The file <filename>/etc/crypttab</filename> contains descriptive
-   information about encrypted filesystems. <filename>crypttab</filename>
+   information about encrypted devices. <filename>crypttab</filename>
    is only read by programs (e.g.
    <command moreinfo="refentry">cryptdisks_start</command> and
    <command moreinfo="refentry">cryptdisks_stop</command>),
    and not written; it is the duty of the system
-   administrator to properly create and maintain this file. Each filesystem is
-   described on a separate line; fields on each line are separated by tabs or
-   spaces. Lines starting with <quote>#</quote> are comments, empty lines are
-   ignored. The order of records in <filename>crypttab</filename> is important
-   because the init scripts sequentially iterate through
-   <filename>crypttab</filename> doing their thing.
+   administrator to properly create and maintain this file.
+   <filename>crypttab</filename> entries are treated sequentially, so their
+   order matters (dependencies need to listed first).
+  </simpara>
+  <simpara>
+   Each encrypted device is described on a separate line. Fields on each line
+   are separated by tabs or spaces. Lines starting with '#' are comments, and blank
+   lines are ignored.
+   Octal sequences <code>\0</code><emphasis>num</emphasis> within a field are
+   decoded, which can be used for values containing spaces or special characters.
+   A backslash which doesn't start an octal sequence yields undefined behavior.
   </simpara>
   <simpara>
    The first field, <emphasis>target</emphasis>, describes the mapped
@@ -56,9 +61,7 @@
    The third field, <emphasis>key file</emphasis>, describes the file to use
    as a key for decrypting the data of the <emphasis>source device</emphasis>.
    In case of a <emphasis>keyscript</emphasis>, the value of this field is
-   given as argument to the keyscript. Values with spaces and special
-   characters need to be escaped using octal sequences, like for
-   <citerefentry><refentrytitle>fstab</refentrytitle><manvolnum>5</manvolnum></citerefentry>.
+   given as argument to the keyscript.
    Note that the <emphasis>entire</emphasis> key file will be used as the
    passphrase; the passphrase must <emphasis>not</emphasis> be followed by a
    newline character.
