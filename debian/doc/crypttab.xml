@@ -387,9 +387,8 @@
       the check fails, the device is removed. If a program is provided as an
       argument, it is run, giving the decrypted volume (target device) as
       first argument, and the value of the checkargs option as second argument.
-      Cryptdisks/cryptroot searches for the given program in
-      <filename class="directory">/lib/cryptsetup/checks/</filename> first, but
-      full path to program is supported as well.
+      The program is either specified by full path or relative to
+      <filename class="directory">/lib/cryptsetup/checks/</filename>.
      </simpara>
      <simpara>
       Default is set in <filename>/etc/default/cryptdisks</filename>
@@ -495,9 +494,11 @@
       <emphasis>third field</emphasis> as only argument. The keyscript output
       is passed to cryptsetup as decyption key.
       When used in initramfs, the executable either needs to be self-contained
-      (i.e. does'nt rely on any external program which is not present in the
+      (i.e. doesn't rely on any external program which is not present in the
       initramfs environment) or the dependencies have to added to the initramfs
       image by other means.
+      The program is either specified by full path or relative to
+      <filename class="directory">/lib/cryptsetup/scripts/</filename>.
      </simpara>
      <simpara>
       LIMITATIONS: All binaries and files on which the keyscript depends must

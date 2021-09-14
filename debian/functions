@@ -205,9 +205,10 @@ crypttab_validate_option() {
                     return 0
                 fi
             fi
-            if [ -x "/lib/cryptsetup/checks/$VALUE" ] && [ -f "/lib/cryptsetup/checks/$VALUE" ]; then
+            if [ "${VALUE#/}" = "$VALUE" ]; then
                 VALUE="/lib/cryptsetup/checks/$VALUE"
-            elif [ ! -x "$VALUE" ] || [ ! -f "$VALUE" ]; then
+            fi
+            if [ ! -x "$VALUE" ] || [ ! -f "$VALUE" ]; then
                 return 1
             fi
         ;;
