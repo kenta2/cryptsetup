@@ -44,8 +44,6 @@ typedef int32_t key_serial_t;
 #include "luks1/luks.h"
 #include "libcryptsetup.h"
 
-#define DMDIR "/dev/mapper/"
-
 #define DEVICE_1_UUID "28632274-8c8a-493f-835b-da802e1c576b"
 #define DEVICE_EMPTY_name "crypt_zero"
 #define DEVICE_EMPTY DMDIR DEVICE_EMPTY_name
@@ -3844,6 +3842,7 @@ static void Luks2Reencryption(void)
 		.hash = "sha1",
 		.luks2 = &params2,
 	};
+	dev_t devno;
 
 	const char *mk_hex = "bb21babe733229347bd4e681891e213d94c685be6a5b84818afe7a78a6de7a1a";
 	size_t key_size = strlen(mk_hex) / 2;
@@ -4320,6 +4319,22 @@ static void Luks2Reencryption(void)
 	OK_(crypt_reencrypt_run(cd, NULL, NULL));
 	CRYPT_FREE(cd);
 
+	/* decryption forward (online) */
+	OK_(crypt_init(&cd, DMDIR L_DEVICE_OK));
+	params2.data_device = NULL;
+	OK_(crypt_format(cd, CRYPT_LUKS2, "aes", "cbc-essiv:sha256", NULL, NULL, 32, &params2));
+	OK_(crypt_set_pbkdf_type(cd, &pbkdf));
+	EQ_(crypt_keyslot_add_by_volume_key(cd, 6, NULL, 32, PASSPHRASE, strlen(PASSPHRASE)), 6);
+	EQ_(crypt_activate_by_passphrase(cd, CDEVICE_2, 6, PASSPHRASE, strlen(PASSPHRASE), 0), 6);
+	memset(&rparams, 0, sizeof(rparams));
+	rparams.mode = CRYPT_REENCRYPT_DECRYPT;
+	rparams.direction = CRYPT_REENCRYPT_FORWARD;
+	rparams.resilience = "none";
+	rparams.max_hotzone_size = 2048;
+	OK_(crypt_reencrypt_init_by_passphrase(cd, CDEVICE_2, PASSPHRASE, strlen(PASSPHRASE), 6, CRYPT_ANY_SLOT, NULL, NULL, &rparams));
+	OK_(crypt_reencrypt_run(cd, NULL, NULL));
+	CRYPT_FREE(cd);
+
 	/* decryption with data shift */
 	OK_(crypt_init(&cd, DMDIR L_DEVICE_OK));
 	params2.data_device = NULL;
@@ -4354,6 +4369,8 @@ static void Luks2Reencryption(void)
 	EQ_(crypt_activate_by_passphrase(cd, CDEVICE_2, 6, PASSPHRASE, strlen(PASSPHRASE), 0), 6);
 	OK_(t_device_size(DMDIR CDEVICE_2, &r_size_1));
 	EQ_(r_size_1, 512);
+	// store devno for later size check
+	OK_(t_get_devno(CDEVICE_2, &devno));
 	// create placeholder device to block automatic deactivation after decryption
 	OK_(_system("dmsetup create " CDEVICE_1 " --table \"0 1 linear " DMDIR CDEVICE_2 " 0\"", 1));
 	remove(BACKUP_FILE);
@@ -4373,7 +4390,7 @@ static void Luks2Reencryption(void)
 	EQ_(crypt_get_data_offset(cd), 0);
 	OK_(crypt_reencrypt_run(cd, NULL, NULL));
 	remove(BACKUP_FILE);
-	OK_(t_device_size(DMDIR CDEVICE_2, &r_size_1));
+	OK_(t_device_size_by_devno(devno, &r_size_1));
 	EQ_(r_size_1, 512);
 	OK_(_system("dmsetup remove " DM_RETRY CDEVICE_1 DM_NOSTDERR, 0));
 	CRYPT_FREE(cd);
