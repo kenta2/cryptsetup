@@ -278,6 +278,7 @@ crypttab_resolve_source() {
 run_keyscript() {
     local keyscriptarg="$1" CRYPTTAB_TRIED="$2" keyscript;
     export CRYPTTAB_NAME CRYPTTAB_SOURCE CRYPTTAB_OPTIONS
+    export _CRYPTTAB_NAME _CRYPTTAB_SOURCE _CRYPTTAB_OPTIONS
     export CRYPTTAB_TRIED
 
     if [ -n "${CRYPTTAB_OPTION_keyscript+x}" ] && \
@@ -285,6 +286,7 @@ run_keyscript() {
         # 'keyscript' option is present: export its argument as
         # $CRYPTTAB_KEY
         export CRYPTTAB_KEY="$keyscriptarg"
+        export _CRYPTTAB_KEY
         keyscript="$CRYPTTAB_OPTION_keyscript"
     elif [ "$keyscriptarg" = none ]; then
         # don't export the prompt message as CRYPTTAB_KEY
