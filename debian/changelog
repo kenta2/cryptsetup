@@ -16,6 +16,8 @@ cryptsetup (2:2.4.1-1) UNRELEASED; urgency=medium
   * initramfs: Add new hook configuration option ASKPASS=[Yn] to opt out from
     askpass inclusion. (Closes: #994486)
   * d/cryptsetup-initramfs.post*: Replace `which` with `command -v`.
+  * d/functions: Export _CRYPTTAB_* to keyscripts' environment.  Thanks to
+    Christoph Anton Mitterer for the patch.
 
  -- Guilhem Moulin <guilhem@debian.org>  Sun, 03 Oct 2021 14:44:23 +0200
 
