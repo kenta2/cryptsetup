@@ -109,7 +109,8 @@ Description: disk encryption support - suspend mode integration
  care of removing LUKS master key from memory before system suspend.
  .
  Please note that the suspend mode integration is limited to LUKS devices
- and requires systemd.
+ and requires systemd.  Moreover, this is an early implementation and may not
+ be as mature as the other cryptsetup-* packages yet.
 
 Package: cryptsetup-run
 Section: oldlibs
