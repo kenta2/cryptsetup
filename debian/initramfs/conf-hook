@@ -26,3 +26,15 @@
 #
 
 #KEYFILE_PATTERN=
+
+#
+# ASKPASS: [ y | n ]
+#
+# Whether to include the askpass binary to the initramfs image.  askpass
+# is required for interactive passphrase prompts, and ASKPASS=y (the
+# default) is implied when the hook detects that same device needs to be
+# unlocked interactively (i.e., not via keyfile nor keyscript) at
+# initramfs stage.  Setting ASKPASS=n also skips `cryptroot-unlock`
+# inclusion as it requires the askpass executable.
+
+ASKPASS=y

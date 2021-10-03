@@ -105,6 +105,8 @@ crypttab_print_entry() {
 
     if [ -n "${CRYPTTAB_OPTION_keyscript+x}" ]; then
         copy_exec "$CRYPTTAB_OPTION_keyscript"
+    elif [ "$CRYPTTAB_KEY" = "none" ]; then
+        ASKPASS="y"
     fi
     if [ "${CRYPTTAB_OPTION_keyscript-}" = "/lib/cryptsetup/scripts/decrypt_derived" ]; then
         # (recursively) list first the device to derive the key from (so
@@ -265,7 +267,8 @@ add_crypto_modules() {
 #######################################################################
 # Begin real processing
 
-unset -v KEYFILE_PATTERN
+unset -v ASKPASS KEYFILE_PATTERN
+ASKPASS="y"
 KEYFILE_PATTERN=
 
 # Load the hook config
@@ -295,7 +298,8 @@ manual_add_modules dm_crypt
 
 copy_exec /sbin/cryptsetup
 copy_exec /sbin/dmsetup
-copy_exec /lib/cryptsetup/askpass
+
+[ "$ASKPASS" = n ] || copy_exec /lib/cryptsetup/askpass
 
 # We need sed. Either via busybox or as standalone binary.
 if [ "$BUSYBOX" = n ] || [ ! -e "$BUSYBOXDIR/busybox" ]; then
