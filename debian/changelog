@@ -16,8 +16,16 @@ cryptsetup (2:2.4.1-1) UNRELEASED; urgency=medium
   * initramfs: Add new hook configuration option ASKPASS=[Yn] to opt out from
     askpass inclusion. (Closes: #994486)
   * d/cryptsetup-initramfs.post*: Replace `which` with `command -v`.
-  * d/functions: Export _CRYPTTAB_* to keyscripts' environment.  Thanks to
-    Christoph Anton Mitterer for the patch.
+
+  [ Christoph Anton Mitterer ]
+  * d/functions: Export _CRYPTTAB_* to the keyscript's environment.
+
+  [ Lukas Schwaighofer ]
+  * initramfs: Honor activation/auto_activation_volume_list setting.
+    (Closes: #993725)
+
+  [ Thorsten Glaser ]
+  * initramfs: blkid/un_blkid checks: Honor offset= option. (Closes: #994056)
 
  -- Guilhem Moulin <guilhem@debian.org>  Sun, 03 Oct 2021 14:44:23 +0200
 
