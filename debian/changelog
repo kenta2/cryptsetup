@@ -30,6 +30,14 @@ cryptsetup (2:2.4.1-1) UNRELEASED; urgency=medium
 
  -- Guilhem Moulin <guilhem@debian.org>  Sun, 03 Oct 2021 14:44:23 +0200
 
+cryptsetup (2:2.4.0-1+exp1) experimental; urgency=medium
+
+  * Upload to experimental.
+  * d/rules: Prefix /lib/systemd/system-shutdown/cryptsetup-suspend.shutdown
+    with /usr to fix FTBS with debhelper 13.4; see #992469.
+
+ -- Guilhem Moulin <guilhem@debian.org>  Thu, 19 Aug 2021 22:55:02 +0200
+
 cryptsetup (2:2.4.0-1) unstable; urgency=low
 
   [ Guilhem Moulin ]
@@ -57,6 +65,7 @@ cryptsetup (2:2.4.0~rc1-1+exp1) experimental; urgency=medium
   * New upstream release candidate.
   * d/copyright: Update file.
   * d/cryptsetup.docs: Add upstream's README.md.
+  * d/TODO.md: Remove implemented `luksSuspend` integration.
 
  -- Guilhem Moulin <guilhem@debian.org>  Fri, 30 Jul 2021 02:37:32 +0200
 
@@ -84,6 +93,12 @@ cryptsetup (2:2.3.6-1+exp1) experimental; urgency=medium
 
  -- Guilhem Moulin <guilhem@debian.org>  Fri, 28 May 2021 22:54:20 +0200
 
+cryptsetup (2:2.3.5-1+exp1) experimental; urgency=medium
+
+  * Upload to experimental.
+
+ -- Guilhem Moulin <guilhem@debian.org>  Thu, 11 Mar 2021 23:36:01 +0100
+
 cryptsetup (2:2.3.5-1) unstable; urgency=medium
 
   * New upstream bugfix release.  (Closes: #985581)
@@ -98,6 +113,12 @@ cryptsetup (2:2.3.5-1) unstable; urgency=medium
   * d/copyright: Update copyright year.
 
  -- Guilhem Moulin <guilhem@debian.org>  Fri, 02 Apr 2021 23:43:41 +0200
+
+cryptsetup (2:2.3.4-2+exp1) experimental; urgency=medium
+
+  * Upload to experimental.
+
+ -- Guilhem Moulin <guilhem@debian.org>  Thu, 14 Jan 2021 19:55:25 +0100
 
 cryptsetup (2:2.3.4-2) unstable; urgency=medium
 
@@ -138,6 +159,12 @@ cryptsetup (2:2.3.4-2) unstable; urgency=medium
 
  -- Guilhem Moulin <guilhem@debian.org>  Thu, 14 Jan 2021 19:16:40 +0100
 
+cryptsetup (2:2.3.4-1+exp1) experimental; urgency=medium
+
+  * Upload to experimental.
+
+ -- Guilhem Moulin <guilhem@debian.org>  Fri, 04 Sep 2020 00:55:41 +0200
+
 cryptsetup (2:2.3.4-1) unstable; urgency=high
 
   * New upstream bugfix release, including fix for CVE-2020-14382:
@@ -145,6 +172,50 @@ cryptsetup (2:2.3.4-1) unstable; urgency=high
     segments metadata on 32-bits platforms. (Closes: #969471)
 
  -- Guilhem Moulin <guilhem@debian.org>  Fri, 04 Sep 2020 00:30:40 +0200
+
+cryptsetup (2:2.3.3-3+exp3) experimental; urgency=medium
+
+  * d/control: Make cryptsetup-suspend explicitly depend on
+    initramfs-tools-core as we use unmkinitramfs(8) in the wrapper.
+  * systemd-suspend.service override: Set OOMScoreAdjust to -1000 to
+    disable OOM killing of processes of the unit.  Thanks, ಚಿರಾಗ್.
+    (Closes: #968569)
+  * d/doc/cryptsetup-suspend.xml: Document that key material included in the
+    initramfs image will remain unencrypted (see #969286).
+
+ -- Guilhem Moulin <guilhem@debian.org>  Mon, 31 Aug 2020 00:09:10 +0200
+
+cryptsetup (2:2.3.3-3+exp2) experimental; urgency=medium
+
+  * d/control: Typofix in cryptsetup-suspend's long description.
+    (Closes: #968455)
+  * d/control: Make cryptsetup-suspend explicitly depend on kbd as we use
+    openvt(1) in the systemd-suspend.service override. (Closes: #969226)
+  * d/*: Run wrap-and-sort(1).
+  * d/scripts/suspend/cryptsetup-suspend-wrapper:
+    + Parse /proc/meminfo in a single pass using shell builtins rather than
+      calling awk(1).
+    + Use "/boot/initrd.img-$(uname -r)" as path to the initrd instead of
+      deriving it from the kernel command line.  BOOT_IMAGE's value is
+      relative to the boot's loader viewpoint, which might differ from that of
+      the main system.
+    + run_dir(): Prefer find(1)'s -execdir option over -exec.
+    + Conditionally remove/copy firmware into the initramfs image.
+      (Closes: #969270)
+  * d/rules: Build our scripts with `-Wall -Werror`.
+  * d/cryptsetup-suspend.{postinst,postrm}: Call `systemctl daemon-reload`,
+    which appears to be needed on upgrades.  (dh_installsystemd(1) doesn't
+    support overrides so we manually copy the snippet it would add.)
+
+ -- Guilhem Moulin <guilhem@debian.org>  Sun, 30 Aug 2020 18:01:49 +0200
+
+cryptsetup (2:2.3.3-3+exp1) experimental; urgency=medium
+
+  * Add new binary package 'crypsetup-suspend', which implements support
+    to luksSuspend LUKS devices before ACPI S3 system suspend.
+    + See the cryptsetup-suspend(7) manpage for further information.
+
+ -- Jonas Meurer <jonas@freesources.org>  Wed, 12 Aug 2020 21:29:31 +0200
 
 cryptsetup (2:2.3.3-2) unstable; urgency=medium
 
