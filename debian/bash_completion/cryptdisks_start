@@ -4,7 +4,7 @@
 
 _cryptdisks() {
     local action="$1" t
-    for t in $( mawk -vt="${COMP_WORDS[COMP_CWORD]}" \
+    for t in $( awk -vt="${COMP_WORDS[COMP_CWORD]}" \
                 '($1 !~ /^#/ && index($1,t) == 1) {print $1}' \
                 "${TABFILE-"/etc/crypttab"}" ); do
         if [ "$action" = start -a ! -e "/dev/mapper/$t" ] ||
