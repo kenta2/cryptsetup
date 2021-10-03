@@ -1,3 +1,23 @@
+cryptsetup (2:2.4.1-1) UNRELEASED; urgency=medium
+
+  [ Guilhem Moulin ]
+  * New upstream bugfix release 2.4.1.
+  * d/rules:
+    + Use execute_after_dh_* from Debhelper compatibility level 13 when
+      relevant.
+    + Skip documentation generation under nodoc profile.
+    + Add new target execute_before_dh_auto_test so blhc ignores compilations
+      of tests/*.c.
+  * d/cryptsetup-initramfs.lintian-overrides: Refresh for lintian 2.107.0.
+  * crypttab(5):
+    + Improve documentation about escape sequences.
+    + Document that keyscript= can also take an absolute path.
+      (Closes: #994219)
+  * initramfs: Add new hook configuration option ASKPASS=[Yn] to opt out from
+    askpass inclusion. (Closes: #994486)
+
+ -- Guilhem Moulin <guilhem@debian.org>  Sun, 03 Oct 2021 14:44:23 +0200
+
 cryptsetup (2:2.4.0-1) unstable; urgency=low
 
   [ Guilhem Moulin ]
