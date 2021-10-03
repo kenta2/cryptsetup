@@ -93,7 +93,7 @@ Description: disk encryption support - initramfs integration
 Package: cryptsetup-suspend
 Architecture: linux-any
 Multi-Arch: foreign
-Depends: cryptsetup-initramfs (>= 2:2.3.3-1~),
+Depends: cryptsetup-initramfs (>= ${source:Version}),
          initramfs-tools-core,
          kbd,
          systemd,
