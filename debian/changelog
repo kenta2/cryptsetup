@@ -1,4 +1,4 @@
-cryptsetup (2:2.4.1-1) UNRELEASED; urgency=medium
+cryptsetup (2:2.4.1-1) UNRELEASED; urgency=low
 
   [ Guilhem Moulin ]
   * New upstream bugfix release 2.4.1.
@@ -17,6 +17,7 @@ cryptsetup (2:2.4.1-1) UNRELEASED; urgency=medium
   * initramfs: Add new hook configuration option ASKPASS=[Yn] to opt out from
     askpass inclusion. (Closes: #994486)
   * d/cryptsetup-initramfs.post*: Replace `which` with `command -v`.
+  * Merge debian/experimental branch and bring cryptsetup-suspend to sid.
 
   [ Christoph Anton Mitterer ]
   * d/functions: Export _CRYPTTAB_* to the keyscript's environment.
