@@ -266,29 +266,27 @@ crypttab_resolve_source() {
     dev="$(_resolve_device_spec "$dev")" && CRYPTTAB_SOURCE="$dev" || return 1
 }
 
-# run_keyscript($keyscriptarg, $tried_count)
-#   exec()'ute `$CRYPTTAB_OPTION_keyscript $keyscriptarg`.
-#   If $CRYPTTAB_OPTION_keyscript is unset or null and $keyscriptarg is
+# run_keyscript($tried_count)
+#   exec()'ute `$CRYPTTAB_OPTION_keyscript "$CRYPTTAB_KEY"`.
+#   If $CRYPTTAB_OPTION_keyscript is unset or null and $CRYPTTAB_KEY is
 #   "none" (meaning the passphrase is to be read interactively from the
-#   console), use `/lib/cryptsetup/askpass` as keyscript with a suitable
-#   prompt message.
+#   console), then use `/lib/cryptsetup/askpass` as keyscript with a
+#   suitable prompt message instead.
 #   Since the shell process is replaced with the $CRYPTTAB_OPTION_keyscript
 #   program, run_keyscript() must be used on the left-hand side of a
 #   pipe, or similar.
 run_keyscript() {
-    local keyscriptarg="$1" CRYPTTAB_TRIED="$2" keyscript;
+    local keyscript keyscriptarg="$CRYPTTAB_KEY"
     export CRYPTTAB_NAME CRYPTTAB_SOURCE CRYPTTAB_OPTIONS
     export _CRYPTTAB_NAME _CRYPTTAB_SOURCE _CRYPTTAB_OPTIONS
-    export CRYPTTAB_TRIED
+    export CRYPTTAB_TRIED="$1"
 
     if [ -n "${CRYPTTAB_OPTION_keyscript+x}" ] && \
             [ "$CRYPTTAB_OPTION_keyscript" != "/lib/cryptsetup/askpass" ]; then
-        # 'keyscript' option is present: export its argument as
-        # $CRYPTTAB_KEY
-        export CRYPTTAB_KEY="$keyscriptarg"
-        export _CRYPTTAB_KEY
+        # 'keyscript' option is present: export its argument as $CRYPTTAB_KEY
+        export CRYPTTAB_KEY _CRYPTTAB_KEY
         keyscript="$CRYPTTAB_OPTION_keyscript"
-    elif [ "$keyscriptarg" = none ]; then
+    elif [ "$keyscriptarg" = "none" ]; then
         # don't export the prompt message as CRYPTTAB_KEY
         keyscript="/lib/cryptsetup/askpass"
         keyscriptarg="Please unlock disk $CRYPTTAB_NAME: "
@@ -424,7 +422,7 @@ resume_device() {
         if [ "$CRYPTTAB_KEY" != "none" ]; then
             resume_mapping "$CRYPTTAB_KEY" && break || true
         else
-            run_keyscript "$CRYPTTAB_KEY" 1 | resume_mapping && break || true
+            run_keyscript 1 | resume_mapping && break || true
         fi
     done
 }

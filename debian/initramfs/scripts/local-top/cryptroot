@@ -160,7 +160,7 @@ setup_mapping() {
             unlock_mapping "$CRYPTTAB_KEY"
         else
             # unlock interactively or via keyscript
-            run_keyscript "$CRYPTTAB_KEY" "$count" | unlock_mapping
+            run_keyscript "$count" | unlock_mapping
         fi
         rv=$?
         count=$(( $count + 1 ))
