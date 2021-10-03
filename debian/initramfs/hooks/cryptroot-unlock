@@ -15,7 +15,7 @@ case "$1" in
 esac
 
 . /usr/share/initramfs-tools/hook-functions
-if [ ! -f "$DESTDIR/bin/cryptroot-unlock" ] &&
+if [ ! -f "$DESTDIR/bin/cryptroot-unlock" ] && [ -f "$DESTDIR/lib/cryptsetup/askpass" ] &&
         ! copy_file script /usr/share/cryptsetup/initramfs/bin/cryptroot-unlock /bin/cryptroot-unlock; then
     echo "ERROR: Couldn't copy /bin/cryptroot-unlock" >&2
     exit 1
