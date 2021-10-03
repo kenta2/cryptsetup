@@ -2,7 +2,7 @@
 
 prereqs()
 {
-    # cryptroot-unlock needs to be run list among crypt* since other hooks might include askpass
+    # cryptroot-unlock needs to be run last among crypt* since other hooks might include askpass
     local req script
     for req in "${0%/*}"/crypt*; do
         script="${req##*/}"
