@@ -96,7 +96,7 @@ execute_after_dh_fixperms-arch:
 	chmod 0755 debian/cryptsetup/lib/cryptsetup/checks/*
 	chmod 0755 debian/cryptsetup/lib/cryptsetup/scripts/decrypt_*
 	chmod 0755 debian/cryptsetup-suspend/lib/cryptsetup/scripts/suspend/cryptsetup-suspend-wrapper
-	chmod 0755 debian/cryptsetup-suspend/usr/lib/systemd/system-shutdown/cryptsetup-suspend.shutdown
+	chmod 0755 debian/cryptsetup-suspend/lib/systemd/system-shutdown/cryptsetup-suspend.shutdown
 	chmod 0755 debian/cryptsetup-udeb/lib/cryptsetup/checks/*
 	chmod 0755 debian/cryptsetup-udeb/lib/cryptsetup/scripts/decrypt_*
 
