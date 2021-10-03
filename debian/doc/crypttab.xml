@@ -491,8 +491,9 @@
     <listitem>
      <simpara>
       The executable at the indicated path is executed with the value of the
-      <emphasis>third field</emphasis> as only argument. The keyscript output
-      is passed to cryptsetup as decyption key.
+      <emphasis>third field</emphasis> as only argument. The keyscript's standard
+      output is passed to cryptsetup as decyption key.  Its exit status is currently
+      ignored, but no assumption should be made in that regard.
       When used in initramfs, the executable either needs to be self-contained
       (i.e. doesn't rely on any external program which is not present in the
       initramfs environment) or the dependencies have to added to the initramfs
