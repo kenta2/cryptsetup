@@ -1,10 +1,15 @@
 #!/bin/sh
 
-PREREQ="cryptroot"
-
 prereqs()
 {
-	echo "$PREREQ"
+    # cryptroot-unlock needs to be run list among crypt* since other hooks might include askpass
+    local req script
+    for req in "${0%/*}"/crypt*; do
+        script="${req##*/}"
+        if [ "$script" != "${0##*/}" ]; then
+            printf '%s\n' "$script"
+        fi
+    done
 }
 
 case "$1" in
@@ -14,8 +19,13 @@ case "$1" in
         ;;
 esac
 
+if [ ! -f "$DESTDIR/lib/cryptsetup/askpass" ]; then
+    # cryptroot-unlock is useless without askpass
+    exit 0
+fi
+
 . /usr/share/initramfs-tools/hook-functions
-if [ ! -f "$DESTDIR/bin/cryptroot-unlock" ] && [ -f "$DESTDIR/lib/cryptsetup/askpass" ] &&
+if [ ! -f "$DESTDIR/bin/cryptroot-unlock" ] &&
         ! copy_file script /usr/share/cryptsetup/initramfs/bin/cryptroot-unlock /bin/cryptroot-unlock; then
     echo "ERROR: Couldn't copy /bin/cryptroot-unlock" >&2
     exit 1

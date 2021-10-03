@@ -25,6 +25,6 @@ if [ ! -x "$DESTDIR/lib/cryptsetup/scripts/decrypt_keyctl" ]; then
     exit 0
 fi
 
+copy_exec /lib/cryptsetup/askpass
 copy_exec /bin/keyctl
-
 exit 0

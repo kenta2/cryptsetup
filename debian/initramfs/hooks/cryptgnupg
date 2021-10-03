@@ -40,6 +40,7 @@ copy_keys() {
 RV=0
 crypttab_foreach_entry copy_keys
 
-# Install gnupg software
+# install askpass and GnuPG
+copy_exec /lib/cryptsetup/askpass
 copy_exec /usr/bin/gpg
 exit $RV
