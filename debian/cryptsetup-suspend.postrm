@@ -1,4 +1,4 @@
-#! /bin/sh
+#!/bin/sh
 
 set -e
 
@@ -9,3 +9,4 @@ if [ -d /run/systemd/system ]; then
 fi
 
 #DEBHELPER#
+exit 0
