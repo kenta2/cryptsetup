@@ -37,4 +37,4 @@
 # initramfs stage.  Setting ASKPASS=n also skips `cryptroot-unlock`
 # inclusion as it requires the askpass executable.
 
-ASKPASS=y
+#ASKPASS=y
