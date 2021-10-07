@@ -14,6 +14,7 @@ cryptsetup (2:2.4.1-1) UNRELEASED; urgency=low
     + Document that keyscript= can also take an absolute path.
       (Closes: #994219)
     + Document that keyscript's exit status is ignored.
+    + Various typo fixes and manpages improvements.
   * initramfs: Add new hook configuration option ASKPASS=[Yn] to opt out from
     askpass inclusion. (Closes: #994486)
   * d/cryptsetup-initramfs.post*: Replace `which` with `command -v`.

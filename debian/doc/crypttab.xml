@@ -630,7 +630,7 @@
   <para>
    <screen>
 # Encrypted swap device
-cswap /dev/sda6 /dev/urandom cipher=aes-xts-plain64,size=256,hash=sha1,swap
+cswap /dev/sda6 /dev/urandom plain,cipher=aes-xts-plain64,size=256,hash=sha1,swap
 
 # Encrypted LUKS disk with interactive password, identified by its UUID, discard enabled
 cdisk0 UUID=12345678-9abc-def012345-6789abcdef01 none luks,discard
@@ -640,16 +640,16 @@ tdisk0 /dev/sr0 none tcrypt,discard
 
 # Encrypted ext4 disk with interactive password, discard enabled
 # - retry 5 times if the check fails
-cdisk1 /dev/sda2 none discard,cipher=aes-xts-plain64,size=256,hash=sha1,checkargs=ext4,tries=5
+cdisk1 /dev/sda2 none plain,cipher=aes-xts-plain64,size=256,hash=sha1,check,checkargs=ext4,tries=5,discard
 
 # Encrypted disk with interactive password, discard enabled
 # - use a nondefault check script
 # - no retries
-cdisk2 /dev/sdc1 none discard,cipher=aes-xts-plain64,size=256,hash=sha1,check=customscript,tries=1
+cdisk2 /dev/sdc1 none plain,cipher=aes-xts-plain64,size=256,hash=sha1,check=customscript,tries=1,discard
 
 # Encrypted disk with interactive password, discard enabled
 # - Twofish as the cipher, RIPEMD-160 as the hash
-cdisk3 /dev/sda3 none dscard,cipher=twofish,size=256,hash=ripemd160
+cdisk3 /dev/sda3 none plain,cipher=twofish,size=256,hash=ripemd160,discard
    </screen>
   </para>
  </refsect1>
