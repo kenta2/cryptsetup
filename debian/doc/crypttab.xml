@@ -464,7 +464,7 @@
     <term><emphasis>loud</emphasis></term>
     <listitem>
      <simpara>Be loud. Print warnings if a device does not exist.
-     This option overwrites the option <emphasis>loud</emphasis>.</simpara>
+     This option overrides the option <emphasis>quiet</emphasis>.</simpara>
      <simpara>
       This option is ignored for <emphasis>initramfs</emphasis> devices and
       specific to the Debian <emphasis>crypttab</emphasis> format. It's not
@@ -477,7 +477,7 @@
     <term><emphasis>quiet</emphasis></term>
     <listitem>
      <simpara>Be quiet. Don't print warnings if a device does not exist.
-     This option overwrites the option <emphasis>loud</emphasis>.</simpara>
+     This option overrides the option <emphasis>loud</emphasis>.</simpara>
      <simpara>
       This option is ignored for <emphasis>initramfs</emphasis> devices and
       specific to the Debian <emphasis>crypttab</emphasis> format. It's not

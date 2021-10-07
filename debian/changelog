@@ -19,7 +19,7 @@ cryptsetup (2:2.4.1-1) UNRELEASED; urgency=low
   * d/cryptsetup-initramfs.post*: Replace `which` with `command -v`.
   * Merge debian/experimental branch and bring cryptsetup-suspend to sid.
   * d/bash_completion: s/mawk/awk/.  We're only using the POSIX subset so any
-    implentation should work. (Closes: #993374)
+    implementation should work. (Closes: #993374)
 
   [ Christoph Anton Mitterer ]
   * d/functions: Export _CRYPTTAB_* to the keyscript's environment.
