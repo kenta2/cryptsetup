@@ -109,13 +109,19 @@ setup_mapping() {
     fi
     device_msg "starting"
 
+    local offset_bytes=""
+    if [ -n "${CRYPTTAB_OPTION_offset+x}" ] && [ "${#CRYPTTAB_OPTION_offset}" -le 7 ] && [ $CRYPTTAB_OPTION_offset -lt 4194304 ]; then
+        # silently ignore large offset values which might cause the multiplication to overflow...
+        offset_bytes=$((CRYPTTAB_OPTION_offset * 512))
+    fi
+
     local out tmpdev
     if [ "$CRYPTTAB_TYPE" != "luks" ] && [ "$CRYPTTAB_TYPE" != "bitlk" ]; then
         # fail if the device has a filesystem and the disk encryption format doesn't
         # verify the key digest (unlike LUKS); unless it's swap, otherwise people can't
         # easily convert an existing plainttext swap partition to an encrypted one
-        if ! out="$(/lib/cryptsetup/checks/un_blkid "$CRYPTTAB_SOURCE" "" "${CRYPTTAB_OPTION_offset-}" 2>/dev/null)" &&
-                ! /lib/cryptsetup/checks/blkid "$CRYPTTAB_SOURCE" swap "${CRYPTTAB_OPTION_offset-}" >/dev/null; then
+        if ! out="$(/lib/cryptsetup/checks/un_blkid "$CRYPTTAB_SOURCE" "" ${CRYPTTAB_OPTION_offset+"$offset_bytes"} 2>/dev/null)" &&
+                ! /lib/cryptsetup/checks/blkid "$CRYPTTAB_SOURCE" swap ${CRYPTTAB_OPTION_offset+"$offset_bytes"} >/dev/null; then
             log_warning_msg "$CRYPTTAB_NAME: the precheck for '$CRYPTTAB_SOURCE' failed: $out"
             return 1
         fi
@@ -145,8 +151,8 @@ setup_mapping() {
             continue
         fi
         if [ "${CRYPTTAB_OPTION_swap+x}" ]; then
-            if out="$(/lib/cryptsetup/checks/un_blkid "$tmpdev" "" "${CRYPTTAB_OPTION_offset-}" 2>/dev/null)" ||
-                    /lib/cryptsetup/checks/blkid "$tmpdev" swap "${CRYPTTAB_OPTION_offset-}" >/dev/null 2>&1; then
+            if out="$(/lib/cryptsetup/checks/un_blkid "$tmpdev" "" ${CRYPTTAB_OPTION_offset+"$offset_bytes"} 2>/dev/null)" ||
+                    /lib/cryptsetup/checks/blkid "$tmpdev" swap ${CRYPTTAB_OPTION_offset+"$offset_bytes"} >/dev/null 2>&1; then
                 mkswap "$tmpdev" >/dev/null 2>&1
             else
                 log_warning_msg "$target: the check for '$CRYPTTAB_NAME' failed. $CRYPTTAB_NAME contains data: $out"
