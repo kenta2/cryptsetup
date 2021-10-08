@@ -1826,7 +1826,7 @@ cryptsetup (2:1.1.3-4) unstable; urgency=high
   * print out a warning at initramfs cryptroot hook in case that detection of
     canonical device failed. (closes: #594092)
   * add manpage fixes, thanks to Stephen Gildea for patch. (closes: #598237)
-  * fix depreciated ext2 wrapper checkscript to succeed for ext2, ext3, ext4
+  * fix deprecated ext2 wrapper checkscript to succeed for ext2, ext3, ext4
     and ext4dev filesystems. (closes: #595331)
   * again remove duplicates from debian/NEWS.
   * truncate trailing spaces for some variables at initramfs cryptroot hook.
@@ -1889,7 +1889,7 @@ cryptsetup (2:1.1.3-1) unstable; urgency=low
   * several improvements to (pre)check scripts, inspired by scripts from
     Christoph Anton Mitterer (closes: #585418, #585496)
     - checkscripts exit with error 1 if executables aren't available.
-    - ext2, swap and xfs scripts are depreciated and invoke blkid script.
+    - ext2, swap and xfs scripts are deprecated and invoke blkid script.
     - drop filtering of minix filesystem in blkid, util-linux 2.17.2 in debian
     - remove *vol_id check scripts, vol_id isn't available in debian any longer
     - don't use sed in *blkid check scripts any longer
@@ -2422,7 +2422,7 @@ cryptsetup (2:1.0.6-1) unstable; urgency=low
 
   [ Jonas Meurer ]
   * new upstream release
-    - reload option is depreciated and a warning is printed. (closes: #428288)
+    - reload option is deprecated and a warning is printed. (closes: #428288)
   * convert patch system from dpatch to quilt.
   * enhance the information regarding the default hash setting in NEWS.Debian.
     Thanks to Ross Boylan <ross@biostat.ucsf.edu>.
