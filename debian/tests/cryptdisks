@@ -385,20 +385,32 @@ disk_setup
 head -c32 </dev/urandom >"$TMPDIR/keyfile"
 luks2Format -- "$CRYPT_DEV" "$TMPDIR/keyfile"
 
-# default is 3 tries
+# fail after 3 tries default
 cat >/etc/crypttab <<-EOF
 	tries_crypt $CRYPT_DEV none
 EOF
 
 cryptdisks_start tries_crypt </dev/tty & pid=$!
-echo -n bad >/lib/cryptsetup/passfifo
+echo -n bad1 >/lib/cryptsetup/passfifo
 sleep 1
-echo -n bad >/lib/cryptsetup/passfifo
+echo -n bad2 >/lib/cryptsetup/passfifo
 sleep 1
-echo -n bad >/lib/cryptsetup/passfifo
+echo -n bad3 >/lib/cryptsetup/passfifo
 ! wait $pid
 stty sane || true
 test ! -b /dev/mapper/tries_crypt
+
+# success on the 3rd try
+cryptdisks_start tries_crypt </dev/tty & pid=$!
+echo -n bad1 >/lib/cryptsetup/passfifo
+sleep 1
+echo -n bad2 >/lib/cryptsetup/passfifo
+sleep 1
+cat <"$TMPDIR/keyfile" >/lib/cryptsetup/passfifo
+wait $pid
+stty sane || true
+test -b /dev/mapper/tries_crypt
+cryptdisks_stop tries_crypt
 
 # force single try
 cat >/etc/crypttab <<-EOF
@@ -406,7 +418,7 @@ cat >/etc/crypttab <<-EOF
 EOF
 
 cryptdisks_start tries_crypt </dev/tty & pid=$!
-echo -n bad >/lib/cryptsetup/passfifo
+echo -n bad1 >/lib/cryptsetup/passfifo
 ! wait $pid
 stty sane || true
 test ! -b /dev/mapper/tries_crypt
