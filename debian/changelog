@@ -25,6 +25,7 @@ cryptsetup (2:2.4.1-1) UNRELEASED; urgency=low
     d/functions and d/cryptdisks-functions.  The testbed requires
     'isolation-machine' restriction since we need to load kernel modules and
     create loop devices.
+  * d/gbp.conf, d/watch: Explicitly use gzip compression.
 
   [ Christoph Anton Mitterer ]
   * d/functions: Export _CRYPTTAB_* to the keyscript's environment.
