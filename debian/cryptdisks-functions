@@ -110,7 +110,7 @@ setup_mapping() {
     device_msg "starting"
 
     local offset_bytes=""
-    if [ -n "${CRYPTTAB_OPTION_offset+x}" ] && [ "${#CRYPTTAB_OPTION_offset}" -le 7 ] && [ $CRYPTTAB_OPTION_offset -lt 4194304 ]; then
+    if [ -n "${CRYPTTAB_OPTION_offset+x}" ] && [ ${#CRYPTTAB_OPTION_offset} -le 7 ] && [ $CRYPTTAB_OPTION_offset -lt 4194304 ]; then
         # silently ignore large offset values which might cause the multiplication to overflow...
         offset_bytes=$((CRYPTTAB_OPTION_offset * 512))
     fi
