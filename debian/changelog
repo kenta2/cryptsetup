@@ -21,6 +21,10 @@ cryptsetup (2:2.4.1-1) UNRELEASED; urgency=low
   * Merge debian/experimental branch and bring cryptsetup-suspend to sid.
   * d/bash_completion: s/mawk/awk/.  We're only using the POSIX subset so any
     implementation should work. (Closes: #993374)
+  * Add DEP-8 tests for cryptdisks_start and cryptdisks_stop covering most of
+    d/functions and d/cryptdisks-functions.  The testbed requires
+    'isolation-machine' restriction since we need to load kernel modules and
+    create loop devices.
 
   [ Christoph Anton Mitterer ]
   * d/functions: Export _CRYPTTAB_* to the keyscript's environment.
