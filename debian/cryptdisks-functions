@@ -139,7 +139,7 @@ setup_mapping() {
             continue
         fi
         if [ -n "${CRYPTTAB_OPTION_check+x}" ] && \
-                ! "$CRYPTTAB_OPTION_check" "$tmpdev" $CRYPTTAB_OPTION_checkargs ; then
+                ! "$CRYPTTAB_OPTION_check" "$tmpdev" ${CRYPTTAB_OPTION_checkargs+"$CRYPTTAB_OPTION_checkargs"}; then
             log_warning_msg "$target: the check for '$CRYPTTAB_NAME' failed"
             cryptsetup remove -- "$CRYPTTAB_NAME"
             continue

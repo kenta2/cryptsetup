@@ -368,11 +368,11 @@
    </varlistentry>
 
    <varlistentry>
-    <term><emphasis>tmp</emphasis>=&lt;tmpfs&gt;</term>
+    <term><emphasis>tmp</emphasis>[=&lt;tmpfs&gt;]</term>
     <listitem>
      <simpara>
       Run <command moreinfo="refentry">mkfs</command> with filesystem type
-      &lt;tmpfs&gt; on the created device. Default is ext4.
+      &lt;tmpfs&gt; (or ext4 if omitted) on the created device.
      </simpara>
      <simpara>
       This option is ignored for <emphasis>initramfs</emphasis> devices.
@@ -381,18 +381,19 @@
    </varlistentry>
 
    <varlistentry>
-    <term><emphasis>check</emphasis>=&lt;check&gt;</term>
+    <term><emphasis>check</emphasis>[=&lt;check&gt;]</term>
     <listitem>
      <simpara>Check the content of the target device by a suitable program; if
-      the check fails, the device is removed. If a program is provided as an
-      argument, it is run, giving the decrypted volume (target device) as
-      first argument, and the value of the checkargs option as second argument.
-      The program is either specified by full path or relative to
-      <filename class="directory">/lib/cryptsetup/checks/</filename>.
+      the check fails, the device is closed immediately.  The program is being
+      run with decrypted volume (target device) as first positional argument and,
+      if the <emphasis>checkargs</emphasis> option is used, its value as second
+      argument.  See the CHECKSCRIPTS section for more information.
      </simpara>
-     <simpara>
-      Default is set in <filename>/etc/default/cryptdisks</filename>
-      (<filename>blkid</filename>).
+     <simpara>The program is either specified by full path or relative to
+      <filename class="directory">/lib/cryptsetup/checks/</filename>.
+      If omitted, then the value of $CRYPTDISKS_CHECK set in
+      <filename>/etc/default/cryptdisks</filename> is used
+      (<filename>blkid</filename> by default).
      </simpara>
      <simpara>
       This option is specific to the Debian <emphasis>crypttab</emphasis>
