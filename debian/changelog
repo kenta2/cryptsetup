@@ -34,7 +34,7 @@ cryptsetup (2:2.4.1-1) UNRELEASED; urgency=low
     (Closes: #993725)
 
   [ Thorsten Glaser ]
-  * initramfs: blkid/un_blkid checks: Honor offset= option. (Closes: #994056)
+  * blkid/un_blkid checks: Honor offset= option. (Closes: #994056)
 
  -- Guilhem Moulin <guilhem@debian.org>  Sun, 03 Oct 2021 14:44:23 +0200
 

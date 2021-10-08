@@ -17,7 +17,7 @@ dev="$1"
 fs="$2"
 offset="$3"
 
-blkid="$(/sbin/blkid -o value -s TYPE -p ${offset:+-O "$offset"} -- "$dev")"
+blkid="$(/sbin/blkid -o value -s TYPE -p ${offset:+-O "$((offset*512))"} -- "$dev")"
 
 # blkid output is empty if $dev has an unknown filesystem
 if [ -z "$blkid" ] && [ -z "$fs" ]; then
