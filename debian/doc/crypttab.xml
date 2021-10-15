@@ -526,25 +526,25 @@
       <variablelist>
 
        <varlistentry>
-        <term>CRYPTTAB_NAME</term>, <term>_CRYPTTAB_NAME</term>
+        <term>CRYPTTAB_NAME, _CRYPTTAB_NAME</term>
         <listitem><para>
          The target name (after resp. before octal sequence decoding).
         </para></listitem>
        </varlistentry>
        <varlistentry>
-        <term>CRYPTTAB_SOURCE</term>, <term>_CRYPTTAB_SOURCE</term>
+        <term>CRYPTTAB_SOURCE, _CRYPTTAB_SOURCE</term>
         <listitem><para>
          The source device (after resp. before octal sequence decoding and device resolution).
         </para></listitem>
        </varlistentry>
        <varlistentry>
-        <term>CRYPTTAB_KEY</term>, <term>_CRYPTTAB_KEY</term>
+        <term>CRYPTTAB_KEY, _CRYPTTAB_KEY</term>
         <listitem><para>
          The value of the third field (after resp. before octal sequence decoding).
         </para></listitem>
        </varlistentry>
        <varlistentry>
-        <term>CRYPTTAB_OPTIONS</term>, <term>_CRYPTTAB_OPTIONS</term>
+        <term>CRYPTTAB_OPTIONS, _CRYPTTAB_OPTIONS</term>
         <listitem><para>
          A list of exported crypttab options (after resp. before octal sequence decoding).
         </para></listitem>
