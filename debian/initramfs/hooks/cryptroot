@@ -302,7 +302,7 @@ copy_exec /sbin/dmsetup
 [ "$ASKPASS" = n ] || copy_exec /lib/cryptsetup/askpass
 
 # We need sed. Either via busybox or as standalone binary.
-if [ "$BUSYBOX" = n ] || [ ! -e "$BUSYBOXDIR/busybox" ]; then
+if [ "$BUSYBOX" = n ] || [ -z "$BUSYBOXDIR" ]; then
     copy_exec /bin/sed
 fi
 
