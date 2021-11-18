@@ -1,6 +1,8 @@
 cryptsetup (2:2.4.2-1) UNRELEASED; urgency=high
 
   * New upstream bugfix release 2.4.2.
+  * d/control: Replace Build-Depends on removed package libsepol1-dev with
+    libsepol-dev. (Closes: #999815)
   * blkid/un_blkid checks: Ignore large offsets when converting from sectors
     to bytes.
   * crypttab(5): Formatting fix.
