@@ -15,7 +15,7 @@ Copyright: © 2004-2005 Wesley W. Terpstra <terpstra@debian.org>
            © 2005-2006 Michael Gebetsroither <michael.geb@gmx.at>
            © 2006-2008 David Härdeman <david@hardeman.nu>
            © 2005-2015 Jonas Meurer <jonas@freesources.org>
-           © 2016-2018 Guilhem Moulin <guilhem@debian.org>
+           © 2016-2021 Guilhem Moulin <guilhem@debian.org>
 License: GPL-2+
 
 Files: debian/askpass.c debian/scripts/passdev.c
