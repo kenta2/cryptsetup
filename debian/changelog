@@ -1,4 +1,4 @@
-cryptsetup (2:2.4.2-1) UNRELEASED; urgency=high
+cryptsetup (2:2.4.2-1) unstable; urgency=high
 
   * New upstream bugfix release 2.4.2.
   * d/control: Replace Build-Depends on removed package libsepol1-dev with
@@ -6,8 +6,10 @@ cryptsetup (2:2.4.2-1) UNRELEASED; urgency=high
   * blkid/un_blkid checks: Ignore large offsets when converting from sectors
     to bytes.
   * crypttab(5): Formatting fix.
+  * Refresh d/copyright.
+  * Refresh lintian overrides to accommodate lintian v2.112.
 
- -- Guilhem Moulin <guilhem@debian.org>  Thu, 18 Nov 2021 16:48:17 +0100
+ -- Guilhem Moulin <guilhem@debian.org>  Thu, 18 Nov 2021 17:15:08 +0100
 
 cryptsetup (2:2.4.1-1) unstable; urgency=medium
 
