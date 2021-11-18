@@ -1,3 +1,12 @@
+cryptsetup (2:2.4.2-1) UNRELEASED; urgency=high
+
+  * New upstream bugfix release 2.4.2.
+  * blkid/un_blkid checks: Ignore large offsets when converting from sectors
+    to bytes.
+  * crypttab(5): Formatting fix.
+
+ -- Guilhem Moulin <guilhem@debian.org>  Thu, 18 Nov 2021 16:48:17 +0100
+
 cryptsetup (2:2.4.1-1) unstable; urgency=medium
 
   [ Guilhem Moulin ]
