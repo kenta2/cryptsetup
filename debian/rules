@@ -73,7 +73,7 @@ endif
 		if [ "$${x#CONF_HOOK_CONTENTS=}" = "$$x" ]; then \
 			printf "%s\\n" "$$x"; \
 		else \
-			printf "CONF_HOOK_CONTENTS=\"\$$(cat <<EOF\\n"; \
+			printf "CONF_HOOK_CONTENTS=\"\$$(cat <<'EOF'\\n"; \
 			cat debian/initramfs/conf-hook || exit 1; \
 			printf "EOF\\n)\""; \
 		fi; \
