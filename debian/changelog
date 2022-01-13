@@ -1,3 +1,16 @@
+cryptsetup (2:2.4.3-1) unstable; urgency=high
+
+  [ Guilhem Moulin ]
+  * New upstream security release 2.4.3, with fix for CVE-2021-4122:
+    decryption through LUKS2 reencryption crash recovery. (Closes: #1003685,
+    #1003686)
+  * Remove cryptsetup-initramfs.preinst. (Closes: #1001063)
+
+  [ Christoph Anton Mitterer ]
+  * d/rules: don't expand here-document.
+
+ -- Guilhem Moulin <guilhem@debian.org>  Thu, 13 Jan 2022 19:07:05 +0100
+
 cryptsetup (2:2.4.2-1) unstable; urgency=high
 
   * New upstream bugfix release 2.4.2.
