@@ -1,3 +1,34 @@
+# Run the installed binaries and libraries through the full upstream test suite.
+Test-Command: make -C ./tests -f Makefile.localtest -j tests CRYPTSETUP_PATH=/sbin
+Depends: cryptsetup-bin,
+# to compile tests/*.c
+  gcc,
+  libcryptsetup-dev,
+  libdevmapper-dev,
+#
+# for hexdump(1)
+  bsdextrautils,
+# for dmsetup(8)
+  dmsetup,
+# for expect(1)
+  expect,
+# for jq(1)
+  jq,
+# for keyctl(1)
+  keyutils,
+# for modprobe(8) and rmmod(8)
+  kmod,
+# for free(1)
+  procps,
+# for uuencode(1)
+  sharutils,
+# for xxd(1)
+  xxd
+#
+# Use machine-level isolation since some extra tests want to interact
+# with the kernel, load modules, and create/remove loop devices
+Restrictions: allow-stderr, needs-root, isolation-machine
+
 Tests: cryptdisks
 Depends: cryptsetup
 Restrictions: allow-stderr, needs-root, isolation-machine
