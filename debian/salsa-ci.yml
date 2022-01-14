@@ -14,7 +14,6 @@ variables:
 reprotest:
   extends: .test-reprotest
   variables:
-    REPROTEST_EXTRA_ARGS: '--no-diffoscope'
     DEB_BUILD_OPTIONS: nocheck
 
 # Add a deploy stage for pages
