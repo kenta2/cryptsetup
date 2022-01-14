@@ -27,7 +27,7 @@ stages:
   - deploy
 
 pages:
-  image: debian:10
+  image: debian:11
   script:
     - apt update
     - apt -y install pandoc
