@@ -29,8 +29,8 @@ stages:
 pages:
   image: debian:11
   script:
-    - apt update
-    - apt -y install pandoc
+    - apt-get update
+    - apt-get -y install pandoc
     - mkdir public
     # install CSS file
     - cp debian/doc/pandoc/pandoc.css public/
