@@ -647,6 +647,7 @@ get_mnt_devno() {
 #   recursively holding $maj:$min (typically corresponding to an md,
 #   linear, or dm-crypt device).  Slaves that aren't dm-crypt devices
 #   are ignored.
+#   Each device is processed after its slaves.
 foreach_cryptdev() {
     local callback="$1" devno base
     shift
@@ -656,12 +657,17 @@ foreach_cryptdev() {
             cryptsetup_message "ERROR: Couldn't find sysfs directory for $devno"
             return 1
         fi
-        _foreach_cryptdev "$callback" "$base"
+        _foreach_cryptdev "$base"
     done
 }
 _foreach_cryptdev() {
-    local callback="$1" d="$2" devno maj min name slave
+    local d="$1" devno maj min name slave
     [ -d "$d/slaves" ] || return 0
+    for slave in "$d/slaves"/*; do
+        if [ -d "$slave" ] && slave="$(realpath -e -- "$slave")"; then
+            _foreach_cryptdev "$slave"
+        fi
+    done
     if [ -d "$d/dm" ] && devno="$(cat "$d/dev")" &&
             maj="${devno%:*}" && min="${devno#*:}" &&
             [ "$devno" = "$maj:$min" ] && [ -n "$maj" ] && [ -n "$min" ] &&
@@ -669,11 +675,6 @@ _foreach_cryptdev() {
             name="$(dmsetup info -c --noheadings -o unmangled_name -j "$maj" -m "$min")"; then
         "$callback" "$name"
     fi
-    for slave in "$d/slaves"/*; do
-        if [ -d "$slave" ] && slave="$(realpath -e -- "$slave")"; then
-            _foreach_cryptdev "$callback" "$slave"
-        fi
-    done
 }
 
 # vim: set filetype=sh :
