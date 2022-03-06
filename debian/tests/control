@@ -38,6 +38,6 @@ Depends: cryptsetup, netcat-openbsd, openssh-client, openssh-server, sshpass, op
 Restrictions: needs-root, isolation-machine
 
 
-Tests: cryptdisks
+Tests: cryptdisks, cryptdisks.init
 Depends: cryptsetup, xxd
 Restrictions: allow-stderr, needs-root, isolation-machine

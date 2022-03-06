@@ -642,15 +642,22 @@ get_mnt_devno() {
     fi
 }
 
-# foreach_cryptdev($callback, $maj:$min, [$maj:$min ..])
+# foreach_cryptdev([--reverse], $callback, $maj:$min, [$maj:$min ..])
 #   Run $callback on the (unmangled) name of each dm-crypt device
 #   recursively holding $maj:$min (typically corresponding to an md,
 #   linear, or dm-crypt device).  Slaves that aren't dm-crypt devices
 #   are ignored.
-#   Each device is processed after its slaves.
+#   By default each device is processed after its *slaves*.  If
+#   --reverse is set then each device is processed after its *holders*
+#   instead.
 foreach_cryptdev() {
-    local callback="$1" devno base
+    local callback="$1" reverse="n" devno base
     shift
+    if [ "$callback" = "--reverse" ]; then
+        reverse="y"
+        callback="$1"
+        shift
+    fi
     for devno in "$@"; do
         base="/sys/dev/block/$devno"
         if [ ! -d "$base" ]; then
@@ -661,11 +668,12 @@ foreach_cryptdev() {
     done
 }
 _foreach_cryptdev() {
-    local d="$1" devno maj min name slave
-    [ -d "$d/slaves" ] || return 0
-    for slave in "$d/slaves"/*; do
-        if [ -d "$slave" ] && slave="$(realpath -e -- "$slave")"; then
-            _foreach_cryptdev "$slave"
+    local d="$1" devno maj min name t d2
+    [ "$reverse" = "y" ] && t="holders" || t="slaves"
+    [ -d "$d/$t" ] || return 0
+    for d2 in "$d/$t"/*; do
+        if [ -d "$d2" ] && d2="$(realpath -e -- "$d2")"; then
+            _foreach_cryptdev "$d2"
         fi
     done
     if [ -d "$d/dm" ] && devno="$(cat "$d/dev")" &&

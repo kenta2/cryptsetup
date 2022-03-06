@@ -195,30 +195,37 @@ do_stop() {
     log_action_end_msg 0
 }
 _do_stop_callback() {
-    local i rv=0 skip="n"
+    local skip="n" devno rv=0
 
-    # traverse the device tree for each crypttab(5) entry, that's
-    # suboptimal but we can't use mapped device names as they might
-    # contain any character other than NUL.  shouldn't be much overhead
-    # anyway as the device tree is likely not that long
+    # traverse the device tree for each crypttab(5) entry and mark / and
+    # /usr holders as skipped.  that's suboptimal but we can't use
+    # mapped device names as they might contain any character other than
+    # NUL.  shouldn't be much overhead anyway as the device tree is
+    # likely not that long
     foreach_cryptdev _do_stop_skipped $devno_rootfs $devno_usr
+    [ "$skip" = "n" ] || return $rv
 
-    if [ "$skip" = "n" ]; then
-        for i in 1 2 4 8 16 32; do
-            remove_mapping "$CRYPTTAB_NAME" 3<&- && break || rv=$?
-            if [ $rv -eq 1 ] || [ $rv -eq 2 -a $i -gt 16 ]; then
-                log_action_end_msg $rv
-                break
-            fi
-            log_action_cont_msg "$CRYPTTAB_NAME busy..."
-            sleep $i
-        done
+    if devno="$(dmsetup info -c --noheadings -o devno -- "$CRYPTTAB_NAME" 2>/dev/null)" && [ -n "$devno" ]; then
+        foreach_cryptdev --reverse _do_stop_remove "$devno" || rv=$? # try to remove slave devices first
     fi
+    return $rv
 }
 _do_stop_skipped() {
     if [ "$1" = "$CRYPTTAB_NAME" ]; then
         skip="y"
     fi
+}
+_do_stop_remove() {
+    local name="$1" i rv=0
+    for i in 1 2 4 8 16 32; do
+        remove_mapping "$name" 3<&- && break || rv=$?
+        if [ $rv -eq 1 ] || [ $rv -eq 2 -a $i -gt 16 ]; then
+            log_action_end_msg $rv
+            break
+        fi
+        log_action_cont_msg "$name busy..."
+        sleep $i
+    done
 }
 
 # device_msg([$name], $message)
