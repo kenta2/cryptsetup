@@ -39,5 +39,5 @@ Restrictions: needs-root, isolation-machine
 
 
 Tests: cryptdisks
-Depends: cryptsetup
+Depends: cryptsetup, xxd
 Restrictions: allow-stderr, needs-root, isolation-machine
