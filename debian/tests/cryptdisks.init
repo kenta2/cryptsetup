@@ -42,20 +42,20 @@ dmsetup create crypt_disk3a --uuid "CRYPT-PLAIN-crypt_disk3a" --addnodeoncreate 
 EOF
 
 lsblk
-# disk0               253:0    0   64M  0 dm    
-# └─crypt_disk0       253:5    0   64M  0 crypt 
-#   └─crypt_disk0a    253:6    0   64M  0 crypt 
-# disk1               253:1    0   64M  0 dm    
-# └─disk12            253:4    0  128M  0 dm    
-#   └─crypt_disk12    253:7    0  128M  0 crypt 
-# disk2               253:2    0   64M  0 dm    
-# └─disk12            253:4    0  128M  0 dm    
-#   └─crypt_disk12    253:7    0  128M  0 crypt 
-#disk3               253:3    0  128M  0 dm    
-#└─crypt_disk3       253:8    0  128M  0 crypt 
-#  ├─crypt_disk3b    253:9    0   64M  0 crypt 
-#  │ └─crypt_disk3b0 253:10   0   64M  0 crypt 
-#  └─crypt_disk3a    253:11   0   64M  0 dm    
+# disk0               253:0    0   64M  0 dm
+# └─crypt_disk0       253:5    0   64M  0 crypt
+#   └─crypt_disk0a    253:6    0   64M  0 crypt
+# disk1               253:1    0   64M  0 dm
+# └─disk12            253:4    0  128M  0 dm
+#   └─crypt_disk12    253:7    0  128M  0 crypt
+# disk2               253:2    0   64M  0 dm
+# └─disk12            253:4    0  128M  0 dm
+#   └─crypt_disk12    253:7    0  128M  0 crypt
+#disk3               253:3    0  128M  0 dm
+#└─crypt_disk3       253:8    0  128M  0 crypt
+#  ├─crypt_disk3b    253:9    0   64M  0 crypt
+#  │ └─crypt_disk3b0 253:10   0   64M  0 crypt
+#  └─crypt_disk3a    253:11   0   64M  0 dm
 
 # check device-mapper table (crypt target only)
 # https://gitlab.com/cryptsetup/cryptsetup/-/wikis/DMCrypt
