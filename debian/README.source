@@ -30,7 +30,7 @@ Importing a new upstream release
        - updating the `upstream` remote,
        - verifying the cryptographic signature on the upstream tag 'v$VERSION',
        - creating a new tag 'upstream/$VERSION' with 'v$VERSION' as additional parent, and
-       - merging 'upstream/$VERSION' it into 'debian/latest'
+       - merging 'upstream/$VERSION' into 'debian/latest'
 
     N. After development and testing, the final packages to be uploaded to
        Debian are built and tagged in the repository as follows:
