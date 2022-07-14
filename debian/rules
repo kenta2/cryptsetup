@@ -18,6 +18,10 @@ DEB_DATE := $(strip $(shell LC_ALL=C date -u +%F -d@$(SOURCE_DATE_EPOCH)))
 %:
 	dh $@
 
+ifneq (,$(findstring nodoc,$(DEB_BUILD_OPTIONS)))
+CONFFLAGS += --disable-asciidoc
+endif
+
 override_dh_auto_configure:
 	dh_auto_configure -- $(CONFFLAGS) \
 		--libdir=/lib/$(DEB_HOST_MULTIARCH) \
