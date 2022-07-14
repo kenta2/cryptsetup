@@ -1,3 +1,40 @@
+cryptsetup (2:2.5.0~rc1-1) experimental; urgency=low
+
+  * New upstream release candidate 2.5.0.  Highlights include:
+    + Remove cryptsetup-reencrypt(8) executable, use `cryptsetup reencrypt`
+      instead (for both LUKS1 and LUKS2).
+    + Split manual pages into per-action pages, for instance cryptsetup-open.8
+      which can be consulted with `man cryptsetup open`.
+    + Add LUKS2 encryption removal support with `cryptsetup reencrypt
+      --decrypt`.
+    + Preserve unknown metadata option (features implemented in more recent
+      cryptsetup releases) during reencryption.
+  * Salsa CI's deploy stage: Use a Bullseye image.
+  * Salsa CI's deploy stage: Use apt-get(8) not apt(8).
+  * Salsa CI's deploy stage: Replace `cp` with `install`.
+  * Salsa CI's reprotest job: Remove '--no-diffoscope' flag.
+  * Salsa CI's reprotest job: Update reason for running under 'nocheck' build
+    profile.
+  * d/README.source: Update text to reflect current practices.
+  * DEP-8: Run installed binaries and libraries through the full upstream test
+    suite (needs machine-level isolation).
+  * Retroactivately add NEWS.Debian for #949336.
+  * d/t/control: Add 'Depends: xxd' for 'Tests: cryptdisks' stanza.
+  * foreach_cryptdev(): Process each device *after* its slaves.
+  * do_stop(): Remove device holders beforehand. (Closes: #1006802)
+  * Fix space damage.
+  * d/u/metadata: Add FAQ URL.
+  * Refresh lintian overrides to accommodate lintian v2.115.
+  * d/control: New Build-Depends: asciidoctor (unless under 'nodoc' build
+    profile).
+  * d/cryptsetup.docs: Fix FAQ filename.
+  * Move usr/share/man/*/* glob to debian/*.manpages where it belongs.
+  * Update d/libcryptsetup12.symbols.
+  * Bump Standards-Version to 4.6.1 (no changes needed).
+  * Update d/copyright.
+
+ -- Guilhem Moulin <guilhem@debian.org>  Fri, 15 Jul 2022 01:49:59 +0200
+
 cryptsetup (2:2.4.3-1) unstable; urgency=high
 
   [ Guilhem Moulin ]
