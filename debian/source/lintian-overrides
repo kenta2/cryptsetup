@@ -1,1 +1,1 @@
-very-long-line-length-in-source-file lib/crypto_backend/argon2/LICENSE line 23 is 1463 characters long (>512)
+very-long-line-length-in-source-file 1464 > 512 [lib/crypto_backend/argon2/LICENSE:23]
