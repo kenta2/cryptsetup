@@ -2,8 +2,8 @@
  * LUKS - Linux Unified Key Setup
  *
  * Copyright (C) 2004-2006 Clemens Fruhwirth <clemens@endorphin.org>
- * Copyright (C) 2009-2021 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2013-2021 Milan Broz
+ * Copyright (C) 2009-2022 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2013-2022 Milan Broz
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -399,7 +399,7 @@ static int _keyslot_repair(struct luks_phdr *phdr, struct crypt_device *ctx)
 	/*
 	 * cryptsetup 1.0 did not align keyslots to 4k, cannot repair this one
 	 * Also we cannot trust possibly broken keyslots metadata here through LUKS_keyslots_offset().
-	 * Expect first keyslot is aligned, if not, then manual repair is neccessary.
+	 * Expect first keyslot is aligned, if not, then manual repair is necessary.
 	 */
 	if (phdr->keyblock[0].keyMaterialOffset < (LUKS_ALIGN_KEYSLOTS / SECTOR_SIZE)) {
 		log_err(ctx, _("Non standard keyslots alignment, manual repair required."));
@@ -817,7 +817,7 @@ int LUKS_generate_phdr(struct luks_phdr *header,
 		return r;
 	}
 
-	/* Compute master key digest */
+	/* Compute volume key digest */
 	pbkdf = crypt_get_pbkdf(ctx);
 	r = crypt_benchmark_pbkdf_internal(ctx, pbkdf, vk->keylength);
 	if (r < 0)
@@ -926,7 +926,7 @@ int LUKS_set_key(unsigned int keyIndex,
 		goto out;
 
 	/*
-	 * AF splitting, the masterkey stored in vk->key is split to AfKey
+	 * AF splitting, the volume key stored in vk->key is split to AfKey
 	 */
 	assert(vk->keylength == hdr->keyBytes);
 	AFEKSize = AF_split_sectors(vk->keylength, hdr->keyblock[keyIndex].stripes) * SECTOR_SIZE;
@@ -982,7 +982,7 @@ int LUKS_verify_volume_key(const struct luks_phdr *hdr,
 			hdr->mkDigestIterations, 0, 0) < 0)
 		return -EINVAL;
 
-	if (memcmp(checkHashBuf, hdr->mkDigest, LUKS_DIGESTSIZE))
+	if (crypt_backend_memeq(checkHashBuf, hdr->mkDigest, LUKS_DIGESTSIZE))
 		return -EPERM;
 
 	return 0;
@@ -1044,7 +1044,7 @@ static int LUKS_open_key(unsigned int keyIndex,
 	if (r < 0)
 		goto out;
 
-	r = AF_merge(ctx, AfKey, (*vk)->key, (*vk)->keylength, hdr->keyblock[keyIndex].stripes, hdr->hashSpec);
+	r = AF_merge(AfKey, (*vk)->key, (*vk)->keylength, hdr->keyblock[keyIndex].stripes, hdr->hashSpec);
 	if (r < 0)
 		goto out;
 

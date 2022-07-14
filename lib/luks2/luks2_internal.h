@@ -1,8 +1,8 @@
 /*
  * LUKS - Linux Unified Key Setup v2
  *
- * Copyright (C) 2015-2021 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2015-2021 Milan Broz
+ * Copyright (C) 2015-2022 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2015-2022 Milan Broz
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -27,7 +27,6 @@
 #include <json-c/json.h>
 
 #include "internal.h"
-#include "base64.h"
 #include "luks2.h"
 
 /* override useless forward slash escape when supported by json-c */
@@ -73,9 +72,11 @@ void JSON_DBG(struct crypt_device *cd, json_object *jobj, const char *desc);
  */
 
 /* validation helper */
-json_bool validate_json_uint32(json_object *jobj);
+bool validate_json_uint32(json_object *jobj);
 json_object *json_contains(struct crypt_device *cd, json_object *jobj, const char *name,
 			   const char *section, const char *key, json_type type);
+json_object *json_contains_string(struct crypt_device *cd, json_object *jobj,
+				  const char *name, const char *section, const char *key);
 
 int LUKS2_hdr_validate(struct crypt_device *cd, json_object *hdr_jobj, uint64_t json_size);
 int LUKS2_check_json_size(struct crypt_device *cd, const struct luks2_hdr *hdr);
@@ -116,14 +117,13 @@ typedef int (*keyslot_store_func)(struct crypt_device *cd, int keyslot,
 typedef int (*keyslot_wipe_func) (struct crypt_device *cd, int keyslot);
 typedef int (*keyslot_dump_func) (struct crypt_device *cd, int keyslot);
 typedef int (*keyslot_validate_func) (struct crypt_device *cd, json_object *jobj_keyslot);
-typedef void(*keyslot_repair_func) (struct crypt_device *cd, json_object *jobj_keyslot);
+typedef void(*keyslot_repair_func) (json_object *jobj_keyslot);
 
 /* see LUKS2_luks2_to_luks1 */
 int placeholder_keyslot_alloc(struct crypt_device *cd,
 	int keyslot,
 	uint64_t area_offset,
-	uint64_t area_length,
-	size_t volume_key_len);
+	uint64_t area_length);
 
 /* validate all keyslot implementations in hdr json */
 int LUKS2_keyslots_validate(struct crypt_device *cd, json_object *hdr_jobj);
@@ -140,11 +140,28 @@ typedef struct  {
 	keyslot_repair_func repair;
 } keyslot_handler;
 
-/* can not fit prototype alloc function */
-int reenc_keyslot_alloc(struct crypt_device *cd,
-	struct luks2_hdr *hdr,
-	int keyslot,
-	const struct crypt_params_reencrypt *params);
+struct reenc_protection {
+	enum { REENC_PROTECTION_NOT_SET = 0,
+	       REENC_PROTECTION_NONE,
+	       REENC_PROTECTION_CHECKSUM,
+	       REENC_PROTECTION_JOURNAL,
+	       REENC_PROTECTION_DATASHIFT } type;
+
+	union {
+	struct {
+		char hash[LUKS2_CHECKSUM_ALG_L];
+		struct crypt_hash *ch;
+		size_t hash_size;
+		/* buffer for checksums */
+		void *checksums;
+		size_t checksums_len;
+		size_t block_size;
+	} csum;
+	struct {
+		uint64_t data_shift;
+	} ds;
+	} p;
+};
 
 /**
  * LUKS2 digest handlers (EXPERIMENTAL)
@@ -237,10 +254,31 @@ int LUKS2_keyslot_reencrypt_store(struct crypt_device *cd,
 int LUKS2_keyslot_reencrypt_allocate(struct crypt_device *cd,
 	struct luks2_hdr *hdr,
 	int keyslot,
-	const struct crypt_params_reencrypt *params);
+	const struct crypt_params_reencrypt *params,
+	size_t alignment);
+
+int LUKS2_keyslot_reencrypt_update_needed(struct crypt_device *cd,
+	struct luks2_hdr *hdr,
+	int keyslot,
+	const struct crypt_params_reencrypt *params,
+	size_t alignment);
+
+int LUKS2_keyslot_reencrypt_update(struct crypt_device *cd,
+	struct luks2_hdr *hdr,
+	int keyslot,
+	const struct crypt_params_reencrypt *params,
+	size_t alignment,
+	struct volume_key *vks);
+
+int LUKS2_keyslot_reencrypt_load(struct crypt_device *cd,
+	struct luks2_hdr *hdr,
+	int keyslot,
+	struct reenc_protection *rp,
+	bool primary);
 
 int LUKS2_keyslot_reencrypt_digest_create(struct crypt_device *cd,
 	struct luks2_hdr *hdr,
+	uint8_t version,
 	struct volume_key *vks);
 
 int LUKS2_keyslot_dump(struct crypt_device *cd,
@@ -254,7 +292,7 @@ const char *json_segment_type(json_object *jobj_segment);
 uint64_t json_segment_get_iv_offset(json_object *jobj_segment);
 uint64_t json_segment_get_size(json_object *jobj_segment, unsigned blockwise);
 const char *json_segment_get_cipher(json_object *jobj_segment);
-int json_segment_get_sector_size(json_object *jobj_segment);
+uint32_t json_segment_get_sector_size(json_object *jobj_segment);
 bool json_segment_is_backup(json_object *jobj_segment);
 json_object *json_segments_get_segment(json_object *jobj_segments, int segment);
 unsigned json_segments_count(json_object *jobj_segments);
@@ -318,7 +356,6 @@ int LUKS2_reencrypt_data_offset(struct luks2_hdr *hdr, bool blockwise);
  * Generic LUKS2 digest
  */
 int LUKS2_digest_verify_by_digest(struct crypt_device *cd,
-	struct luks2_hdr *hdr,
 	int digest,
 	const struct volume_key *vk);
 
@@ -344,8 +381,6 @@ int LUKS2_reload(struct crypt_device *cd,
 
 int LUKS2_keyslot_for_segment(struct luks2_hdr *hdr, int keyslot, int segment);
 int LUKS2_find_keyslot(struct luks2_hdr *hdr, const char *type);
-int LUKS2_set_keyslots_size(struct crypt_device *cd,
-	struct luks2_hdr *hdr,
-	uint64_t data_offset);
+int LUKS2_set_keyslots_size(struct luks2_hdr *hdr, uint64_t data_offset);
 
 #endif

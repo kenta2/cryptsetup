@@ -3,8 +3,8 @@
  *
  * Copyright (C) 2004 Jana Saout <jana@saout.de>
  * Copyright (C) 2004-2007 Clemens Fruhwirth <clemens@endorphin.org>
- * Copyright (C) 2009-2021 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2009-2021 Milan Broz
+ * Copyright (C) 2009-2022 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2009-2022 Milan Broz
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -47,6 +47,7 @@ static bool _dm_ioctl_checked = false;
 static bool _dm_crypt_checked = false;
 static bool _dm_verity_checked = false;
 static bool _dm_integrity_checked = false;
+static bool _dm_zero_checked = false;
 
 static int _quiet_log = 0;
 static uint32_t _dm_flags = 0;
@@ -241,6 +242,20 @@ static void _dm_set_integrity_compat(struct crypt_device *cd,
 	_dm_integrity_checked = true;
 }
 
+static void _dm_set_zero_compat(struct crypt_device *cd,
+				unsigned zero_maj,
+				unsigned zero_min,
+				unsigned zero_patch)
+{
+	if (_dm_zero_checked || zero_maj == 0)
+		return;
+
+	log_dbg(cd, "Detected dm-zero version %i.%i.%i.",
+		zero_maj, zero_min, zero_patch);
+
+	_dm_zero_checked = true;
+}
+
 /* We use this for loading target module */
 static void _dm_check_target(dm_target_type target_type)
 {
@@ -278,11 +293,12 @@ static int _dm_check_versions(struct crypt_device *cd, dm_target_type target_typ
 	unsigned dm_maj, dm_min, dm_patch;
 	int r = 0;
 
-	if ((target_type == DM_CRYPT	 && _dm_crypt_checked) ||
+	if ((target_type == DM_CRYPT     && _dm_crypt_checked) ||
 	    (target_type == DM_VERITY    && _dm_verity_checked) ||
 	    (target_type == DM_INTEGRITY && _dm_integrity_checked) ||
-	    (target_type == DM_LINEAR) || (target_type == DM_ZERO) ||
-	    (_dm_crypt_checked && _dm_verity_checked && _dm_integrity_checked))
+	    (target_type == DM_ZERO      && _dm_zero_checked) ||
+	    (target_type == DM_LINEAR) ||
+	    (_dm_crypt_checked && _dm_verity_checked && _dm_integrity_checked && _dm_zero_checked))
 		return 1;
 
 	/* Shut up DM while checking */
@@ -331,8 +347,12 @@ static int _dm_check_versions(struct crypt_device *cd, dm_target_type target_typ
 			_dm_set_integrity_compat(cd, (unsigned)target->version[0],
 						 (unsigned)target->version[1],
 						 (unsigned)target->version[2]);
+		} else if (!strcmp(DM_ZERO_TARGET, target->name)) {
+			_dm_set_zero_compat(cd, (unsigned)target->version[0],
+					    (unsigned)target->version[1],
+					    (unsigned)target->version[2]);
 		}
-		target = (struct dm_versions *)((char *) target + target->next);
+		target = VOIDP_CAST(struct dm_versions *)((char *) target + target->next);
 	} while (last_target != target);
 
 	r = 1;
@@ -355,13 +375,14 @@ int dm_flags(struct crypt_device *cd, dm_target_type target, uint32_t *flags)
 	*flags = _dm_flags;
 
 	if (target == DM_UNKNOWN &&
-	    _dm_crypt_checked && _dm_verity_checked && _dm_integrity_checked)
+	    _dm_crypt_checked && _dm_verity_checked && _dm_integrity_checked && _dm_zero_checked)
 		return 0;
 
-	if ((target == DM_CRYPT	    && _dm_crypt_checked) ||
+	if ((target == DM_CRYPT     && _dm_crypt_checked) ||
 	    (target == DM_VERITY    && _dm_verity_checked) ||
 	    (target == DM_INTEGRITY && _dm_integrity_checked) ||
-	    (target == DM_LINEAR) || (target == DM_ZERO)) /* nothing to check */
+	    (target == DM_ZERO      && _dm_zero_checked) ||
+	    (target == DM_LINEAR)) /* nothing to check */
 		return 0;
 
 	return -ENODEV;
@@ -442,14 +463,6 @@ char *dm_device_name(const char *path)
 		return NULL;
 
 	return dm_device_path(NULL, major(st.st_rdev), minor(st.st_rdev));
-}
-
-static void hex_key(char *hexkey, size_t key_size, const char *key)
-{
-	unsigned i;
-
-	for(i = 0; i < key_size; i++)
-		sprintf(&hexkey[i * 2], "%02x", (unsigned char)key[i]);
 }
 
 static size_t int_log10(uint64_t x)
@@ -655,24 +668,20 @@ static char *get_dm_crypt_params(const struct dm_target *tgt, uint32_t flags)
 		null_cipher = 1;
 
 	if (null_cipher)
-		hexkey = crypt_safe_alloc(2);
+		hexkey = crypt_bytes_to_hex(0, NULL);
 	else if (flags & CRYPT_ACTIVATE_KEYRING_KEY) {
 		keystr_len = strlen(tgt->u.crypt.vk->key_description) + int_log10(tgt->u.crypt.vk->keylength) + 10;
 		hexkey = crypt_safe_alloc(keystr_len);
-	} else
-		hexkey = crypt_safe_alloc(tgt->u.crypt.vk->keylength * 2 + 1);
-
-	if (!hexkey)
-		goto out;
-
-	if (null_cipher)
-		strncpy(hexkey, "-", 2);
-	else if (flags & CRYPT_ACTIVATE_KEYRING_KEY) {
+		if (!hexkey)
+			goto out;
 		r = snprintf(hexkey, keystr_len, ":%zu:logon:%s", tgt->u.crypt.vk->keylength, tgt->u.crypt.vk->key_description);
 		if (r < 0 || r >= keystr_len)
 			goto out;
 	} else
-		hex_key(hexkey, tgt->u.crypt.vk->keylength, tgt->u.crypt.vk->key);
+		hexkey = crypt_bytes_to_hex(tgt->u.crypt.vk->keylength, tgt->u.crypt.vk->key);
+
+	if (!hexkey)
+		goto out;
 
 	max_size = strlen(hexkey) + strlen(cipher_dm) +
 		   strlen(device_block_path(tgt->data_device)) +
@@ -767,18 +776,13 @@ static char *get_dm_verity_params(const struct dm_target *tgt, uint32_t flags)
 	} else
 		*features = '\0';
 
-	hexroot = crypt_safe_alloc(tgt->u.verity.root_hash_size * 2 + 1);
+	hexroot = crypt_bytes_to_hex(tgt->u.verity.root_hash_size, tgt->u.verity.root_hash);
 	if (!hexroot)
 		goto out;
-	hex_key(hexroot, tgt->u.verity.root_hash_size, tgt->u.verity.root_hash);
 
-	hexsalt = crypt_safe_alloc(vp->salt_size ? vp->salt_size * 2 + 1 : 2);
+	hexsalt = crypt_bytes_to_hex(vp->salt_size, vp->salt);
 	if (!hexsalt)
 		goto out;
-	if (vp->salt_size)
-		hex_key(hexsalt, vp->salt_size, vp->salt);
-	else
-		strncpy(hexsalt, "-", 2);
 
 	max_size = strlen(hexroot) + strlen(hexsalt) +
 		   strlen(device_block_path(tgt->data_device)) +
@@ -843,10 +847,9 @@ static char *get_dm_integrity_params(const struct dm_target *tgt, uint32_t flags
 		num_options++;
 
 		if (tgt->u.integrity.vk) {
-			hexkey = crypt_safe_alloc(tgt->u.integrity.vk->keylength * 2 + 1);
+			hexkey = crypt_bytes_to_hex(tgt->u.integrity.vk->keylength, tgt->u.integrity.vk->key);
 			if (!hexkey)
 				goto out;
-			hex_key(hexkey, tgt->u.integrity.vk->keylength, tgt->u.integrity.vk->key);
 		} else
 			hexkey = NULL;
 
@@ -861,11 +864,10 @@ static char *get_dm_integrity_params(const struct dm_target *tgt, uint32_t flags
 		num_options++;
 
 		if (tgt->u.integrity.journal_integrity_key) {
-			hexkey = crypt_safe_alloc(tgt->u.integrity.journal_integrity_key->keylength * 2 + 1);
+			hexkey = crypt_bytes_to_hex( tgt->u.integrity.journal_integrity_key->keylength,
+				tgt->u.integrity.journal_integrity_key->key);
 			if (!hexkey)
 				goto out;
-			hex_key(hexkey, tgt->u.integrity.journal_integrity_key->keylength,
-				tgt->u.integrity.journal_integrity_key->key);
 		} else
 			hexkey = NULL;
 
@@ -880,11 +882,10 @@ static char *get_dm_integrity_params(const struct dm_target *tgt, uint32_t flags
 		num_options++;
 
 		if (tgt->u.integrity.journal_crypt_key) {
-			hexkey = crypt_safe_alloc(tgt->u.integrity.journal_crypt_key->keylength * 2 + 1);
+			hexkey = crypt_bytes_to_hex(tgt->u.integrity.journal_crypt_key->keylength,
+				tgt->u.integrity.journal_crypt_key->key);
 			if (!hexkey)
 				goto out;
-			hex_key(hexkey, tgt->u.integrity.journal_crypt_key->keylength,
-				tgt->u.integrity.journal_crypt_key->key);
 		} else
 			hexkey = NULL;
 
@@ -980,7 +981,7 @@ out:
 	return params_out;
 }
 
-static char *get_dm_linear_params(const struct dm_target *tgt, uint32_t flags __attribute__((unused)))
+static char *get_dm_linear_params(const struct dm_target *tgt)
 {
 	char *params;
 	int r;
@@ -1001,7 +1002,7 @@ static char *get_dm_linear_params(const struct dm_target *tgt, uint32_t flags __
 	return params;
 }
 
-static char *get_dm_zero_params(const struct dm_target *tgt __attribute__((unused)), uint32_t flags __attribute__((unused)))
+static char *get_dm_zero_params(void)
 {
 	char *params = crypt_safe_alloc(1);
 	if (!params)
@@ -1263,8 +1264,7 @@ int lookup_dm_dev_by_uuid(struct crypt_device *cd, const char *uuid, const char 
 		return r;
 
 	r_udev = r;
-	if (r_udev <= 0)
-		r = lookup_by_sysfs_uuid_field(dev_uuid + DM_BY_ID_PREFIX_LEN);
+	r = lookup_by_sysfs_uuid_field(dev_uuid + DM_BY_ID_PREFIX_LEN);
 
 	return r == -ENOENT ? r_udev : r;
 }
@@ -1328,9 +1328,9 @@ static int _create_dm_targets_params(struct crypt_dm_active_device *dmd)
 		else if (tgt->type == DM_INTEGRITY)
 			tgt->params = get_dm_integrity_params(tgt, dmd->flags);
 		else if (tgt->type == DM_LINEAR)
-			tgt->params = get_dm_linear_params(tgt, dmd->flags);
+			tgt->params = get_dm_linear_params(tgt);
 		else if (tgt->type == DM_ZERO)
-			tgt->params = get_dm_zero_params(tgt, dmd->flags);
+			tgt->params = get_dm_zero_params();
 		else {
 			r = -ENOTSUP;
 			goto err;
@@ -1576,6 +1576,9 @@ static void _dm_target_free_query_path(struct crypt_device *cd, struct dm_target
 
 static void _dm_target_erase(struct crypt_device *cd, struct dm_target *tgt)
 {
+	if (tgt->direction == TARGET_EMPTY)
+		return;
+
 	if (tgt->direction == TARGET_QUERY)
 		_dm_target_free_query_path(cd, tgt);
 
@@ -2370,6 +2373,8 @@ static int _dm_target_query_integrity(struct crypt_device *cd,
 	struct device *data_device = NULL, *meta_device = NULL;
 	char *integrity = NULL, *journal_crypt = NULL, *journal_integrity = NULL;
 	struct volume_key *vk = NULL;
+	struct volume_key *journal_integrity_key = NULL;
+	struct volume_key *journal_crypt_key = NULL;
 
 	tgt->type = DM_INTEGRITY;
 	tgt->direction = TARGET_QUERY;
@@ -2499,6 +2504,28 @@ static int _dm_target_query_integrity(struct crypt_device *cd,
 						goto err;
 					}
 				}
+
+				if (str) {
+					len = crypt_hex_to_bytes(str, &str2, 1);
+					if (len < 0) {
+						r = len;
+						goto err;
+					}
+
+					r = 0;
+					if (get_flags & DM_ACTIVE_JOURNAL_CRYPT_KEY) {
+						journal_crypt_key = crypt_alloc_volume_key(len, str2);
+						if (!journal_crypt_key)
+							r = -ENOMEM;
+					} else if (get_flags & DM_ACTIVE_JOURNAL_CRYPT_KEYSIZE) {
+						journal_crypt_key = crypt_alloc_volume_key(len, NULL);
+						if (!journal_crypt_key)
+							r = -ENOMEM;
+					}
+					crypt_safe_free(str2);
+					if (r < 0)
+						goto err;
+				}
 			} else if (!strncmp(arg, "journal_mac:", 12) && !journal_integrity) {
 				str = &arg[12];
 				arg = strsep(&str, ":");
@@ -2508,6 +2535,28 @@ static int _dm_target_query_integrity(struct crypt_device *cd,
 						r = -ENOMEM;
 						goto err;
 					}
+				}
+
+				if (str) {
+					len = crypt_hex_to_bytes(str, &str2, 1);
+					if (len < 0) {
+						r = len;
+						goto err;
+					}
+
+					r = 0;
+					if (get_flags & DM_ACTIVE_JOURNAL_MAC_KEY) {
+						journal_integrity_key = crypt_alloc_volume_key(len, str2);
+						if (!journal_integrity_key)
+							r = -ENOMEM;
+					} else if (get_flags & DM_ACTIVE_JOURNAL_MAC_KEYSIZE) {
+						journal_integrity_key = crypt_alloc_volume_key(len, NULL);
+						if (!journal_integrity_key)
+							r = -ENOMEM;
+					}
+					crypt_safe_free(str2);
+					if (r < 0)
+						goto err;
 				}
 			} else if (!strcmp(arg, "recalculate")) {
 				*act_flags |= CRYPT_ACTIVATE_RECALCULATE;
@@ -2544,6 +2593,10 @@ static int _dm_target_query_integrity(struct crypt_device *cd,
 		tgt->u.integrity.journal_integrity = journal_integrity;
 	if (vk)
 		tgt->u.integrity.vk = vk;
+	if (journal_integrity_key)
+		tgt->u.integrity.journal_integrity_key = journal_integrity_key;
+	if (journal_crypt_key)
+		tgt->u.integrity.journal_crypt_key = journal_crypt_key;
 	return 0;
 err:
 	device_free(cd, data_device);
@@ -2552,6 +2605,8 @@ err:
 	free(journal_crypt);
 	free(journal_integrity);
 	crypt_free_volume_key(vk);
+	crypt_free_volume_key(journal_integrity_key);
+	crypt_free_volume_key(journal_crypt_key);
 	return r;
 }
 
@@ -2595,7 +2650,7 @@ err:
 	return r;
 }
 
-static int _dm_target_query_error(struct crypt_device *cd __attribute__((unused)), struct dm_target *tgt)
+static int _dm_target_query_error(struct dm_target *tgt)
 {
 	tgt->type = DM_ERROR;
 	tgt->direction = TARGET_QUERY;
@@ -2603,7 +2658,7 @@ static int _dm_target_query_error(struct crypt_device *cd __attribute__((unused)
 	return 0;
 }
 
-static int _dm_target_query_zero(struct crypt_device *cd __attribute__((unused)), struct dm_target *tgt)
+static int _dm_target_query_zero(struct dm_target *tgt)
 {
 	tgt->type = DM_ZERO;
 	tgt->direction = TARGET_QUERY;
@@ -2631,9 +2686,9 @@ static int dm_target_query(struct crypt_device *cd, struct dm_target *tgt, const
 	else if (!strcmp(target_type, DM_LINEAR_TARGET))
 		r = _dm_target_query_linear(cd, tgt, get_flags, params);
 	else if (!strcmp(target_type, DM_ERROR_TARGET))
-		r = _dm_target_query_error(cd, tgt);
+		r = _dm_target_query_error(tgt);
 	else if (!strcmp(target_type, DM_ZERO_TARGET))
-		r = _dm_target_query_zero(cd, tgt);
+		r = _dm_target_query_zero(tgt);
 
 	if (!r) {
 		tgt->offset = *start;
@@ -2948,7 +3003,7 @@ int dm_resume_and_reinstate_key(struct crypt_device *cd, const char *name,
 {
 	uint32_t dmt_flags;
 	int msg_size;
-	char *msg = NULL;
+	char *msg = NULL, *key = NULL;
 	int r = -ENOTSUP;
 
 	if (dm_init_context(cd, DM_CRYPT) || dm_flags(cd, DM_CRYPT, &dmt_flags))
@@ -2970,14 +3025,21 @@ int dm_resume_and_reinstate_key(struct crypt_device *cd, const char *name,
 		goto out;
 	}
 
-	strcpy(msg, "key set ");
-	if (!vk->keylength)
-		snprintf(msg + 8, msg_size - 8, "-");
-	else if (vk->key_description)
-		snprintf(msg + 8, msg_size - 8, ":%zu:logon:%s", vk->keylength, vk->key_description);
-	else
-		hex_key(&msg[8], vk->keylength, vk->key);
+	if (vk->key_description) {
+		r = snprintf(msg, msg_size, "key set :%zu:logon:%s", vk->keylength, vk->key_description);
+	} else  {
+		key = crypt_bytes_to_hex(vk->keylength, vk->key);
+		if (!key) {
+			r = -ENOMEM;
+			goto out;
+		}
 
+		r = snprintf(msg, msg_size, "key set %s", key);
+	}
+	if (r < 0 || r >= msg_size) {
+		r = -EINVAL;
+		goto out;
+	}
 	if (!_dm_message(name, msg) ||
 	    _dm_resume_device(name, 0)) {
 		r = -EINVAL;
@@ -2986,6 +3048,7 @@ int dm_resume_and_reinstate_key(struct crypt_device *cd, const char *name,
 	r = 0;
 out:
 	crypt_safe_free(msg);
+	crypt_safe_free(key);
 	dm_exit_context();
 	return r;
 }

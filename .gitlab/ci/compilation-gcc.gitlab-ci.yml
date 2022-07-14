@@ -3,22 +3,25 @@ test-gcc-compilation:
     - .gitlab-shared-gcc
   script:
     - export CFLAGS="-Wall -Werror"
-    - ./configure --enable-pwquality --enable-libargon2
+    - ./configure
     - make -j
+    - make -j check-programs
 
 test-gcc-Wall-script:
   extends:
     - .gitlab-shared-gcc
   script:
     - export CFLAGS="-g -O0"
-    - export CC=".gitlab/ci/gcc-Wall"
-    - USE_FILTER=0 ./configure --enable-pwquality --enable-libargon2
-    - USE_FILTER=1 make -j CFLAGS="-g -O0 -fdiagnostics-format=json"
+    - export CC="$CI_PROJECT_DIR/.gitlab/ci/gcc-Wall"
+    - ./configure
+    - make -j CFLAGS="-g -O0 -Werror"
+    - make -j CFLAGS="-g -O0 -Werror" check-programs
 
 test-gcc-fanalyzer:
   extends:
     - .gitlab-shared-gcc
   script:
     - export CFLAGS="-Wall -Werror -g -O0 -fanalyzer -fdiagnostics-path-format=separate-events"
-    - ./configure --enable-pwquality --enable-libargon2
+    - ./configure
     - make -j
+    - make -j check-programs

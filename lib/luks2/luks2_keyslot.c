@@ -1,8 +1,8 @@
 /*
  * LUKS - Linux Unified Key Setup v2, keyslot handling
  *
- * Copyright (C) 2015-2021 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2015-2021 Milan Broz
+ * Copyright (C) 2015-2022 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2015-2022 Milan Broz
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -34,7 +34,7 @@ static const keyslot_handler *keyslot_handlers[LUKS2_KEYSLOTS_MAX] = {
 };
 
 static const keyslot_handler
-*LUKS2_keyslot_handler_type(struct crypt_device *cd __attribute__((unused)), const char *type)
+*LUKS2_keyslot_handler_type(const char *type)
 {
 	int i;
 
@@ -64,7 +64,7 @@ static const keyslot_handler
 	if (!json_object_object_get_ex(jobj1, "type", &jobj2))
 		return NULL;
 
-	return LUKS2_keyslot_handler_type(cd, json_object_get_string(jobj2));
+	return LUKS2_keyslot_handler_type(json_object_get_string(jobj2));
 }
 
 int LUKS2_keyslot_find_empty(struct crypt_device *cd, struct luks2_hdr *hdr, size_t keylength)
@@ -605,38 +605,6 @@ int LUKS2_keyslot_open(struct crypt_device *cd,
 	return r;
 }
 
-int LUKS2_keyslot_reencrypt_allocate(struct crypt_device *cd,
-	struct luks2_hdr *hdr,
-	int keyslot,
-	const struct crypt_params_reencrypt *params)
-{
-	const keyslot_handler *h;
-	int r;
-
-	if (keyslot == CRYPT_ANY_SLOT)
-		return -EINVAL;
-
-	h = LUKS2_keyslot_handler_type(cd, "reencrypt");
-	if (!h)
-		return -EINVAL;
-
-	r = reenc_keyslot_alloc(cd, hdr, keyslot, params);
-	if (r < 0)
-		return r;
-
-	r = LUKS2_keyslot_priority_set(cd, hdr, keyslot, CRYPT_SLOT_PRIORITY_IGNORE, 0);
-	if (r < 0)
-		return r;
-
-	r = h->validate(cd, LUKS2_get_keyslot_jobj(hdr, keyslot));
-	if (r) {
-		log_dbg(cd, "Keyslot validation failed.");
-		return r;
-	}
-
-	return 0;
-}
-
 int LUKS2_keyslot_reencrypt_store(struct crypt_device *cd,
 	struct luks2_hdr *hdr,
 	int keyslot,
@@ -675,7 +643,7 @@ int LUKS2_keyslot_store(struct crypt_device *cd,
 
 	if (!LUKS2_get_keyslot_jobj(hdr, keyslot)) {
 		/* Try to allocate default and empty keyslot type */
-		h = LUKS2_keyslot_handler_type(cd, "luks2");
+		h = LUKS2_keyslot_handler_type("luks2");
 		if (!h)
 			return -EINVAL;
 
@@ -781,8 +749,7 @@ int LUKS2_keyslot_dump(struct crypt_device *cd, int keyslot)
 	return h->dump(cd, keyslot);
 }
 
-crypt_keyslot_priority LUKS2_keyslot_priority_get(struct crypt_device *cd __attribute__((unused)),
-	  struct luks2_hdr *hdr, int keyslot)
+crypt_keyslot_priority LUKS2_keyslot_priority_get(struct luks2_hdr *hdr, int keyslot)
 {
 	json_object *jobj_keyslot, *jobj_priority;
 
@@ -816,8 +783,7 @@ int LUKS2_keyslot_priority_set(struct crypt_device *cd, struct luks2_hdr *hdr,
 int placeholder_keyslot_alloc(struct crypt_device *cd,
 	int keyslot,
 	uint64_t area_offset,
-	uint64_t area_length,
-	size_t volume_key_len __attribute__((unused)))
+	uint64_t area_length)
 {
 	struct luks2_hdr *hdr;
 	json_object *jobj_keyslots, *jobj_keyslot, *jobj_area;
@@ -898,7 +864,7 @@ int LUKS2_keyslots_validate(struct crypt_device *cd, json_object *hdr_jobj)
 	json_object_object_foreach(jobj_keyslots, slot, val) {
 		keyslot = atoi(slot);
 		json_object_object_get_ex(val, "type", &jobj_type);
-		h = LUKS2_keyslot_handler_type(cd, json_object_get_string(jobj_type));
+		h = LUKS2_keyslot_handler_type(json_object_get_string(jobj_type));
 		if (!h)
 			continue;
 		if (h->validate && h->validate(cd, val)) {
@@ -920,7 +886,7 @@ int LUKS2_keyslots_validate(struct crypt_device *cd, json_object *hdr_jobj)
 		return -EINVAL;
 	}
 
-	if (!(reqs & CRYPT_REQUIREMENT_ONLINE_REENCRYPT) && reencrypt_count) {
+	if (reencrypt_count && !LUKS2_reencrypt_requirement_candidate(&dummy)) {
 		log_dbg(cd, "Missing reencryption requirement flag.");
 		return -EINVAL;
 	}
@@ -945,9 +911,9 @@ void LUKS2_keyslots_repair(struct crypt_device *cd, json_object *jobj_keyslots)
 		    !json_object_is_type(jobj_type, json_type_string))
 			continue;
 
-		h = LUKS2_keyslot_handler_type(cd, json_object_get_string(jobj_type));
+		h = LUKS2_keyslot_handler_type(json_object_get_string(jobj_type));
 		if (h && h->repair)
-			h->repair(cd, val);
+			h->repair(val);
 	}
 }
 

@@ -1,8 +1,8 @@
 /*
  * LUKS - Linux Unified Key Setup v2, LUKS2 header format code
  *
- * Copyright (C) 2015-2021 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2015-2021 Milan Broz
+ * Copyright (C) 2015-2022 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2015-2022 Milan Broz
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -383,9 +383,7 @@ int LUKS2_wipe_header_areas(struct crypt_device *cd,
 				 offset, length, wipe_block, NULL, NULL);
 }
 
-int LUKS2_set_keyslots_size(struct crypt_device *cd __attribute__((unused)),
-		struct luks2_hdr *hdr,
-		uint64_t data_offset)
+int LUKS2_set_keyslots_size(struct luks2_hdr *hdr, uint64_t data_offset)
 {
 	json_object *jobj_config;
 	uint64_t keyslots_size;

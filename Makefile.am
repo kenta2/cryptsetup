@@ -1,4 +1,4 @@
-EXTRA_DIST = README.md COPYING.LGPL FAQ docs misc autogen.sh
+EXTRA_DIST = README.md COPYING.LGPL FAQ.md docs misc autogen.sh
 SUBDIRS = po tests
 CLEANFILES =
 DISTCLEAN_TARGETS =
@@ -16,7 +16,7 @@ AM_CPPFLAGS = \
 AM_CFLAGS = -Wall
 AM_LDFLAGS =
 
-LDADD = $(LTLIBINTL) -lm
+LDADD = $(LTLIBINTL)
 
 tmpfilesddir = @DEFAULT_TMPFILESDIR@
 
@@ -27,6 +27,7 @@ sbin_PROGRAMS =
 man8_MANS =
 tmpfilesd_DATA =
 pkgconfig_DATA =
+dist_noinst_DATA =
 
 include man/Makemodule.am
 
@@ -46,7 +47,7 @@ ACLOCAL_AMFLAGS = -I m4
 DISTCHECK_CONFIGURE_FLAGS = 	\
 	--with-tmpfilesdir=$$dc_install_base/usr/lib/tmpfiles.d \
 	--enable-internal-argon2 --enable-internal-sse-argon2 \
-	--enable-external-tokens --enable-ssh-token
+	--enable-external-tokens --enable-ssh-token --enable-asciidoc
 
 distclean-local:
 	-find . -name \*~ -o -name \*.orig -o -name \*.rej | xargs rm -f
@@ -60,3 +61,6 @@ install-data-local:
 
 uninstall-local:
 	rmdir $(DESTDIR)/${EXTERNAL_LUKS2_TOKENS_PATH} 2>/dev/null || :
+
+check-programs: libcryptsetup.la
+	$(MAKE) -C tests $@

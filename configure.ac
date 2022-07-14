@@ -1,9 +1,9 @@
 AC_PREREQ([2.67])
-AC_INIT([cryptsetup],[2.4.3])
+AC_INIT([cryptsetup],[2.5.0-rc1])
 
 dnl library version from <major>.<minor>.<release>[-<suffix>]
 LIBCRYPTSETUP_VERSION=$(echo $PACKAGE_VERSION | cut -f1 -d-)
-LIBCRYPTSETUP_VERSION_INFO=19:0:7
+LIBCRYPTSETUP_VERSION_INFO=20:0:8
 
 AM_SILENT_RULES([yes])
 AC_CONFIG_SRCDIR(src/cryptsetup.c)
@@ -34,7 +34,6 @@ AC_PROG_MKDIR_P
 AC_ENABLE_STATIC(no)
 LT_INIT
 PKG_PROG_PKG_CONFIG
-AM_ICONV
 
 dnl ==========================================================================
 dnl define PKG_CHECK_VAR for old pkg-config <= 0.28
@@ -54,11 +53,32 @@ AS_VAR_IF([$1], [""], [$5], [$4])
 ])
 ])
 dnl ==========================================================================
+dnl AsciiDoc manual pages
+
+AC_ARG_ENABLE([asciidoc],
+	AS_HELP_STRING([--disable-asciidoc], [do not generate man pages from asciidoc]),
+	[], [enable_asciidoc=yes]
+)
+
+AC_PATH_PROG([ASCIIDOCTOR], [asciidoctor])
+if test "x$enable_asciidoc" = xyes -a "x$ASCIIDOCTOR" = x; then
+	AC_MSG_ERROR([Building man pages requires asciidoctor installed.])
+fi
+AM_CONDITIONAL([ENABLE_ASCIIDOC], [test "x$enable_asciidoc" = xyes])
+
+have_manpages=no
+AS_IF([test -f "$srcdir/man/cryptsetup-open.8"], [
+	AC_MSG_NOTICE([re-use already generated man-pages.])
+	have_manpages=yes]
+)
+AM_CONDITIONAL([HAVE_MANPAGES], [test "x$have_manpages" = xyes])
+
+dnl ==========================================================================
 
 AC_C_RESTRICT
 
 AC_HEADER_DIRENT
-AC_CHECK_HEADERS(fcntl.h malloc.h inttypes.h sys/ioctl.h sys/mman.h \
+AC_CHECK_HEADERS(fcntl.h malloc.h inttypes.h uchar.h sys/ioctl.h sys/mman.h \
 	sys/sysmacros.h sys/statvfs.h ctype.h unistd.h locale.h byteswap.h endian.h stdint.h)
 AC_CHECK_DECLS([O_CLOEXEC],,[AC_DEFINE([O_CLOEXEC],[0], [Defined to 0 if not provided])],
 [[
@@ -362,11 +382,6 @@ AC_ARG_ENABLE([veritysetup],
 	[], [enable_veritysetup=yes])
 AM_CONDITIONAL(VERITYSETUP, test "x$enable_veritysetup" = "xyes")
 
-AC_ARG_ENABLE([cryptsetup-reencrypt],
-	AS_HELP_STRING([--disable-cryptsetup-reencrypt], [disable cryptsetup-reencrypt tool]),
-	[], [enable_cryptsetup_reencrypt=yes])
-AM_CONDITIONAL(REENCRYPT, test "x$enable_cryptsetup_reencrypt" = "xyes")
-
 AC_ARG_ENABLE([integritysetup],
 	AS_HELP_STRING([--disable-integritysetup], [disable integritysetup support]),
 	[], [enable_integritysetup=yes])
@@ -419,7 +434,7 @@ if test "x$enable_ssh_token" = "xyes"; then
 	AC_CHECK_DECLS([ssh_session_is_known_server], [], [], [#include <libssh/libssh.h>])
 	AC_CHECK_HEADER([argp.h], [], AC_MSG_ERROR([You need argp library.]))
 	saved_LIBS=$LIBS
-	AC_SEARCH_LIBS([argp_usage],[argp])
+	AC_SEARCH_LIBS([argp_parse],[argp])
 	AC_SUBST(ARGP_LIBS, $LIBS)
 	LIBS=$saved_LIBS
 fi
@@ -559,6 +574,23 @@ if test "x$enable_static_cryptsetup" = "xyes"; then
 	LIBS=$saved_LIBS
 	PKG_CONFIG=$saved_PKG_CONFIG
 fi
+
+dnl Check compiler support for symver function attribute
+AC_MSG_CHECKING([for symver attribute support])
+saved_CFLAGS=$CFLAGS
+CFLAGS="-O0 -Werror"
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+	void _test_sym(void);
+	__attribute__((__symver__("sym@VERSION_4.2"))) void _test_sym(void) {}
+]],
+[[ _test_sym() ]]
+)],[
+	AC_DEFINE([HAVE_ATTRIBUTE_SYMVER], 1, [Define to 1 to use __attribute__((symver))])
+	AC_MSG_RESULT([yes])
+], [
+	AC_MSG_RESULT([no])
+])
+CFLAGS=$saved_CFLAGS
 
 AC_MSG_CHECKING([for systemd tmpfiles config directory])
 PKG_CHECK_VAR([systemd_tmpfilesdir], [systemd], [tmpfilesdir], [], [systemd_tmpfilesdir=no])

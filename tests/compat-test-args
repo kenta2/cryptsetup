@@ -25,9 +25,17 @@ function fail()
 	exit 2
 }
 
+function skip()
+{
+	[ -n "$1" ] && echo "$1"
+	echo "Test skipped."
+	cleanup
+	exit 77
+}
+
 function valgrind_setup()
 {
-	which valgrind >/dev/null 2>&1 || fail "Cannot find valgrind."
+	command -v valgrind >/dev/null || fail "Cannot find valgrind."
 	[ ! -f $CRYPTSETUP_VALGRIND ] && fail "Unable to get location of cryptsetup executable."
 	export LD_LIBRARY_PATH="$CRYPTSETUP_LIB_VALGRIND:$LD_LIBRARY_PATH"
 }
@@ -62,10 +70,10 @@ function exp_pass()
 }
 
 export LANG=C
-
+[ ! -x "$CRYPTSETUP" ] && skip "Cannot find $CRYPTSETUP, test skipped."
 [ -n "$VALG" ] && valgrind_setup && CRYPTSETUP=valgrind_run
 
-# initial test constructed acccording to current cryptsetup content
+# initial test constructed according to current cryptsetup content
 echo "[1] Current state"
 exp_fail resize NAME --test-passphrase
 exp_fail close NAME --test-passphrase
@@ -250,6 +258,10 @@ exp_fail luksAddKey DEV --unbound --key-size 0
 exp_pass luksAddKey DEV --unbound --key-size 8
 exp_pass luksDump DEV --unbound -S5
 exp_fail luksDump DEV --unbound
+exp_pass open DEV --unbound --test-passphrase
+exp_pass open DEV --unbound --test-passphrase -S5
+exp_fail open DEV --unbound NAME
+exp_fail open DEV --unbound -S5 NAME
 
 exp_fail resize NAME --refresh
 exp_fail open DEV NAME --test-passphrase --refresh
@@ -264,13 +276,13 @@ exp_fail reencrypt DEV --reduce-device-size $((64*1024*1024+1))
 exp_fail reencrypt DEV --reduce-device-size -64m
 exp_pass reencrypt DEV --reduce-device-size 64m
 exp_fail reencrypt DEV --reduce-device-size 64m --device-size 100g
-exp_fail reencrypt DEV --decrypt
 # bugs
 # exp_fail open DEV --decrypt --header H
 # exp_fail open DEV --encrypt
 # exp_fail open DEV NAME --device-size 32m
 # exp_fail open DEV NAME --size 100
 exp_pass open DEV NAME --device-size 32m --type plain
+exp_fail open DEV NAME --device-size $((32*1024*1024+1)) --type plain
 exp_pass open DEV NAME --size 100 --type plain
 exp_fail open DEV NAME --size 100 --device-size $((512*100)) --type plain
 exp_fail reencrypt DEV --device-size $((32*1024*1024+1))
