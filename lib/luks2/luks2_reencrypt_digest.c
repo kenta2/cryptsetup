@@ -1,9 +1,9 @@
 /*
  * LUKS - Linux Unified Key Setup v2, reencryption digest helpers
  *
- * Copyright (C) 2022, Red Hat, Inc. All rights reserved.
- * Copyright (C) 2022, Ondrej Kozina
- * Copyright (C) 2022, Milan Broz
+ * Copyright (C) 2022 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2022 Ondrej Kozina
+ * Copyright (C) 2022 Milan Broz
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -231,8 +231,22 @@ static size_t reenc_keyslot_serialize(struct luks2_hdr *hdr, uint8_t *buffer)
 		{ JU32, jobj_area,    "sector_size" },
 		{}
 	};
+	struct jtype j_datashift_checksum[] = {
+		{ JSTR, jobj_keyslot, "mode" },
+		{ JSTR, jobj_keyslot, "direction" },
+		{ JSTR, jobj_area,    "type" },
+		{ JU64, jobj_area,    "offset" },
+		{ JU64, jobj_area,    "size" },
+		{ JSTR, jobj_area,    "hash" },
+		{ JU32, jobj_area,    "sector_size" },
+		{ JU64, jobj_area,    "shift_size" },
+		{}
+	};
 
-	if (!strcmp(area_type, "datashift"))
+	if (!strcmp(area_type, "datashift-checksum"))
+		return srs(j_datashift_checksum, buffer);
+	else if (!strcmp(area_type, "datashift") ||
+		 !strcmp(area_type, "datashift-journal"))
 		return srs(j_datashift, buffer);
 	else if (!strcmp(area_type, "checksum"))
 		return srs(j_checksum, buffer);
@@ -251,6 +265,7 @@ static size_t blob_serialize(void *blob, size_t length, uint8_t *buffer)
 static int reencrypt_assembly_verification_data(struct crypt_device *cd,
 	struct luks2_hdr *hdr,
 	struct volume_key *vks,
+	uint8_t version,
 	struct volume_key **verification_data)
 {
 	uint8_t *ptr;
@@ -258,21 +273,30 @@ static int reencrypt_assembly_verification_data(struct crypt_device *cd,
 	struct volume_key *data = NULL, *vk_old = NULL, *vk_new = NULL;
 	size_t keyslot_data_len, segments_data_len, data_len = 2;
 
+	/*
+	 * This works up to (including) version v207.
+	 */
+	assert(version < (UINT8_MAX - 0x2F));
+
 	/* Keys - calculate length */
 	digest_new = LUKS2_reencrypt_digest_new(hdr);
 	digest_old = LUKS2_reencrypt_digest_old(hdr);
 
 	if (digest_old >= 0) {
 		vk_old = crypt_volume_key_by_id(vks, digest_old);
-		if (!vk_old)
+		if (!vk_old) {
+			log_dbg(cd, "Key (digest id %d) required but not unlocked.", digest_old);
 			return -EINVAL;
+		}
 		data_len += blob_serialize(vk_old->key, vk_old->keylength, NULL);
 	}
 
 	if (digest_new >= 0 && digest_old != digest_new) {
 		vk_new = crypt_volume_key_by_id(vks, digest_new);
-		if (!vk_new)
+		if (!vk_new) {
+			log_dbg(cd, "Key (digest id %d) required but not unlocked.", digest_new);
 			return -EINVAL;
+		}
 		data_len += blob_serialize(vk_new->key, vk_new->keylength, NULL);
 	}
 
@@ -295,9 +319,8 @@ static int reencrypt_assembly_verification_data(struct crypt_device *cd,
 
 	ptr = (uint8_t*)data->key;
 
-	/* v2 */
 	*ptr++ = 0x76;
-	*ptr++ = 0x32;
+	*ptr++ = 0x30 + version;
 
 	if (vk_old)
 		ptr += blob_serialize(vk_old->key, vk_old->keylength, ptr);
@@ -325,6 +348,7 @@ bad:
 
 int LUKS2_keyslot_reencrypt_digest_create(struct crypt_device *cd,
 	struct luks2_hdr *hdr,
+	uint8_t version,
 	struct volume_key *vks)
 {
 	int digest_reencrypt, keyslot_reencrypt, r;
@@ -334,7 +358,7 @@ int LUKS2_keyslot_reencrypt_digest_create(struct crypt_device *cd,
 	if (keyslot_reencrypt < 0)
 		return keyslot_reencrypt;
 
-	r = reencrypt_assembly_verification_data(cd, hdr, vks, &data);
+	r = reencrypt_assembly_verification_data(cd, hdr, vks, version, &data);
 	if (r < 0)
 		return r;
 
@@ -358,12 +382,18 @@ int LUKS2_reencrypt_digest_verify(struct crypt_device *cd,
 {
 	int r, keyslot_reencrypt;
 	struct volume_key *data;
+	uint8_t version;
+
+	log_dbg(cd, "Verifying reencryption metadata.");
 
 	keyslot_reencrypt = LUKS2_find_keyslot(hdr, "reencrypt");
 	if (keyslot_reencrypt < 0)
 		return keyslot_reencrypt;
 
-	r = reencrypt_assembly_verification_data(cd, hdr, vks, &data);
+	if (LUKS2_config_get_reencrypt_version(hdr, &version))
+		return -EINVAL;
+
+	r = reencrypt_assembly_verification_data(cd, hdr, vks, version, &data);
 	if (r < 0)
 		return r;
 

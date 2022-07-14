@@ -20,14 +20,15 @@ TESTS = 00modules-test \
 	vectors-test \
 	blockwise-compat \
 	bitlk-compat-test \
-	run-all-symbols
+	run-all-symbols \
+	unit-utils-crypt-test \
+	unit-wipe-test \
+	reencryption-compat-test \
+	luks2-reencryption-test \
+	luks2-reencryption-mangle-test
 
 if VERITYSETUP
 TESTS += verity-compat-test
-endif
-
-if REENCRYPT
-TESTS += reencryption-compat-test reencryption-compat-test2 luks2-reencryption-test luks2-reencryption-mangle-test
 endif
 
 if INTEGRITYSETUP
@@ -51,6 +52,7 @@ EXTRA_DIST = compatimage.img.xz compatv10image.img.xz \
 	conversion_imgs.tar.xz \
 	luks2_keyslot_unassigned.img.xz \
 	img_fs_ext4.img.xz img_fs_vfat.img.xz img_fs_xfs.img.xz \
+	xfs_512_block_size.img.xz \
 	valid_header_file.xz \
 	luks2_valid_hdr.img.xz \
 	luks2_header_requirements.xz \
@@ -70,7 +72,6 @@ EXTRA_DIST = compatimage.img.xz compatv10image.img.xz \
 	loopaes-test align-test discards-test mode-test password-hash-test \
 	align-test2 verity-compat-test \
 	reencryption-compat-test \
-	reencryption-compat-test2 \
 	luks2-reencryption-test \
 	luks2-reencryption-mangle-test \
 	tcrypt-compat-test \
@@ -90,7 +91,8 @@ EXTRA_DIST = compatimage.img.xz compatv10image.img.xz \
 	ssh-plugin-test \
 	generate-symbols-list \
 	run-all-symbols \
-	fake_token_path.c
+	fake_token_path.c \
+	unit-wipe-test
 
 CLEANFILES = cryptsetup-tst* valglog* *-fail-*.log test-symbols-list.h fake_token_path.so
 clean-local:
@@ -123,6 +125,18 @@ unit_utils_io_LDFLAGS = $(AM_LDFLAGS) -static
 unit_utils_io_CFLAGS = $(AM_CFLAGS) -I$(top_srcdir)/lib
 unit_utils_io_CPPFLAGS = $(AM_CPPFLAGS) -include config.h
 
+unit_utils_crypt_test_SOURCES = unit-utils-crypt.c ../lib/utils_crypt.c ../lib/utils_crypt.h
+unit_utils_crypt_test_LDADD = ../libcryptsetup.la
+unit_utils_crypt_test_LDFLAGS = $(AM_LDFLAGS) -static
+unit_utils_crypt_test_CFLAGS = $(AM_CFLAGS) -I$(top_srcdir)/lib
+unit_utils_crypt_test_CPPFLAGS = $(AM_CPPFLAGS) -include config.h
+
+unit_wipe_SOURCES = unit-wipe.c
+unit_wipe_LDADD = ../libcryptsetup.la
+unit_wipe_LDFLAGS = $(AM_LDFLAGS) -static
+unit_wipe_CFLAGS = $(AM_CFLAGS) -I$(top_srcdir)/lib
+unit_wipe_CPPFLAGS = $(AM_CPPFLAGS)
+
 BUILT_SOURCES = test-symbols-list.h
 
 test-symbols-list.h: $(top_srcdir)/lib/libcryptsetup.sym generate-symbols-list
@@ -135,9 +149,9 @@ all_symbols_test_LDFLAGS = $(AM_LDFLAGS) -ldl
 all_symbols_test_CFLAGS = $(AM_CFLAGS)
 all_symbols_test_CPPFLAGS = $(AM_CPPFLAGS) -D_GNU_SOURCE
 
-check_PROGRAMS = api-test api-test-2 differ vectors-test unit-utils-io all-symbols-test
+check_PROGRAMS = api-test api-test-2 differ vectors-test unit-utils-io unit-utils-crypt-test unit-wipe all-symbols-test
 
-check-programs: $(check_PROGRAMS) fake_token_path.so
+check-programs: test-symbols-list.h $(check_PROGRAMS) fake_token_path.so
 
 conversion_imgs:
 	@tar xJf conversion_imgs.tar.xz

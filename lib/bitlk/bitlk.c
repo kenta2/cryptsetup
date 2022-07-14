@@ -1,9 +1,9 @@
 /*
  * BITLK (BitLocker-compatible) volume handling
  *
- * Copyright (C) 2019-2021 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2019-2021 Milan Broz
- * Copyright (C) 2019-2021 Vojtech Trefny
+ * Copyright (C) 2019-2022 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2019-2022 Milan Broz
+ * Copyright (C) 2019-2022 Vojtech Trefny
  *
  * This file is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -24,7 +24,6 @@
 #include <string.h>
 #include <uuid/uuid.h>
 #include <time.h>
-#include <iconv.h>
 #include <limits.h>
 
 #include "bitlk.h"
@@ -234,84 +233,9 @@ static const char* get_bitlk_type_string(BITLKEncryptionType type)
 	}
 }
 
-/* TODO -- move to some utils file */
-static void hexprint(struct crypt_device *cd, const char *d, int n, const char *sep)
-{
-	int i;
-	for(i = 0; i < n; i++)
-		log_std(cd, "%02hhx%s", (const char)d[i], sep);
-}
-
 static uint64_t filetime_to_unixtime(uint64_t time)
 {
 	return (time - EPOCH_AS_FILETIME) / HUNDREDS_OF_NANOSECONDS;
-}
-
-static int convert_to_utf8(struct crypt_device *cd, uint8_t *input, size_t inlen, char **out)
-{
-	char *outbuf = NULL;
-	iconv_t ic;
-	size_t ic_inlen = inlen;
-	size_t ic_outlen = inlen;
-	char *ic_outbuf = NULL;
-	size_t r = 0;
-
-	outbuf = malloc(inlen);
-	if (outbuf == NULL)
-		return -ENOMEM;
-
-	memset(outbuf, 0, inlen);
-	ic_outbuf = outbuf;
-
-	ic = iconv_open("UTF-8", "UTF-16LE");
-	r = iconv(ic, (char **) &input, &ic_inlen, &ic_outbuf, &ic_outlen);
-	iconv_close(ic);
-
-	if (r == 0)
-		*out = strdup(outbuf);
-	else {
-		*out = NULL;
-		log_dbg(cd, "Failed to convert volume description: %s", strerror(errno));
-		r = 0;
-	}
-
-	free(outbuf);
-	return r;
-}
-
-static int passphrase_to_utf16(struct crypt_device *cd, char *input, size_t inlen, char **out)
-{
-	char *outbuf = NULL;
-	iconv_t ic;
-	size_t ic_inlen = inlen;
-	size_t ic_outlen = inlen * 2;
-	char *ic_outbuf = NULL;
-	size_t r = 0;
-
-	if (inlen == 0)
-		return r;
-
-	outbuf = crypt_safe_alloc(inlen * 2);
-	if (outbuf == NULL)
-		return -ENOMEM;
-
-	memset(outbuf, 0, inlen * 2);
-	ic_outbuf = outbuf;
-
-	ic = iconv_open("UTF-16LE", "UTF-8");
-	r = iconv(ic, &input, &ic_inlen, &ic_outbuf, &ic_outlen);
-	iconv_close(ic);
-
-	if (r == 0) {
-		*out = outbuf;
-	} else {
-		*out = NULL;
-		crypt_safe_free(outbuf);
-		log_dbg(cd, "Failed to convert passphrase: %s", strerror(errno));
-		r = -errno;
-	}
-
-	return r;
 }
 
 static int parse_vmk_entry(struct crypt_device *cd, uint8_t *data, int start, int end, struct bitlk_vmk **vmk)
@@ -324,6 +248,7 @@ static int parse_vmk_entry(struct crypt_device *cd, uint8_t *data, int start, in
 	const char *key = NULL;
 	struct volume_key *vk = NULL;
 	bool supported = false;
+	int r = 0;
 
 	/* only passphrase or recovery passphrase vmks are supported (can be used to activate) */
 	supported = (*vmk)->protection == BITLK_PROTECTION_PASSPHRASE ||
@@ -393,9 +318,14 @@ static int parse_vmk_entry(struct crypt_device *cd, uint8_t *data, int start, in
 		} else if (key_entry_value == BITLK_ENTRY_VALUE_RECOVERY_TIME) {
 			;
 		} else if (key_entry_value == BITLK_ENTRY_VALUE_STRING) {
-			if (convert_to_utf8(cd, data + start + BITLK_ENTRY_HEADER_LEN, key_entry_size - BITLK_ENTRY_HEADER_LEN, &string) < 0) {
-				log_err(cd, _("Invalid string found when parsing Volume Master Key."));
+			string = malloc((key_entry_size - BITLK_ENTRY_HEADER_LEN) * 2 + 1);
+			if (!string)
+				return -ENOMEM;
+			r = crypt_utf16_to_utf8(&string, CONST_CAST(char16_t *)(data + start + BITLK_ENTRY_HEADER_LEN),
+						     key_entry_size - BITLK_ENTRY_HEADER_LEN);
+			if (r < 0 || !string) {
 				free(string);
+				log_err(cd, _("Invalid string found when parsing Volume Master Key."));
 				return -EINVAL;
 			} else if ((*vmk)->name != NULL) {
 				if (supported) {
@@ -486,6 +416,7 @@ int BITLK_read_sb(struct crypt_device *cd, struct bitlk_metadata *params)
 	int end = 0;
 	size_t key_size = 0;
 	const char *key = NULL;
+	char *description = NULL;
 
 	struct bitlk_vmk *vmk = NULL;
 	struct bitlk_vmk *vmk_p = params->vmks;
@@ -499,8 +430,8 @@ int BITLK_read_sb(struct crypt_device *cd, struct bitlk_metadata *params)
 	/* read and check the signature */
 	if (read_lseek_blockwise(devfd, device_block_size(cd, device),
 		device_alignment(device), &sig, sizeof(sig), 0) != sizeof(sig)) {
-		log_err(cd, _("Failed to read BITLK signature from %s."), device_path(device));
-		r = -EINVAL;
+		log_dbg(cd, "Failed to read BITLK signature from %s.", device_path(device));
+		r = -EIO;
 		goto out;
 	}
 
@@ -511,7 +442,7 @@ int BITLK_read_sb(struct crypt_device *cd, struct bitlk_metadata *params)
 		params->togo = true;
 		fve_offset = BITLK_HEADER_METADATA_OFFSET_TOGO;
 	} else {
-		log_err(cd, _("Invalid or unknown signature for BITLK device."));
+		log_dbg(cd, "Invalid or unknown signature for BITLK device.");
 		r = -EINVAL;
 		goto out;
 	}
@@ -581,6 +512,7 @@ int BITLK_read_sb(struct crypt_device *cd, struct bitlk_metadata *params)
 			le16_to_cpu(fve.curr_state), le16_to_cpu(fve.next_state));
 	}
 
+	params->volume_size = le64_to_cpu(fve.volume_size);
 	params->metadata_version = le16_to_cpu(fve.fve_version);
 	fve_metadata_size = le32_to_cpu(fve.metadata_size);
 
@@ -738,13 +670,18 @@ int BITLK_read_sb(struct crypt_device *cd, struct bitlk_metadata *params)
 			params->volume_header_size = le64_to_cpu(entry_header.size);
 		/* volume description (utf-16 string) */
 		} else if (entry_type == BITLK_ENTRY_TYPE_DESCRIPTION) {
-			r = convert_to_utf8(cd, fve_entries + start + BITLK_ENTRY_HEADER_LEN,
-					    entry_size - BITLK_ENTRY_HEADER_LEN,
-					    &(params->description));
-			if (r < 0) {
+			description = malloc((entry_size - BITLK_ENTRY_HEADER_LEN - BITLK_ENTRY_HEADER_LEN) * 2 + 1);
+			if (!description)
+				return -ENOMEM;
+			r = crypt_utf16_to_utf8(&description, CONST_CAST(char16_t *)(fve_entries + start + BITLK_ENTRY_HEADER_LEN),
+					                  entry_size - BITLK_ENTRY_HEADER_LEN);
+			if (r < 0 || !description) {
+				free(description);
 				BITLK_bitlk_vmk_free(vmk);
+				log_err(cd, _("Failed to convert BITLK volume description"));
 				goto out;
 			}
+			params->description = description;
 		}
 
 		start += entry_size;
@@ -767,6 +704,7 @@ int BITLK_dump(struct crypt_device *cd, struct device *device, struct bitlk_meta
 	log_std(cd, "Version:      \t%u\n", params->metadata_version);
 	log_std(cd, "GUID:         \t%s\n", params->guid);
 	log_std(cd, "Sector size:  \t%u [bytes]\n", params->sector_size);
+	log_std(cd, "Volume size:  \t%" PRIu64 " [bytes]\n", params->volume_size);
 	log_std(cd, "Created:      \t%s", ctime((time_t *)&(params->creation_time)));
 	log_std(cd, "Description:  \t%s\n", params->description);
 	log_std(cd, "Cipher name:  \t%s\n", params->cipher);
@@ -785,7 +723,7 @@ int BITLK_dump(struct crypt_device *cd, struct device *device, struct bitlk_meta
 		log_std(cd, "\tGUID:       \t%s\n", vmk_p->guid);
 		log_std(cd, "\tProtection: \t%s\n", get_vmk_protection_string (vmk_p->protection));
 		log_std(cd, "\tSalt:       \t");
-		hexprint(cd, (const char *) vmk_p->salt, 16, "");
+		crypt_log_hex(cd, (const char *) vmk_p->salt, 16, "", 0, NULL);
 		log_std(cd, "\n");
 
 		vk_p = vmk_p->vk;
@@ -1008,7 +946,7 @@ static int bitlk_kdf(struct crypt_device *cd,
 	struct bitlk_kdf_data kdf = {};
 	struct crypt_hash *hd = NULL;
 	int len = 0;
-	char *utf16Password = NULL;
+	char16_t *utf16Password = NULL;
 	int i = 0;
 	int r = 0;
 
@@ -1025,11 +963,16 @@ static int bitlk_kdf(struct crypt_device *cd,
 
 	if (!recovery) {
 		/* passphrase: convert to UTF-16 first, then sha256(sha256(pw)) */
-		r = passphrase_to_utf16(cd, CONST_CAST(char*)password, passwordLen, &utf16Password);
+		utf16Password = crypt_safe_alloc(sizeof(char16_t) * (passwordLen + 1));
+		if (!utf16Password) {
+			r = -ENOMEM;
+			goto out;
+		}
+		r = crypt_utf8_to_utf16(&utf16Password, CONST_CAST(char*)password, passwordLen);
 		if (r < 0)
 			goto out;
 
-		crypt_hash_write(hd, utf16Password, passwordLen * 2);
+		crypt_hash_write(hd, (char*)utf16Password, passwordLen * 2);
 		r = crypt_hash_final(hd, kdf.initial_sha256, len);
 		if (r < 0)
 			goto out;
@@ -1258,7 +1201,7 @@ static int _activate(struct crypt_device *cd,
 	uint64_t next_start = 0;
 	uint64_t next_end = 0;
 	uint64_t last_segment = 0;
-	uint32_t dmt_flags;
+	uint32_t dmt_flags = 0;
 
 	r = _activate_check(cd, params);
 	if (r)
@@ -1268,6 +1211,11 @@ static int _activate(struct crypt_device *cd,
 				0, &dmd.size, &dmd.flags);
 	if (r)
 		return r;
+
+	if (dmd.size * SECTOR_SIZE != params->volume_size)
+		log_std(cd, _("WARNING: BitLocker volume size %" PRIu64 " does not match the underlying device size %" PRIu64 ""),
+			params->volume_size,
+			dmd.size * SECTOR_SIZE);
 
 	/* there will be always 4 dm-zero segments: 3x metadata, 1x FS header */
 	for (i = 0; i < 3; i++) {
@@ -1397,6 +1345,14 @@ static int _activate(struct crypt_device *cd,
 		}
 		if (!strcmp(params->cipher_mode, "cbc-elephant") && !(dmt_flags & DM_BITLK_ELEPHANT_SUPPORTED)) {
 			log_err(cd, _("Cannot activate device, kernel dm-crypt is missing support for BITLK Elephant diffuser."));
+			r = -ENOTSUP;
+		}
+		if ((dmd.flags & CRYPT_ACTIVATE_IV_LARGE_SECTORS) && !(dmt_flags & DM_SECTOR_SIZE_SUPPORTED)) {
+			log_err(cd, _("Cannot activate device, kernel dm-crypt is missing support for large sector size."));
+			r = -ENOTSUP;
+		}
+		if (dm_flags(cd, DM_ZERO, &dmt_flags) < 0) {
+			log_err(cd, _("Cannot activate device, kernel dm-zero module is missing."));
 			r = -ENOTSUP;
 		}
 	}

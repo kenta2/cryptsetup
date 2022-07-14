@@ -13,7 +13,6 @@ The project also includes a **veritysetup** utility used to conveniently setup
 and **integritysetup** to setup
 [DMIntegrity](https://gitlab.com/cryptsetup/cryptsetup/wikis/DMIntegrity) block integrity kernel module.
 
-
 LUKS Design
 -----------
 **LUKS** is the standard for Linux hard disk encryption. By providing a standard on-disk-format, it does not  
@@ -46,6 +45,12 @@ Download
 --------
 All release tarballs and release notes are hosted on [kernel.org](https://www.kernel.org/pub/linux/utils/cryptsetup/).
 
+**The latest stable release candidate cryptsetup version is 2.5.0-rc1**
+  * [cryptsetup-2.5.0-rc1.tar.xz](https://www.kernel.org/pub/linux/utils/cryptsetup/v2.5/cryptsetup-2.5.0-rc1.tar.xz)
+  * Signature [cryptsetup-2.5.0-rc1.tar.sign](https://www.kernel.org/pub/linux/utils/cryptsetup/v2.5/cryptsetup-2.5.0-rc1.tar.sign)
+    _(You need to decompress file first to check signature.)_
+  * [Cryptsetup 2.5.0-rc1 Release Notes](https://www.kernel.org/pub/linux/utils/cryptsetup/v2.5/v2.5.0-rc1-ReleaseNotes).
+
 **The latest stable cryptsetup version is 2.4.3**
   * [cryptsetup-2.4.3.tar.xz](https://www.kernel.org/pub/linux/utils/cryptsetup/v2.4/cryptsetup-2.4.3.tar.xz)
   * Signature [cryptsetup-2.4.3.tar.sign](https://www.kernel.org/pub/linux/utils/cryptsetup/v2.4/cryptsetup-2.4.3.tar.sign)
@@ -74,7 +79,6 @@ NLS PO files are maintained by [TranslationProject](https://translationproject.o
 Required packages
 -----------------
 All distributions provide cryptsetup as distro package. If you need to compile cryptsetup yourself, some packages are required for compilation. Please always prefer distro specific build tools to manually configuring cryptsetup.
-For available compile options, check ``configure --help`` for more info. If you are using a git snapshot, you need to generate a configure script with ``autogen.sh`` script.
 
 Here is the list of packages needed for the compilation of project for particular distributions:
  * For Fedora: `git gcc make autoconf automake gettext-devel pkgconfig openssl-devel popt-devel device-mapper-devel libuuid-devel json-c-devel libblkid-devel findutils libtool libssh-devel tar`. Optionally `libargon2-devel libpwquality-devel`. To run the internal testsuite you also need to install `sharutils device-mapper jq vim-common expect keyutils netcat shadow-utils openssh-clients openssh sshpass`.
@@ -82,6 +86,17 @@ Here is the list of packages needed for the compilation of project for particula
  * For Debian and Ubuntu: `git gcc make autoconf automake autopoint pkg-config libtool gettext libssl-dev libdevmapper-dev libpopt-dev uuid-dev libsepol1-dev libjson-c-dev libssh-dev libblkid-dev tar`. Optionally `libargon2-0-dev libpwquality-dev`. To run the internal testsuite you also need to install `sharutils dmsetup jq xxd expect keyutils netcat passwd openssh-client sshpass`
 
 Note that the list could change as the distributions evolve.
+
+Compilation
+-----------
+The cryptsetup project uses **automake** and **autoconf** system to generate all needed files for compilation. If you check it from the git snapshot, use ``./autogen.sh && ./configure && make`` to compile the project. If you use downloaded released ``*.tar.xz`` archive, the configure script is already pre-generated (no need to run ``autoconf.sh``).
+See ``./configure --help`` and use ``--disable-*`` and ``--enable-*`` options.
+
+For running the test suite that come with the project, type ``make check``.
+Note that most tests will need root user privileges and run many dangerous storage fail simulations.
+Do **not** run tests with root privilege on production systems! Some tests will need scsi_debug kernel module to be available.
+
+For more details, please refer to [automake](https://www.gnu.org/software/automake/manual/automake.html) and [autoconf](https://www.gnu.org/savannah-checkouts/gnu/autoconf/manual/autoconf.html) manuals.
 
 Help!
 -----
@@ -98,10 +113,10 @@ The FAQ is online and in the source code for the project.  The Specifications ar
 
 ### Mailing List
 
-For cryptsetup and LUKS related questions, please use the dm-crypt mailing list, [dm-crypt@saout.de](mailto:dm-crypt@saout.de).  To subscribe send an empty mail to [dm-crypt-subscribe@saout.de](mailto:dm-crypt-subscribe@saout.de).
+For cryptsetup and LUKS related questions, please use the cryptsetup mailing list [cryptsetup@lists.linux.dev](mailto:cryptsetup@lists.linux.dev), hosted at [kernel.org subspace](https://subspace.kernel.org/lists.linux.dev.html).
+To subscribe send an empty mail to [cryptsetup+subscribe@lists.linux.dev](mailto:cryptsetup+subscribe@lists.linux.dev).
 
-You can also browse and/or search the mailing list archives using the following resources:
+You can also browse and/or search the mailing [list archive](https://lore.kernel.org/cryptsetup/).
+News (NNTP), Atom feed and git access to public inbox is available through [lore.kernel.org](https://lore.kernel.org) service.
 
-* [list archive](https://www.saout.de/pipermail/dm-crypt/) 
-* [web interface on lore.kernel.org](https://lore.kernel.org/dm-crypt/) 
-* [marc.info](https://marc.info/?l=dm-crypt).
+The former dm-crypt [list archive](https://lore.kernel.org/dm-crypt/) is also available.

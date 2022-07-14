@@ -1,8 +1,8 @@
 /*
  * OPENSSL crypto backend implementation
  *
- * Copyright (C) 2010-2021 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2010-2021 Milan Broz
+ * Copyright (C) 2010-2022 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2010-2022 Milan Broz
  *
  * This file is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -30,6 +30,7 @@
 
 #include <string.h>
 #include <errno.h>
+#include <openssl/crypto.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
@@ -789,9 +790,6 @@ int crypt_bitlk_decrypt_key(const void *key, size_t key_length __attribute__((un
 	if (EVP_DecryptInit_ex(ctx, EVP_aes_256_ccm(), NULL, NULL, NULL) != 1)
 		goto out;
 
-	//EVP_CIPHER_CTX_key_length(ctx)
-	//EVP_CIPHER_CTX_iv_length(ctx)
-
 	if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_CCM_SET_IVLEN, iv_length, NULL) != 1)
 		goto out;
 	if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_CCM_SET_TAG, tag_length, CONST_CAST(void*)tag) != 1)
@@ -808,4 +806,9 @@ out:
 #else
 	return -ENOTSUP;
 #endif
+}
+
+int crypt_backend_memeq(const void *m1, const void *m2, size_t n)
+{
+	return CRYPTO_memcmp(m1, m2, n);
 }

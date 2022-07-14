@@ -1,8 +1,8 @@
 /*
  * Linux kernel userspace API crypto backend implementation
  *
- * Copyright (C) 2010-2021 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2010-2021 Milan Broz
+ * Copyright (C) 2010-2022 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2010-2022 Milan Broz
  *
  * This file is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -415,4 +415,9 @@ int crypt_bitlk_decrypt_key(const void *key, size_t key_length,
 {
 	return crypt_bitlk_decrypt_key_kernel(key, key_length, in, out, length,
 					      iv, iv_length, tag, tag_length);
+}
+
+int crypt_backend_memeq(const void *m1, const void *m2, size_t n)
+{
+	return crypt_internal_memeq(m1, m2, n);
 }

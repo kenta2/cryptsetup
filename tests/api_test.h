@@ -1,9 +1,9 @@
 /*
  * cryptsetup library API check functions
  *
- * Copyright (C) 2009-2021 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2009-2021 Milan Broz
- * Copyright (C) 2016-2021 Ondrej Kozina
+ * Copyright (C) 2009-2022 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2009-2022 Milan Broz
+ * Copyright (C) 2016-2022 Ondrej Kozina
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -38,6 +38,7 @@ int t_dm_check_versions(void);
 int t_dm_crypt_keyring_support(void);
 int t_dm_crypt_cpu_switch_support(void);
 int t_dm_crypt_discard_support(void);
+int t_set_readahead(const char *device, unsigned value);
 
 int fips_mode(void);
 
@@ -96,6 +97,9 @@ void xlog(const char *msg, const char *tst, const char *func, int line, const ch
 
 #define CRYPT_FREE(x) do { crypt_free(x); x = NULL; } while (0)
 
+/* to silent clang -Wcast-align when working with byte arrays */
+#define VOIDP_CAST(x) (x)(void*)
+
 #define DMDIR "/dev/mapper/"
 
 #define TST_SECTOR_SHIFT 9L
@@ -128,5 +132,15 @@ int loop_detach(const char *loop);
 
 int t_device_size_by_devno(dev_t devno, uint64_t *retval);
 int t_get_devno(const char *dev, dev_t *devno);
+
+typedef enum { ERR_RD = 0, ERR_WR, ERR_RW, ERR_REMOVE } error_io_info;
+
+int dmdevice_error_io(const char *dm_name,
+	const char *dm_device,
+	const char *error_device,
+	uint64_t data_offset,
+	uint64_t offset,
+	uint64_t length,
+	error_io_info ei);
 
 #endif

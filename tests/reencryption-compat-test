@@ -2,13 +2,15 @@
 
 [ -z "$CRYPTSETUP_PATH" ] && CRYPTSETUP_PATH=".."
 CRYPTSETUP=$CRYPTSETUP_PATH/cryptsetup
-REENC=$CRYPTSETUP_PATH/cryptsetup-reencrypt
-FAST_PBKDF="--pbkdf-force-iterations 1000"
+REENC_BIN=$CRYPTSETUP
+REENC="$REENC_BIN reencrypt"
+FAST_PBKDF="--pbkdf-force-iterations 1000 --pbkdf pbkdf2"
 
 DEV_NAME=reenc9768
 DEV_NAME2=reenc1273
 IMG=reenc-data
 IMG_HDR=$IMG.hdr
+HEADER_LUKS2_PV=blkid-luks2-pv.img
 ORIG_IMG=reenc-data-orig
 KEY1=key1
 PWD1="93R4P4pIqAH8"
@@ -29,7 +31,7 @@ function remove_mapping()
 	[ -b /dev/mapper/$DEV_NAME2 ] && dmsetup remove --retry $DEV_NAME2
 	[ -b /dev/mapper/$DEV_NAME ] && dmsetup remove --retry $DEV_NAME
 	[ ! -z "$LOOPDEV1" ] && losetup -d $LOOPDEV1 >/dev/null 2>&1
-	rm -f $IMG $IMG_HDR $ORIG_IMG $KEY1 >/dev/null 2>&1
+	rm -f $IMG $IMG_HDR $ORIG_IMG $KEY1 $HEADER_LUKS2_PV >/dev/null 2>&1
 	umount $MNT_DIR > /dev/null 2>&1
 	rmdir $MNT_DIR > /dev/null 2>&1
 	LOOPDEV1=""
@@ -215,9 +217,20 @@ function test_logging() {
 	echo
 }
 
+function check_blkid() {
+	xz -dkf $HEADER_LUKS2_PV.xz
+	if ! $($CRYPTSETUP --version | grep -q "BLKID"); then
+		HAVE_BLKID=0
+	elif $(blkid -p -n crypto_LUKS $HEADER_LUKS2_PV >/dev/null 2>&1); then
+		HAVE_BLKID=1
+	else
+		HAVE_BLKID=0
+	fi
+}
+
 [ $(id -u) != 0 ] && skip "WARNING: You must be root to run this test, test skipped."
-[ ! -x "$REENC" ] && skip "Cannot find $REENC, test skipped."
-which wipefs >/dev/null 2>&1 ||  skip "Cannot find wipefs, test skipped."
+[ ! -x "$REENC_BIN" ] && skip "Cannot find $REENC_BIN, test skipped."
+command -v wipefs >/dev/null ||  skip "Cannot find wipefs, test skipped."
 
 # REENCRYPTION tests
 
@@ -232,17 +245,17 @@ prepare 8192
 echo $PWD1 | $CRYPTSETUP -q luksFormat --type luks1 -s 128 -c aes-cbc-plain $FAST_PBKDF --align-payload 4096 $LOOPDEV1 || fail
 wipe $PWD1
 check_hash $PWD1 $HASH1
-echo $PWD1 | $REENC $LOOPDEV1 -q $FAST_PBKDF
+echo $PWD1 | $REENC $LOOPDEV1 -q $FAST_PBKDF || fail
 check_hash $PWD1 $HASH1
-echo $PWD1 | $REENC $LOOPDEV1 -q -s 256 $FAST_PBKDF
+echo $PWD1 | $REENC $LOOPDEV1 -q -s 256 $FAST_PBKDF || fail
 check_hash $PWD1 $HASH1
-echo $PWD1 | $REENC $LOOPDEV1 -q -s 256 -c aes-xts-plain64 -h sha256 $FAST_PBKDF
+echo $PWD1 | $REENC $LOOPDEV1 -q -s 256 -c aes-xts-plain64 -h sha256 $FAST_PBKDF || fail
 check_hash $PWD1 $HASH1
-echo $PWD1 | $REENC $LOOPDEV1 -q --use-directio $FAST_PBKDF
+echo $PWD1 | $REENC $LOOPDEV1 -q --use-directio $FAST_PBKDF || fail
 check_hash $PWD1 $HASH1
-echo $PWD1 | $REENC $LOOPDEV1 -q --master-key-file /dev/urandom $FAST_PBKDF
+echo $PWD1 | $REENC $LOOPDEV1 -q --volume-key-file /dev/urandom $FAST_PBKDF || fail
 check_hash $PWD1 $HASH1
-echo $PWD1 | $REENC $LOOPDEV1 -q -s 512 --master-key-file /dev/urandom $FAST_PBKDF
+echo $PWD1 | $REENC $LOOPDEV1 -q -s 512 --volume-key-file /dev/urandom $FAST_PBKDF || fail
 check_hash $PWD1 $HASH1
 $CRYPTSETUP --type luks1 luksDump $LOOPDEV1 > /dev/null || fail
 
@@ -338,21 +351,21 @@ simple_scsi_reenc "[4096/512 sector]"
 echo "[OK]"
 
 echo "[8] Header only reencryption (hash and iteration time)"
-echo $PWD1 | $CRYPTSETUP -q luksFormat --type luks1 --hash sha1 $FAST_PBKDF $LOOPDEV1 || fail
+echo $PWD1 | $CRYPTSETUP -q luksFormat --type luks1 --hash sha512 $FAST_PBKDF $LOOPDEV1 || fail
 wipe $PWD1
 check_hash $PWD1 $HASH1
 echo $PWD1 | $REENC $LOOPDEV1 -q --keep-key || fail
 check_hash $PWD1 $HASH1
 echo $PWD1 | $REENC $LOOPDEV1 -q --keep-key --pbkdf-force-iterations 999 2>/dev/null && fail
 check_hash $PWD1 $HASH1
-echo $PWD1 | $REENC $LOOPDEV1 -q --keep-key --hash sha256 --pbkdf-force-iterations 1001
+echo $PWD1 | $REENC $LOOPDEV1 -q --keep-key --hash sha256 --pbkdf-force-iterations 1001 || fail
 check_hash $PWD1 $HASH1
 [ "$($CRYPTSETUP luksDump $LOOPDEV1 | grep -A1 -m1 "Key Slot 0" | grep Iterations: | sed -e 's/[[:space:]]\+Iterations:\ \+//g')" -eq 1001 ] || fail
 [ "$($CRYPTSETUP luksDump $LOOPDEV1 | grep -m1 "Hash spec:" | cut -f2)" = "sha256" ] || fail
-echo $PWD1 | $REENC $LOOPDEV1 -q --keep-key --hash sha512 $FAST_PBKDF
+echo $PWD1 | $REENC $LOOPDEV1 -q --keep-key --hash sha512 $FAST_PBKDF || fail
 check_hash $PWD1 $HASH1
 [ "$($CRYPTSETUP luksDump $LOOPDEV1 | grep -A1 -m1 "Key Slot 0" | grep Iterations: | sed -e 's/[[:space:]]\+Iterations:\ \+//g')" -eq 1000 ] || fail
-echo $PWD1 | $REENC $LOOPDEV1 -q --keep-key $FAST_PBKDF
+echo $PWD1 | $REENC $LOOPDEV1 -q --keep-key $FAST_PBKDF || fail
 check_hash $PWD1 $HASH1
 $CRYPTSETUP --type luks1 luksDump $LOOPDEV1 > /dev/null || fail
 
@@ -386,9 +399,9 @@ prepare 8192
 check_hash_dev $IMG $HASH4
 echo $PWD1 | $REENC $LOOPDEV1 -q $FAST_PBKDF --header $IMG_HDR --new --type luks1
 check_hash $PWD1 $HASH4 $IMG_HDR
-echo $PWD1 | $REENC $LOOPDEV1 -q $FAST_PBKDF --header $IMG_HDR
+echo $PWD1 | $REENC $LOOPDEV1 -q $FAST_PBKDF --header $IMG_HDR || fail
 check_hash $PWD1 $HASH4 $IMG_HDR
-echo $PWD1 | $REENC $LOOPDEV1 -q --header $IMG_HDR --decrypt
+echo $PWD1 | $REENC $LOOPDEV1 -q --header $IMG_HDR --decrypt || fail
 check_hash_dev $IMG $HASH4
 # existing header of zero size
 cat /dev/null >$IMG_HDR
@@ -396,6 +409,41 @@ echo $PWD1 | $REENC $LOOPDEV1 -q $FAST_PBKDF --header $IMG_HDR --new --type luks
 check_hash $PWD1 $HASH4 $IMG_HDR
 $CRYPTSETUP isLuks $LOOPDEV1 && fail
 $CRYPTSETUP isLuks $IMG_HDR || fail
+
+echo "[12] Prevent nested encryption"
+prepare 8192
+echo $PWD1 | $CRYPTSETUP -q luksFormat --type luks1 $FAST_PBKDF $LOOPDEV1 || fail
+
+#data device is already LUKS device (prevent nested encryption)
+echo $PWD1 | $REENC $LOOPDEV1 -q $FAST_PBKDF --new --type luks1 --reduce-device-size 1024S 2>/dev/null && fail
+echo $PWD1 | $REENC $LOOPDEV1 -q $FAST_PBKDF --new --type luks1 --header $IMG_HDR  2>/dev/null && fail
+test -f $IMG_HDR && fail
+echo $PWD1 | $REENC $LOOPDEV1 -q $FAST_PBKDF --new --type luks2 --reduce-device-size 2048S 2>/dev/null && fail
+echo $PWD1 | $REENC $LOOPDEV1 -q $FAST_PBKDF --new --type luks2 --header $IMG_HDR  2>/dev/null && fail
+test -f $IMG_HDR && fail
+
+wipe_dev $LOOPDEV1
+echo $PWD1 | $CRYPTSETUP -q luksFormat --type luks1 --header $IMG_HDR $FAST_PBKDF $LOOPDEV1 || fail
+
+echo $PWD1 | $REENC $LOOPDEV1 -q $FAST_PBKDF --new --type luks1 --header $IMG_HDR  2>/dev/null && fail
+echo $PWD1 | $REENC $LOOPDEV1 -q $FAST_PBKDF --new --type luks2 --header $IMG_HDR  2>/dev/null && fail
+
+check_blkid
+if [ "$HAVE_BLKID" -gt 0 ]; then
+	echo "[13] Prevent nested encryption of broken LUKS device"
+	rm -f $IMG_HDR
+	wipe_dev $LOOPDEV1
+	xz -dkf $HEADER_LUKS2_PV.xz
+	# broken header
+	echo $PWD1 | $REENC --header $HEADER_LUKS2_PV $LOOPDEV1 -q $FAST_PBKDF --new --type luks1 2>/dev/null && fail
+	$CRYPTSETUP isLuks $HEADER_LUKS2_PV && fail
+	# broken device
+	echo $PWD1 | $REENC $HEADER_LUKS2_PV -q $FAST_PBKDF --new --type luks1 --reduce-device-size 1024S 2>/dev/null && fail
+	$CRYPTSETUP isLuks $HEADER_LUKS2_PV && fail
+	# broken data device only
+	echo $PWD1 | $REENC --header $IMG_HDR $HEADER_LUKS2_PV -q $FAST_PBKDF --new --type luks1 2>/dev/null && fail
+	test -f $IMG_HDR && fail
+fi
 
 remove_mapping
 exit 0
