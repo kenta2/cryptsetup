@@ -1,3 +1,13 @@
+cryptsetup (2:2.5.0~rc1-2) experimental; urgency=medium
+
+  * localtest: Treat skipped tests as failure for full coverage.
+  * d/watch: Add uversionmangle option for release candidates.
+  * unit-wipe-test: Skip DIO tests when the file system doesn't support
+    O_DIRECT.  This is needed on the buildds where the source tree appears to
+    be on a tmpfs.
+
+ -- Guilhem Moulin <guilhem@debian.org>  Fri, 15 Jul 2022 20:49:13 +0200
+
 cryptsetup (2:2.5.0~rc1-1) experimental; urgency=low
 
   * New upstream release candidate 2.5.0.  Highlights include:
