@@ -1,2 +1,3 @@
 localtest-Exclude-ssh-plugin-test-when-RUN_SSH_PLUGIN_TES.patch
 unit-wipe-test-Skip-DIO-tests-when-the-file-system-doesn-.patch
+Pass-LDFLAGS-when-building-fake_token_path.so.patch

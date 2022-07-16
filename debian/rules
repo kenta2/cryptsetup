@@ -55,10 +55,6 @@ endif
 	# generate gettext po files (for luksformat)
 	$(MAKE) -C debian/scripts/po all luksformat.pot
 
-execute_before_dh_auto_test:
-	# tests/fake_token_path.c is compiled without '-Wl,-z,relro -Wl,-z,now'
-	@echo "blhc: ignore-line-regexp: gcc\\s.*\\s\\.\\./tests/[0-9A-Za-z_-]+\\.c\\s.*"
-
 execute_after_dh_auto_install:
 	# install gettext po files (for luksformat)
 	$(MAKE) -C debian/scripts/po DESTDIR=$(CURDIR)/debian/cryptsetup-bin install
