@@ -73,7 +73,7 @@ if [ "$DEB_DISTRIBUTION" = "UNRELEASED" ]; then
 fi
 
 # QEMU command and default options
-unset QEMU_MACHINE_TYPE QEMU_ACCEL QEMU_CPU_MODEL QEMU_SMP QEMU_MEMORY
+unset QEMU_MACHINE_TYPE QEMU_ACCEL QEMU_CPU_MODEL QEMU_SMP QEMU_MEMORY BOOT
 if [ -c /dev/kvm ] && dd if=/dev/kvm count=0 status=none; then
     QEMU_ACCEL="kvm"
 else
@@ -82,6 +82,7 @@ fi
 case "$DEB_BUILD_ARCHITECTURE" in
     # see `kvm -machine help` and `kvm -cpu help`
     amd64|i386)
+        BOOT="bios"
         if [ "$DEB_BUILD_ARCHITECTURE" = "amd64" ]; then
             QEMU_SYSTEM_CMD="qemu-system-x86_64"
         else
@@ -93,6 +94,18 @@ case "$DEB_BUILD_ARCHITECTURE" in
         else
             QEMU_CPU_MODEL="qemu$DEB_BUILD_ARCH_BITS,-svm,-vmx"
         fi
+    ;;
+    arm64)
+        BOOT="efi"
+        QEMU_SYSTEM_CMD="qemu-system-aarch64"
+        QEMU_MACHINE_TYPE="virt"
+        QEMU_CPU_MODEL="cortex-a72"
+    ;;
+    armhf)
+        BOOT="efi"
+        QEMU_SYSTEM_CMD="qemu-system-arm"
+        QEMU_MACHINE_TYPE="virt"
+        QEMU_CPU_MODEL="cortex-a15"
     ;;
     *) echo "ERROR: Unknown architecture $DEB_BUILD_ARCHITECTURE" >&2; exit 1;;
 esac
@@ -125,12 +138,18 @@ GUEST_POWERCYCLE=0
 case "$DEB_BUILD_ARCHITECTURE" in
     # see `ssh $porterbox.debian.org uname -r`
     amd64) KERNEL_ARCH="amd64";;
+    arm64) KERNEL_ARCH="arm64";;
+    armhf) KERNEL_ARCH="armmp-lpae";;
     i386) KERNEL_ARCH="686-pae";;
     *) echo "ERROR: Unknown architecture $DEB_BUILD_ARCHITECTURE" >&2; exit 1;;
 esac
 
 # at the very least we need a boot loader, a kernel, and an init system
-PKG_BOOTLOADER="grub-pc"
+case "$BOOT" in
+    bios) PKG_BOOTLOADER="grub-pc";;
+    efi) PKG_BOOTLOADER="grub-efi";;
+    *) echo "ERROR unknown boot method '$BOOT'" >&2; exit 1;;
+esac
 PKG_KERNEL="linux-image-$KERNEL_ARCH"
 PKG_INIT="systemd-sysv" # default pid1
 declare -a PKGS_EXTRA=() DRIVE_SIZES=( "2G" )
@@ -138,6 +157,34 @@ PKGS_EXTRA+=( "zstd" ) # default initrd compression, see #976054
 
 if [ -f "$TESTDIR/$TESTNAME.d/config" ]; then
     . "$TESTDIR/$TESTNAME.d/config" || exit 1
+fi
+
+unset EFI_CODE EFI_VARS
+if [ "$BOOT" = "efi" ]; then
+    case "$DEB_BUILD_ARCHITECTURE" in
+        amd64|i386)
+            efi_fw_pkg="ovmf"
+            EFI_CODE="/usr/share/OVMF/OVMF_CODE.fd"
+            EFI_VARS="/usr/share/OVMF/OVMF_VARS.fd"
+        ;;
+        arm64)
+            efi_fw_pkg="qemu-efi-aarch64"
+            EFI_CODE="/usr/share/AAVMF/AAVMF_CODE.fd"
+            EFI_VARS="/usr/share/AAVMF/AAVMF_VARS.fd"
+        ;;
+        armhf)
+            efi_fw_pkg="qemu-efi-arm"
+            EFI_CODE="/usr/share/AAVMF/AAVMF32_CODE.fd"
+            EFI_VARS="/usr/share/AAVMF/AAVMF32_VARS.fd"
+        ;;
+        *) echo "ERROR: Unknown architecture $DEB_BUILD_ARCHITECTURE for EFI boot" >&2; exit 1;;
+    esac
+    for p in "$EFI_CODE" "$EFI_VARS"; do
+        if [ ! -f "$p" ]; then
+            echo "Couldn't find $p, is the '$efi_fw_pkg' package installed?" >&2
+            exit 1
+        fi
+    done
 fi
 
 unset QEMU_PID
@@ -318,7 +365,12 @@ fi
 DEBIAN_IMG="$TEMPDIR/$DEB_DISTRIBUTION-$DEB_BUILD_ARCHITECTURE.img"
 create_debian_img "$DEBIAN_IMG"
 
-env PACKAGES="$PKG_BOOTLOADER linux-image-$KERNEL_VERSION $PKG_INIT ${PKGS_EXTRA[*]}" \
+case "$DEB_BUILD_ARCHITECTURE" in
+    arm64|armhf) CONSOLE="ttyAMA0";;
+    *) CONSOLE="ttyS0";;
+esac
+
+env PACKAGES="$PKG_BOOTLOADER linux-image-$KERNEL_VERSION $PKG_INIT ${PKGS_EXTRA[*]}" BOOT="$BOOT" CONSOLE="$CONSOLE" \
     "$TESTDIR/utils/mkinitramfs" "$TEMPDIR/linux-image" "$KERNEL_VERSION" "$TEMPDIR/initrd.img-$KERNEL_VERSION"
 rm -rf -- "$TEMPDIR/apt" "$TEMPDIR/linux-image" # don't need that anymore
 
@@ -344,6 +396,15 @@ for ((i=0; i < ${#DRIVE_SIZES[@]}; i++)); do
     )
 done
 
+if [ "$BOOT" = "efi" ]; then
+    # $EFI_VARS needs to be writable so guests can update their variables
+    install -Tm0644 -- "$EFI_VARS" "$TEMPDIR/efivars.fd"
+    QEMU_COMMON_ARGS+=(
+        -drive "file=$EFI_CODE,format=raw,if=pflash,unit=0,read-only=on"
+        -drive "file=$TEMPDIR/efivars.fd,format=raw,if=pflash,unit=1"
+    )
+fi
+
 QEMU_CHARDEV_LOG="logfile=$TEMPDIR/qemu.log,logappend=on"
 declare -a QEMU_STDIO_ARGS=(
     # setup is always fully unattended
@@ -356,7 +417,7 @@ QEMU_DEBIANIMG_DRIVE="file=$DEBIAN_IMG,format=raw,if=virtio,readonly=on,media=cd
 "$QEMU_SYSTEM_CMD" "${QEMU_COMMON_ARGS[@]}" "${QEMU_STDIO_ARGS[@]}" \
     -drive "$QEMU_DEBIANIMG_DRIVE" \
     -kernel "$TEMPDIR/vmlinuz-$KERNEL_VERSION" \
-    -append "console=ttyS0,115200n8" \
+    -append "console=$CONSOLE,115200n8" \
     -initrd "$TEMPDIR/initrd.img-$KERNEL_VERSION" \
     || exit 1
 

@@ -1,14 +1,13 @@
 # Simple LVM-on-LUKS2 layout -- more or less emulates what one gets out
 # of d-i with the "encrypted LVM" partioning method.
 
-# format the target disk with three partitions
-sfdisk /dev/vda <<-EOF
-	label: gpt
+# create two new partitions for /boot and LUKS respectively (the first
+# one is always used for BIOS/EFI and never exceets sector 64*1024*2)
+sfdisk --append /dev/vda <<-EOF
 	unit: sectors
 
-	start=$((1024*2)), size=$((1024*2)), type=${GUID_TYPE_BIOS_boot}
-	start=$(((1+1)*1024*2)), size=$((128*1024*2)), type=${GUID_TYPE_Linux_FS}
-	start=$(((1+1+128)*1024*2)), type=${GUID_TYPE_LUKS}
+	start=$((64*1024*2)), size=$((128*1024*2)), type=${GUID_TYPE_Linux_FS}
+	start=$(((64+128)*1024*2)), type=${GUID_TYPE_LUKS}
 EOF
 
 # initialize a new LUKS partition and open it

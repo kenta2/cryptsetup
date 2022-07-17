@@ -44,7 +44,10 @@ cat >"$DESTDIR/init.conf" <<- EOF
 	HOSTNAME="$TESTNAME"
 	export HOSTNAME
 	PACKAGES="$PACKAGES"
+	BOOT="$BOOT"
+	CONSOLE="$CONSOLE"
 EOF
+
 for p in setup preinst postinst bottom; do
     # setup: sourced after creating the BIOS or EFI boot partition
     # preinst: run in chroot after debootstrap, but before installing extra packages
@@ -55,11 +58,16 @@ for p in setup preinst postinst bottom; do
     fi
 done
 
+MODULES="dm_crypt ext4"
+if [ "$BOOT" = "efi" ]; then
+    MODULES="$MODULES efivarfs nls_ascii nls_cp437 vfat"
+fi
+
 depmod -ab "$EXTRACT_DIR" "$KERNEL_VERSION"
-for kmod in virtio_blk virtio_pci virtio_rng dm_crypt \
+for kmod in virtio_blk virtio_pci virtio_rng \
         "$EXTRACT_DIR/lib/modules/$KERNEL_VERSION"/kernel/arch/*/crypto/*.ko \
         "$EXTRACT_DIR/lib/modules/$KERNEL_VERSION"/kernel/crypto/*.ko \
-        ext4; do
+        $MODULES; do
     kmod="${kmod##*/}"
     modprobe -aid "$EXTRACT_DIR" -S "$KERNEL_VERSION" --show-depends "${kmod%.ko}"
 done | while read -r insmod kmod; do
@@ -104,6 +112,14 @@ for x in cryptsetup lvm mke2fs; do
         copy_exec "/sbin/$x"
     fi
 done
+
+if [ "$BOOT" = "efi" ]; then
+    if [ ! -x "/sbin/mkfs.vfat" ]; then
+        echo "Couldn't find mkfs.vfat, is the 'dosfstools' package installed?" >&2
+        exit 1
+    fi
+    copy_exec /sbin/mkfs.vfat
+fi
 
 cp -pLt "$DESTDIR/lib" /lib/klibc-*.so
 for cmd in cat chroot ln ls mkdir mount mv sh umount uname; do

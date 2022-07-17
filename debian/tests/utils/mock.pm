@@ -213,7 +213,7 @@ sub unlock_disk($) {
     type_data($console => $passphrase, echo => 0);
 }
 
-my $LOGIN_PROMPT = qr/Debian [^\r\n]+ $SERIAL(?:\r\n)+(?<hostname>[[:alnum:]._-]+) login: /aa;
+my $LOGIN_PROMPT = qr/Debian [^\r\n]+ [0-9A-Za-z]+(?:\r\n)+(?<hostname>[[:alnum:]._-]+) login: /aa;
 sub login($$) {
     my ($username, $password) = @_;
     type_at_prompt($LOGIN_PROMPT, $username, reol => "\r");
