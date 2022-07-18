@@ -65,6 +65,7 @@ BEGIN {
         shell_command2
         assert_command
         poweroff
+        hibernate
     /;
 }
 
@@ -229,6 +230,11 @@ sub poweroff() {
     # doesn't seem respond to system_powerdown QMP commands
     wait_for_prompt($SERIAL => $PS1);
     type_data($SERIAL => "echo o >/proc/sysrq-trigger");
+    expect(); # wait for QEMU to terminate
+}
+sub hibernate() {
+    wait_for_prompt($SERIAL => $PS1);
+    type_data($SERIAL => "echo disk >/sys/power/state");
     expect(); # wait for QEMU to terminate
 }
 

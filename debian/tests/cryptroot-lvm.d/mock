@@ -5,14 +5,25 @@ BEGIN {
     Cryptsetup::Mock::->import();
 }
 
+my $POWERCYCLE_COUNT = $ARGV[0];
+
 unlock_disk("topsecret");
-login_nopassword("root");
 
-# make sure the root FS and swap are help by dm-crypt devices
-assert_command(q{cryptsetup luksOpen --test-passphrase /dev/vda3 <<<topsecret});
-my $out = shell_command(q{lsblk -in -oNAME,TYPE,MOUNTPOINT /dev/vda3});
-die unless $out =~ m#^`-vda3_crypt\s+crypt\s*$#m;
-die unless $out =~ m#^\s{2}[`|]-testvg-root\s+lvm\s+/\s*$#m;
-die unless $out =~ m#^\s{2}[`|]-testvg-swap\s+lvm\s+\[SWAP\]\s*$#m;
+if ($POWERCYCLE_COUNT == 0) {
+    login_nopassword("root");
 
-poweroff();
+    # make sure the root FS and swap are help by dm-crypt devices
+    assert_command(q{cryptsetup luksOpen --test-passphrase /dev/vda3 <<<topsecret});
+    my $out = shell_command(q{lsblk -in -oNAME,TYPE,MOUNTPOINT /dev/vda3});
+    die unless $out =~ m#^`-vda3_crypt\s+crypt\s*$#m;
+    die unless $out =~ m#^\s{2}[`|]-testvg-root\s+lvm\s+/\s*$#m;
+    die unless $out =~ m#^\s{2}[`|]-testvg-swap\s+lvm\s+\[SWAP\]\s*$#m;
+
+    # create a stamp in memory, hibernate (suspend on disk) and thaw
+    shell_command(q{echo hello >/dev/shm/foo.stamp});
+    hibernate();
+} else {
+    # no need to relogin, we get the shell as we left it
+    assert_command(q{grep -Fx hello </dev/shm/foo.stamp});
+    poweroff();
+}

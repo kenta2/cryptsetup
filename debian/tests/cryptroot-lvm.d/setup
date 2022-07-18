@@ -24,7 +24,7 @@ cryptsetup luksOpen --key-file=/rootfs.key --allow-discards \
 
 lvm pvcreate /dev/mapper/vda3_crypt
 lvm vgcreate "testvg" /dev/mapper/vda3_crypt
-lvm lvcreate -Zn --size 64m --name "swap" "testvg"
+lvm lvcreate -Zn --size 1024m --name "swap" "testvg"
 lvm lvcreate -Zn -l100%FREE --name "root" "testvg"
 lvm vgchange -ay "testvg"
 lvm vgmknodes

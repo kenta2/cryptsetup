@@ -8,4 +8,7 @@ cat >/etc/fstab <<-EOF
 	UUID=$(blkid -s UUID -o value /dev/vda2) /boot auto defaults 0 2
 EOF
 
+mkdir -p /etc/initramfs-tools/conf.d
+echo "RESUME=/dev/testvg/swap" >/etc/initramfs-tools/conf.d/resume
+
 # vim: set filetype=sh :
