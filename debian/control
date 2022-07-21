@@ -74,6 +74,24 @@ Description: disk encryption support - command line tools
  This package provides the cryptsetup, integritysetup and veritysetup
  utilities.
 
+Package: cryptsetup-ssh
+Architecture: linux-any
+Multi-Arch: foreign
+Depends: ${misc:Depends}, ${shlibs:Depends}
+Recommends: cryptsetup-bin (>= ${source:Version})
+Breaks: cryptsetup (<< 2:2.5.0~rc1-3), cryptsetup-bin (<< 2:2.5.0~rc1-3)
+Replaces: cryptsetup (<< 2:2.5.0~rc1-3), cryptsetup-bin (<< 2:2.5.0~rc1-3)
+Description: disk encryption support - experimental SSH token handler
+ Cryptsetup provides an interface for configuring encryption on block
+ devices (such as /home or swap partitions), using the Linux kernel
+ device mapper target dm-crypt. It features integrated Linux Unified Key
+ Setup (LUKS) support.
+ .
+ This package provides the cryptsetup-ssh(8) utility and an SSH token plugin
+ which can be used to unlock LUKS2 devices using a remote keyfile hosted on a
+ system accessible through SSH.  This is currently an *experimental* feature
+ and mostly serves as a demonstration of the plugin interface API.
+
 Package: cryptsetup-initramfs
 Architecture: all
 Depends: busybox | busybox-static,

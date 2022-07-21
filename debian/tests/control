@@ -33,7 +33,13 @@ Restrictions: allow-stderr, needs-root, isolation-machine, rw-build-tree
 # Run ./tests/ssh-plugin-test on its own since it has its own dependency set.
 Features: test-name=ssh-plugin-test
 Test-Command: cd ./tests && CRYPTSETUP_PATH=/sbin TESTSUITE_NOSKIP=y RUN_SSH_PLUGIN_TEST=y ./ssh-plugin-test
-Depends: cryptsetup, netcat-openbsd, openssh-client, openssh-server, sshpass, openssl
+Depends: cryptsetup-bin,
+         cryptsetup-ssh,
+         netcat-openbsd,
+         openssh-client,
+         openssh-server,
+         openssl,
+         sshpass
 Restrictions: needs-root, isolation-machine
 
 

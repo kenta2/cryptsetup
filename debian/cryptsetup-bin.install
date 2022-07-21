@@ -1,3 +1,5 @@
-sbin/*
+sbin/cryptsetup
+sbin/integritysetup
+sbin/veritysetup
 usr/lib/tmpfiles.d/cryptsetup.conf
 usr/share/locale/*/*/*
