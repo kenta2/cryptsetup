@@ -71,8 +71,8 @@ Description: disk encryption support - command line tools
  device mapper target dm-crypt. It features integrated Linux Unified Key
  Setup (LUKS) support.
  .
- This package provides cryptsetup, cryptsetup-reencrypt, integritysetup
- and veritysetup.
+ This package provides the cryptsetup, integritysetup and veritysetup
+ utilities.
 
 Package: cryptsetup-initramfs
 Architecture: all
