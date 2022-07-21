@@ -1,3 +1,24 @@
+cryptsetup (2:2.5.0~rc1-3) experimental; urgency=medium
+
+  * DEP-8: Add 'Features: test-name=' in order to name inline tests.
+  * d/t/control: Add 'Restrictions: rw-build-tree' to upstream-testsuite.
+  * d/control: Remove cryptsetup-reencrypt from cryptsetup-bin package
+    description since the utility was removed upstream in v2.5.0-rc1.
+  * d/changelog: Retroactively correct 2:2.4.0~rc0-1+exp1 entry.
+  * Update d/patches with what's landed upstream since v2.5.0-rc1.
+  * d/patches, d/rules: Pass $(LDFLAGS) when building fake_token_path.so and
+    no longer silence blhc(1) for test files.
+  * Move SSH token plugin stuff into new binary package 'cryptsetup-ssh'.
+    That plugin is arguably not useful for everyone and we can save the
+    'Depends: libssh-4' on cryptsetup-bin by moving cryptsetup-ssh(8) and
+    libcryptsetup-token-ssh.so to a separate package.  Since LUKS2 SSH token
+    support was added after the Bullseye release, and since it is still in
+    experimental stage, we don't let cryptsetup-bin or cryptsetup depend on
+    the new binary package.  Users who need that feature will need to install
+    it manually.
+
+ -- Guilhem Moulin <guilhem@debian.org>  Thu, 21 Jul 2022 20:41:20 +0200
+
 cryptsetup (2:2.5.0~rc1-2) experimental; urgency=medium
 
   * localtest: Treat skipped tests as failure for full coverage.
