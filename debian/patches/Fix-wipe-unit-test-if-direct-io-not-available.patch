@@ -1,0 +1,55 @@
+From: Milan Broz <gmazyland@gmail.com>
+Date: Fri, 15 Jul 2022 21:50:21 +0200
+Subject: Fix wipe unit test if direct-io not available.
+
+If test is run in tmpfs, direct-io is not supported.
+
+Thanks Guilhem Moulin for reporting the issue.
+
+Forwarded: https://gitlab.com/cryptsetup/cryptsetup/-/merge_requests/388
+---
+ tests/unit-wipe-test | 17 +++++++++++++----
+ 1 file changed, 13 insertions(+), 4 deletions(-)
+
+diff --git a/tests/unit-wipe-test b/tests/unit-wipe-test
+index 208e05f..da0ec20 100755
+--- a/tests/unit-wipe-test
++++ b/tests/unit-wipe-test
+@@ -74,6 +74,7 @@ function add_file()
+ 	dd if=/dev/zero of=$FILE_RAND bs=1M count=$DEVSIZEMB 2> /dev/null || fail
+ 	check_hash $FILE $HASH_EMPTY || fail
+ 	check_hash $FILE_RAND $HASH_EMPTY || fail
++	dd if=$FILE of=/dev/null bs=4096 count=1 iflag=direct >/dev/null 2>&1 || FILE_NODIO=1
+ }
+ 
+ function test_wipe_full() # $1 dev, $2 block size, [$3 flags]
+@@ -119,8 +120,12 @@ add_file
+ 
+ echo -n "[1] Wipe full file "
+ for bs in 0 $MB_BYTES $((4*$MB_BYTES)); do
+-	echo -n [$bs/DIO]
+-	test_wipe_full $FILE $bs
++	if [ -n "$FILE_NODIO" ]; then
++		echo -n [$bs/DIO N/A]
++	else
++		echo -n [$bs/DIO]
++		test_wipe_full $FILE $bs
++	fi
+ 	echo -n [$bs]
+ 	test_wipe_full $FILE $bs no-dio
+ done
+@@ -128,8 +133,12 @@ echo "[OK]"
+ 
+ echo -n "[2] Wipe blocks in file "
+ for bs in 0 $MB_BYTES $((4*$MB_BYTES)); do
+-	echo -n [$bs/DIO]
+-	test_wipe_blocks $FILE $bs
++	if [ -n "$FILE_NODIO" ]; then
++		echo -n [$bs/DIO N/A]
++	else
++		echo -n [$bs/DIO]
++		test_wipe_blocks $FILE $bs
++	fi
+ 	echo -n [$bs]
+ 	test_wipe_blocks $FILE $bs no-dio
+ done
