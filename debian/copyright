@@ -60,6 +60,11 @@ Copyright: © 2016-2022 Milan Broz <gmazyland@gmail.com>
            © 2020-2022 Vojtech Trefny
 License: LGPL-2.1+
 
+Files: tokens/ssh/cryptsetup-ssh.c
+Copyright: © 2016-2022 Milan Broz <gmazyland@gmail.com>
+           © 2021-2022 Vojtech Trefny
+License: GPL-2+
+
 Files: lib/crypto_backend/* lib/integrity/* lib/loopaes/* lib/tcrypt/* lib/verity/*
 Copyright: © 2009-2022 Red Hat, Inc.
            © 2010-2022 Milan Broz <gmazyland@gmail.com>
