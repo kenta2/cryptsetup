@@ -156,9 +156,10 @@ cryptsetup (2:2.4.0~rc0-1+exp1) experimental; urgency=medium
   * New upstream release candidate 2.4.0.  Highlights include:
     + Support for external libraries (plugins) for handling LUKS2 token
       objects.
-    + Experimental SSH token handler and cryptsetup-ssh(8) utility (both
-      shipped in the 'cryptsetup' binary package) as a demonstration of the
-      external LUKS2 token interface.  This adds libssh-dev to build-depends.
+    + Experimental SSH token handler and cryptsetup-ssh(8) utility (resp.
+      shipped in the 'cryptsetup' and 'cryptsetup-bin' binary packages) as a
+      demonstration of the external LUKS2 token interface.  This adds
+      libssh-dev to build-depends.
     + Change default LUKS2 PBKDF to Argon2id from Argon2i.
     + Increase minimal memory cost for Argon2 benchmark to 64MiB (suggested
       value in Argon2 RFC).
