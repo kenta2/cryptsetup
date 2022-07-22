@@ -47,7 +47,7 @@ Tests: cryptdisks, cryptdisks.init
 Depends: cryptsetup, xxd
 Restrictions: allow-stderr, needs-root, isolation-machine
 
-Tests: cryptroot-lvm
+Tests: cryptroot-lvm, cryptroot-sysvinit
 # Only dependencies required to set the VM here are listed here;
 # cryptsetup is not listed since we only install it in the VM.
 Depends: cryptsetup-bin,

@@ -187,10 +187,11 @@ sub shell_command2($) {
     my $rv = shell_command("echo \$?");
     return ($rv+0, $out);
 }
-sub assert_command($) {
+sub assert_command($;$) {
     my $command = shift;
+    my $assert_rv = shift // 0;
     my ($rv, $out) = shell_command2($command);
-    die "Command \`$command\` exited with status $rv\n" unless $rv == 0;
+    die "Command \`$command\` exited with status $rv\n" unless $rv == $assert_rv;
     return $out;
 }
 

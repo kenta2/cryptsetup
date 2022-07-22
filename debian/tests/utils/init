@@ -165,6 +165,13 @@ cat >/target/root/.profile <<-EOF
 	run_verbose df -h
 EOF
 
+if [ -f /target/etc/inittab ]; then
+    # for sysvinit
+    cat >>/target/etc/inittab <<-EOF
+		S0:23:respawn:/sbin/getty -8 -L 115200 $CONSOLE linux
+	EOF
+fi
+
 if [ -f /init.postinst ]; then
     cp /init.postinst /target/init.postinst
     chroot /target /bin/sh -eux /init.postinst
