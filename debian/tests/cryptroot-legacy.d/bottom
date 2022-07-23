@@ -1,0 +1,9 @@
+umount /target/boot
+umount /target
+
+swapoff /dev/testvg/swap
+lvm vgchange -an "testvg"
+
+cryptsetup close "vda3_crypt"
+
+# vim: set filetype=sh :

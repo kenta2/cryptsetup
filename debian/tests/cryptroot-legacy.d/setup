@@ -1,0 +1,41 @@
+# LVM-on-LUKS2 layout from an old system: pre-2013 cryptsetup defaults,
+# no AES hardware acceleration (and MODULES=dep)
+
+sfdisk --append /dev/vda <<-EOF
+	unit: sectors
+
+	start=$((64*1024*2)), size=$((128*1024*2)), type=${GUID_TYPE_Linux_FS}
+	start=$(((64+128)*1024*2)), type=${GUID_TYPE_LUKS}
+EOF
+
+# Use pre-2013 (<1.6.0) defaults: LUKS1, aes-cbc-essiv:sha256 cipher, 256bits key
+echo -n "topsecret" >/rootfs.key
+cryptsetup luksFormat --batch-mode \
+    --key-file=/rootfs.key \
+    --type=luks1 \
+    --pbkdf-force-iterations=1000 \
+    --cipher="aes-cbc-essiv:sha256" \
+    --key-size=256 \
+    -- /dev/vda3
+cryptsetup luksOpen --key-file=/rootfs.key --allow-discards \
+    -- /dev/vda3 "vda3_crypt"
+
+lvm pvcreate /dev/mapper/vda3_crypt
+lvm vgcreate "testvg" /dev/mapper/vda3_crypt
+lvm lvcreate -Zn --size 64m --name "swap" "testvg"
+lvm lvcreate -Zn -l100%FREE --name "root" "testvg"
+lvm vgchange -ay "testvg"
+lvm vgmknodes
+
+mkdir /target
+mke2fs -Ft ext4 /dev/testvg/root
+mount -t ext4 /dev/testvg/root /target
+
+mkdir /target/boot
+mke2fs -Ft ext2 -m0 /dev/vda2
+mount -t ext2 /dev/vda2 /target/boot
+
+mkswap /dev/testvg/swap
+swapon /dev/testvg/swap
+
+# vim: set filetype=sh :
