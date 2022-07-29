@@ -1,3 +1,12 @@
+cryptsetup (2:2.5.0-1) unstable; urgency=medium
+
+  * d/copyright: Fix licence for tokens/ssh/cryptsetup-ssh.c.
+  * Remove patches applied upstream.
+  * Rename 'ssh-plugin-test' to 'ssh-test-plugin'.
+  * Add DEP-8 tests for cryptroot unlocking at early boot stage.
+
+ -- Guilhem Moulin <guilhem@debian.org>  Fri, 29 Jul 2022 16:31:23 +0200
+
 cryptsetup (2:2.5.0~rc1-3) experimental; urgency=medium
 
   * DEP-8: Add 'Features: test-name=' in order to name inline tests.
