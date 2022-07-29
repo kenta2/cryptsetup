@@ -1,3 +1,0 @@
-localtest-Exclude-ssh-plugin-test-when-RUN_SSH_PLUGIN_TES.patch
-Fix-wipe-unit-test-if-direct-io-not-available.patch
-Pass-LDFLAGS-when-building-fake_token_path.so.patch
