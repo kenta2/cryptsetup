@@ -198,7 +198,7 @@ sub assert_command($;$) {
 sub unlock_disk($) {
     my $passphrase = shift;
     my $console = "ttyS0";
-    my %r = wait_for_prompt($console => qr/Please unlock disk (?<name>\p{Graph}+): /);
+    my %r = expect($console => qr/\A(?:.*?(?:\r\n|\.\.\. ))?Please unlock disk (?<name>\p{Graph}+): /aasm);
     if ((my $ref = ref($passphrase)) ne "") {
         my $name = $r{name};
         unless (defined $name) {
