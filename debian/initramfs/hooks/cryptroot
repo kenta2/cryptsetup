@@ -200,6 +200,40 @@ generate_initrd_crypttab() {
     rm -f "$DESTDIR/cryptroot/targets"
 }
 
+# populate_CRYPTO_HASHES()
+#   Find out which crypto hashes are required for a crypttab(5) entry,
+#   and append them to the CRYPTO_HASHES variable.
+populate_CRYPTO_HASHES() {
+    local hash source newline="
+"
+
+    if [ -n "${CRYPTTAB_OPTION_header+x}" ]; then
+        source="$CRYPTTAB_OPTION_header"
+    else
+        source="$(_resolve_device_spec "$CRYPTTAB_SOURCE")" || source=""
+    fi
+
+    if [ ! -e "$source" ]; then
+        # missing source device or detached header, can't determine hashing function(s)
+        hash="@@UNKNOWN@@"
+    elif [ "$CRYPTTAB_TYPE" = "luks" ]; then
+        # using --dump-json-metadata would be more robust for LUKS2 but
+        # we also have to support LUKS1 hence have to parse luksDump output
+        hash="$(/sbin/cryptsetup luksDump -- "$source" | sed -nr 's/^\s*(AF hash|Hash|Hash spec)\s*:\s*//Ip')"
+    elif [ "$CRYPTTAB_TYPE" = "plain" ]; then
+        # --hash is being ignored when opening via key file
+        if [ "$CRYPTTAB_KEY" = "none" ] && [ -z "${CRYPTTAB_OPTION_keyscript+x}" ]; then
+            hash="${CRYPTTAB_OPTION_hash-ripemd160}" # default password hashing as of cryptsetup 2.5
+        fi
+    else
+        hash="" # or hash="@@UNKNOWN@@"?
+    fi
+
+    if [ -n "$hash" ]; then
+        CRYPTO_HASHES="${CRYPTO_HASHES:+$CRYPTO_HASHES$newline}$hash"
+    fi
+}
+
 # populate_CRYPTO_MODULES()
 #   Find out which crypto modules are required for a crypttab(5) entry,
 #   and append them to the CRYPTO_MODULES variable.
@@ -263,6 +297,25 @@ add_crypto_modules() {
     done
 }
 
+# copy_libssl_legacy_library()
+#   Copy ossl-modules/legacy.so (from libssl library) to initramfs if needed.
+#   OpenSSL 3.0 moved support for some crypto hashes into legacy.so.
+#   See https://launchpad.net/bugs/1979159
+copy_libssl_legacy_library() {
+    local libcryptodir CRYPTO_HASHES=""
+
+    libcryptodir="$(env --unset=LD_PRELOAD ldd /sbin/cryptsetup | sed -nr '/.*=>\s*(\S+)\/libcrypto\.so\..*/ {s//\1/p;q}')"
+    [ -d "$libcryptodir" ] || return
+
+    crypttab_foreach_entry populate_CRYPTO_HASHES
+    # See https://www.openssl.org/docs/man3.0/man7/OSSL_PROVIDER-legacy.html#Hashing-Algorithms-Message-Digests
+    if printf '%s\n' "$CRYPTO_HASHES" | grep -Fxq -e @@UNKNOWN@@ -e ripemd160 -e whirlpool; then
+        # legacy hashes are used so legacy.so needs to be copied to the initramfs
+        # (assume ossl-modules/legacy.so is relative to the linked libcrypto.so)
+        copy_exec "$libcryptodir/ossl-modules/legacy.so"
+    fi
+}
+
 
 #######################################################################
 # Begin real processing
@@ -290,6 +343,7 @@ if [ -r "$TABFILE" ]; then
     generate_initrd_crypttab
     TABFILE="$DESTDIR/cryptroot/crypttab"
     crypttab_foreach_entry populate_CRYPTO_MODULES
+    copy_libssl_legacy_library
 fi
 
 # add required components
