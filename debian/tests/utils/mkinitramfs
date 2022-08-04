@@ -109,7 +109,7 @@ copy_exec /bin/tar
 
 # assume ossl-modules/legacy.so is relative to the linked libcrypto.so
 libcryptodir="$(env --unset=LD_PRELOAD ldd /sbin/cryptsetup | sed -nr '/.*=>\s*(\S+)\/libcrypto\.so\..*/ {s//\1/p;q}')"
-copy_exec "$libcryptodir/ossl-modules/legacy.so"
+copy_exec "$libcryptodir/ossl-modules/legacy.so" || true
 
 for x in cryptsetup lvm mke2fs; do
     if [ -x "/sbin/$x" ]; then

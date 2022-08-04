@@ -312,7 +312,7 @@ copy_libssl_legacy_library() {
     if printf '%s\n' "$CRYPTO_HASHES" | grep -Fxq -e @@UNKNOWN@@ -e ripemd160 -e whirlpool; then
         # legacy hashes are used so legacy.so needs to be copied to the initramfs
         # (assume ossl-modules/legacy.so is relative to the linked libcrypto.so)
-        copy_exec "$libcryptodir/ossl-modules/legacy.so"
+        copy_exec "$libcryptodir/ossl-modules/legacy.so" || true
     fi
 }
 
