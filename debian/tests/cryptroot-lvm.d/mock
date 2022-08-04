@@ -16,8 +16,8 @@ if ($POWERCYCLE_COUNT == 0) {
     assert_command(q{cryptsetup luksOpen --test-passphrase /dev/vda3 <<<topsecret});
     my $out = shell_command(q{lsblk -in -oNAME,TYPE,MOUNTPOINT /dev/vda3});
     die unless $out =~ m#^`-vda3_crypt\s+crypt\s*$#m;
-    die unless $out =~ m#^\s{2}[`|]-testvg-root\s+lvm\s+/\s*$#m;
-    die unless $out =~ m#^\s{2}[`|]-testvg-swap\s+lvm\s+\[SWAP\]\s*$#m;
+    die unless $out =~ m#^\s{2}[`|]-cryptvg-root\s+lvm\s+/\s*$#m;
+    die unless $out =~ m#^\s{2}[`|]-cryptvg-swap\s+lvm\s+\[SWAP\]\s*$#m;
 
     # create a stamp in memory, hibernate (suspend on disk) and thaw
     shell_command(q{echo hello >/dev/shm/foo.stamp});

@@ -1,8 +1,8 @@
 umount /target/boot
 umount /target
 
-swapoff /dev/testvg/swap
-lvm vgchange -an "testvg"
+swapoff /dev/cryptvg/swap
+lvm vgchange -an "cryptvg"
 
 cryptsetup close "vda3_crypt"
 

@@ -24,21 +24,21 @@ cryptsetup luksOpen --key-file=/rootfs.key --allow-discards \
     -- /dev/vda3 "vda3_crypt"
 
 lvm pvcreate /dev/mapper/vda3_crypt
-lvm vgcreate "testvg" /dev/mapper/vda3_crypt
-lvm lvcreate -Zn --size 64m --name "swap" "testvg"
-lvm lvcreate -Zn -l100%FREE --name "root" "testvg"
-lvm vgchange -ay "testvg"
+lvm vgcreate "cryptvg" /dev/mapper/vda3_crypt
+lvm lvcreate -Zn --size 64m --name "swap" "cryptvg"
+lvm lvcreate -Zn -l100%FREE --name "root" "cryptvg"
+lvm vgchange -ay "cryptvg"
 lvm vgmknodes
 
 mkdir /target
-mke2fs -Ft ext4 /dev/testvg/root
-mount -t ext4 /dev/testvg/root /target
+mke2fs -Ft ext4 /dev/cryptvg/root
+mount -t ext4 /dev/cryptvg/root /target
 
 mkdir /target/boot
 mke2fs -Ft ext2 -m0 /dev/vda2
 mount -t ext2 /dev/vda2 /target/boot
 
-mkswap /dev/testvg/swap
-swapon /dev/testvg/swap
+mkswap /dev/cryptvg/swap
+swapon /dev/cryptvg/swap
 
 # vim: set filetype=sh :

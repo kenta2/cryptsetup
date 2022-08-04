@@ -3,12 +3,12 @@ cat >/etc/crypttab <<-EOF
 EOF
 
 cat >/etc/fstab <<-EOF
-	/dev/testvg/root /    auto errors=remount-ro 0 1
-	/dev/testvg/swap none swap sw                0 0
+	/dev/cryptvg/root /    auto errors=remount-ro 0 1
+	/dev/cryptvg/swap none swap sw                0 0
 	UUID=$(blkid -s UUID -o value /dev/vda2) /boot auto defaults 0 2
 EOF
 
 mkdir -p /etc/initramfs-tools/conf.d
-echo "RESUME=/dev/testvg/swap" >/etc/initramfs-tools/conf.d/resume
+echo "RESUME=/dev/cryptvg/swap" >/etc/initramfs-tools/conf.d/resume
 
 # vim: set filetype=sh :
