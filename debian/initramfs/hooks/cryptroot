@@ -200,6 +200,33 @@ generate_initrd_crypttab() {
     rm -f "$DESTDIR/cryptroot/targets"
 }
 
+# populate_CRYPTO_HASHES()
+#   Find out which crypto hashes are required for a crypttab(5) entry,
+#   and append them to the CRYPTO_HASHES variable.
+populate_CRYPTO_HASHES() {
+    local hashes source newline="
+"
+
+    if [ -n "${CRYPTTAB_OPTION_header+x}" ]; then
+        source="$CRYPTTAB_OPTION_header"
+    else
+        source="$(_resolve_device_spec "$CRYPTTAB_SOURCE")" || source=""
+    fi
+
+    if [ ! -e "$source" ]; then
+        hashes="UNDETECTED"
+    elif [ "$CRYPTTAB_TYPE" = "luks" ]; then
+        hashes=$(cryptsetup luksDump "$CRYPTTAB_SOURCE" | sed -nr 's/^\s*(AF hash|Hash|Hash spec)\s*:\s*//Ip')
+    elif [ "$CRYPTTAB_TYPE" = "plain" ]; then
+        hashes="${CRYPTTAB_OPTION_hash-ripemd160}" # default password hashing as of cryptsetup 2.5
+    else
+        return 0 # or hashes="UNDETECTED"?
+    fi
+
+    [ -n "$hashes" ] || return 0
+    CRYPTO_HASHES="${CRYPTO_HASHES:+$CRYPTO_HASHES$newline}${hashes}"
+}
+
 # populate_CRYPTO_MODULES()
 #   Find out which crypto modules are required for a crypttab(5) entry,
 #   and append them to the CRYPTO_MODULES variable.
@@ -263,6 +290,29 @@ add_crypto_modules() {
     done
 }
 
+# copy_libssl_legacy_library()
+#   Copy ossl-modules/legacy.so (from libssl library) to initramfs if needed.
+#   OpenSSL 3.0 moved support for some crypto hashes into legacy.so.
+#   See https://launchpad.net/bugs/1979159
+copy_libssl_legacy_library() {
+    local legacy_so libcryptodir
+
+    # Determine architecture / library path from cryptsetup binary because it uses libcrypto.so
+    libcryptodir="$(env --unset=LD_PRELOAD ldd /sbin/cryptsetup | sed -nr '/.*=>\s*(\S+)\/libcrypto\.so\..*/ {s//\1/p;q}')"
+    legacy_so="$libcryptodir/ossl-modules/legacy.so"
+    [ -e "$legacy_so" ] || return 0
+
+    CRYPTO_HASHES=
+    crypttab_foreach_entry populate_CRYPTO_HASHES
+    # See https://www.openssl.org/docs/man3.0/man7/OSSL_PROVIDER-legacy.html#Hashing-Algorithms-Message-Digests
+    if ! echo "$CRYPTO_HASHES" | grep -Fxq -e UNDETECTED -e ripemd160 -e whirlpool; then
+        # legacy.so not needed
+        return
+    fi
+
+    copy_exec "$legacy_so"
+}
+
 
 #######################################################################
 # Begin real processing
@@ -290,6 +340,7 @@ if [ -r "$TABFILE" ]; then
     generate_initrd_crypttab
     TABFILE="$DESTDIR/cryptroot/crypttab"
     crypttab_foreach_entry populate_CRYPTO_MODULES
+    copy_libssl_legacy_library
 fi
 
 # add required components
