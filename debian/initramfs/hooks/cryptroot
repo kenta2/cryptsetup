@@ -204,7 +204,7 @@ generate_initrd_crypttab() {
 #   Find out which crypto hashes are required for a crypttab(5) entry,
 #   and append them to the CRYPTO_HASHES variable.
 populate_CRYPTO_HASHES() {
-    local hashes source newline="
+    local hash source newline="
 "
 
     if [ -n "${CRYPTTAB_OPTION_header+x}" ]; then
@@ -214,17 +214,24 @@ populate_CRYPTO_HASHES() {
     fi
 
     if [ ! -e "$source" ]; then
-        hashes="UNDETECTED"
+        # missing source device or detached header, can't determine hashing function(s)
+        hash="@@UNKNOWN@@"
     elif [ "$CRYPTTAB_TYPE" = "luks" ]; then
-        hashes=$(cryptsetup luksDump "$CRYPTTAB_SOURCE" | sed -nr 's/^\s*(AF hash|Hash|Hash spec)\s*:\s*//Ip')
+        # using --dump-json-metadata would be more robust for LUKS2 but
+        # we also have to support LUKS1 hence have to parse luksDump output
+        hash="$(/sbin/cryptsetup luksDump -- "$source" | sed -nr 's/^\s*(AF hash|Hash|Hash spec)\s*:\s*//Ip')"
     elif [ "$CRYPTTAB_TYPE" = "plain" ]; then
-        hashes="${CRYPTTAB_OPTION_hash-ripemd160}" # default password hashing as of cryptsetup 2.5
+        # --hash is being ignored when opening via key file
+        if [ "$CRYPTTAB_KEY" = "none" ] && [ -z "${CRYPTTAB_OPTION_keyscript+x}" ]; then
+            hash="${CRYPTTAB_OPTION_hash-ripemd160}" # default password hashing as of cryptsetup 2.5
+        fi
     else
-        return 0 # or hashes="UNDETECTED"?
+        hash="" # or hash="@@UNKNOWN@@"?
     fi
 
-    [ -n "$hashes" ] || return 0
-    CRYPTO_HASHES="${CRYPTO_HASHES:+$CRYPTO_HASHES$newline}${hashes}"
+    if [ -n "$hash" ]; then
+        CRYPTO_HASHES="${CRYPTO_HASHES:+$CRYPTO_HASHES$newline}$hash"
+    fi
 }
 
 # populate_CRYPTO_MODULES()
@@ -295,22 +302,18 @@ add_crypto_modules() {
 #   OpenSSL 3.0 moved support for some crypto hashes into legacy.so.
 #   See https://launchpad.net/bugs/1979159
 copy_libssl_legacy_library() {
-    local legacy_so libcryptodir
+    local libcryptodir CRYPTO_HASHES=""
 
-    # Determine architecture / library path from cryptsetup binary because it uses libcrypto.so
     libcryptodir="$(env --unset=LD_PRELOAD ldd /sbin/cryptsetup | sed -nr '/.*=>\s*(\S+)\/libcrypto\.so\..*/ {s//\1/p;q}')"
-    legacy_so="$libcryptodir/ossl-modules/legacy.so"
-    [ -e "$legacy_so" ] || return 0
+    [ -d "$libcryptodir" ] || return
 
-    CRYPTO_HASHES=
     crypttab_foreach_entry populate_CRYPTO_HASHES
     # See https://www.openssl.org/docs/man3.0/man7/OSSL_PROVIDER-legacy.html#Hashing-Algorithms-Message-Digests
-    if ! echo "$CRYPTO_HASHES" | grep -Fxq -e UNDETECTED -e ripemd160 -e whirlpool; then
-        # legacy.so not needed
-        return
+    if printf '%s\n' "$CRYPTO_HASHES" | grep -Fxq -e @@UNKNOWN@@ -e ripemd160 -e whirlpool; then
+        # legacy hashes are used so legacy.so needs to be copied to the initramfs
+        # (assume ossl-modules/legacy.so is relative to the linked libcrypto.so)
+        copy_exec "$libcryptodir/ossl-modules/legacy.so"
     fi
-
-    copy_exec "$legacy_so"
 }
 
 
