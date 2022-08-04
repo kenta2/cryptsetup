@@ -47,6 +47,14 @@ Tests: cryptdisks, cryptdisks.init
 Depends: cryptsetup, xxd
 Restrictions: allow-stderr, needs-root, isolation-machine
 
+# This test doesn't replace the cryptroot-* tests below which mock a
+# complete system incl. unlocking at initramfs stage, but it's also
+# significantly faster so we use it for crude checks of our initramfs
+# hook and the initramfs image itself.
+Tests: initramfs-hook
+Depends: cryptsetup-initramfs, zstd
+Restrictions: allow-stderr, needs-root, isolation-machine
+
 Tests: cryptroot-lvm, cryptroot-legacy, cryptroot-sysvinit
 # Only dependencies required to set the VM here are listed here;
 # cryptsetup is not listed since we only install it in the VM.
