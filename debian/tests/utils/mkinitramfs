@@ -58,7 +58,7 @@ for p in setup preinst postinst bottom; do
     fi
 done
 
-MODULES="dm_crypt ext4"
+MODULES="dm_crypt ext4 raid0 raid1"
 if [ "$BOOT" = "efi" ]; then
     MODULES="$MODULES efivarfs nls_ascii nls_cp437 vfat"
 fi
@@ -111,7 +111,7 @@ copy_exec /bin/tar
 libcryptodir="$(env --unset=LD_PRELOAD ldd /sbin/cryptsetup | sed -nr '/.*=>\s*(\S+)\/libcrypto\.so\..*/ {s//\1/p;q}')"
 copy_exec "$libcryptodir/ossl-modules/legacy.so" || true
 
-for x in cryptsetup lvm mke2fs; do
+for x in cryptsetup lvm mdadm mke2fs; do
     if [ -x "/sbin/$x" ]; then
         copy_exec "/sbin/$x"
     fi

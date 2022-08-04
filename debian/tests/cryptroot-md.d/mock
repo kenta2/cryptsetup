@@ -1,0 +1,41 @@
+#!/usr/bin/perl -T
+
+BEGIN {
+    require "./debian/tests/utils/mock.pm";
+    Cryptsetup::Mock::->import();
+}
+
+my %passphrases;
+$passphrases{$_} = $_ foreach qw/vda3_crypt vda4_crypt vdb3_crypt vdb4_crypt/;
+unlock_disk(\%passphrases) for 1 .. scalar(%passphrases);
+
+# check that the above was done at initramfs stage
+expect(ttyS0 => qr#\bRunning /scripts/init-bottom\s*\.\.\. #);
+
+login_nopassword("root");
+
+# make sure the root FS and swap are help by dm-crypt devices
+assert_command(q{cryptsetup luksOpen --test-passphrase /dev/vda3 <<<vda3_crypt});
+assert_command(q{cryptsetup luksOpen --test-passphrase /dev/vda4 <<<vda4_crypt});
+assert_command(q{cryptsetup luksOpen --test-passphrase /dev/vdb3 <<<vdb3_crypt});
+assert_command(q{cryptsetup luksOpen --test-passphrase /dev/vdb4 <<<vdb4_crypt});
+
+my $out = shell_command(q{lsblk -in -oNAME,TYPE,MOUNTPOINT /dev/vda3});
+die unless $out =~ m#^`-vda3_crypt\s+crypt\s*$#m;
+die unless $out =~ m#^  `-md1\s+raid0\s+\[SWAP\]\s*$#m;
+
+$out = shell_command(q{lsblk -in -oNAME,TYPE,MOUNTPOINT /dev/vdb3});
+die unless $out =~ m#^`-vdb3_crypt\s+crypt\s*$#m;
+die unless $out =~ m#^  `-md1\s+raid0\s+\[SWAP\]\s*$#m;
+
+$out = shell_command(q{lsblk -in -oNAME,TYPE,MOUNTPOINT /dev/vda4});
+die unless $out =~ m#^`-vda4_crypt\s+crypt\s*$#m;
+die unless $out =~ m#^    [`|]-cryptvg-swap\s+lvm\s+\[SWAP\]\s*$#m;
+die unless $out =~ m#^    [`|]-cryptvg-root\s+lvm\s+/\s*$#m;
+
+$out = shell_command(q{lsblk -in -oNAME,TYPE,MOUNTPOINT /dev/vdb4});
+die unless $out =~ m#^`-vdb4_crypt\s+crypt\s*$#m;
+die unless $out =~ m#^    [`|]-cryptvg-swap\s+lvm\s+\[SWAP\]\s*$#m;
+die unless $out =~ m#^    [`|]-cryptvg-root\s+lvm\s+/\s*$#m;
+
+poweroff();

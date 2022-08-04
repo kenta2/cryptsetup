@@ -72,6 +72,20 @@ Depends: cryptsetup-bin,
 Restrictions: allow-stderr, needs-root
 Architecture: amd64 i386
 
+Tests: cryptroot-md
+Depends: cryptsetup-bin,
+         dosfstools [arm64 armhf],
+         fdisk,
+         genext2fs,
+         initramfs-tools-core,
+         lvm2,
+         mdadm,
+         qemu-efi-aarch64 [arm64],
+         qemu-efi-arm [armhf],
+         qemu-system-arm [arm64 armhf] | qemu-system-x86 [amd64 i386] | qemu-system
+Restrictions: allow-stderr, needs-root
+Architecture: amd64 i386
+
 Tests: cryptroot-sysvinit
 Depends: cryptsetup-bin,
          dosfstools [arm64 armhf],
