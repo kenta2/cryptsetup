@@ -52,7 +52,7 @@ Restrictions: allow-stderr, needs-root, isolation-machine
 # significantly faster so we use it for crude checks of our initramfs
 # hook and the initramfs image itself.
 Tests: initramfs-hook
-Depends: cryptsetup-initramfs, zstd
+Depends: cryptsetup-initramfs, e2fsprogs, zstd
 Restrictions: allow-stderr, needs-root, isolation-machine
 
 Tests: cryptroot-lvm, cryptroot-legacy, cryptroot-sysvinit

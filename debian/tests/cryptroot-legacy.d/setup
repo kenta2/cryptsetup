@@ -9,12 +9,15 @@ sfdisk --append /dev/vda <<-EOF
 EOF
 
 # Use pre-2013 (<1.6.0) defaults: LUKS1, aes-cbc-essiv:sha256 cipher, 256bits key
+# <1.6.0 default hash was sha1 but we use legacy hash ripemd160 here to test OpenSSL's
+# legacy.so
 echo -n "topsecret" >/rootfs.key
 cryptsetup luksFormat --batch-mode \
     --key-file=/rootfs.key \
     --type=luks1 \
     --pbkdf-force-iterations=1000 \
     --cipher="aes-cbc-essiv:sha256" \
+    --hash="ripemd160" \
     --key-size=256 \
     -- /dev/vda3
 cryptsetup luksOpen --key-file=/rootfs.key --allow-discards \
