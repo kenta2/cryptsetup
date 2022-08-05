@@ -1,6 +1,6 @@
 cryptsetup (2:2.5.0-1) unstable; urgency=medium
 
-  * New upstream release. (Closes: #1011128)
+  * New upstream release. (Closes: #1000634, #1011128)
   * d/copyright: Fix licence for tokens/ssh/cryptsetup-ssh.c.
   * Remove patches applied upstream.
   * Rename 'ssh-plugin-test' to 'ssh-test-plugin'.
