@@ -22,8 +22,10 @@ set -eu
 TESTNAME="$(basename -- "$0")"
 TESTDIR="$(dirname -- "$0")"
 INTERACTIVE="n" # set to "y" to interact with the guest instead of mocking the session
-START_TIME="$(printf "%(%s)T")"
 export TESTNAME TESTDIR
+
+declare -a EXTRA_REPOS=( "$@" ) # blindly append any extra arguments to sources.list
+START_TIME="$(printf "%(%s)T")"
 
 # Try to create /dev/kvm if missing, for instance in a chroot where /dev isn't managed by udev.
 # Then we can drop root privileges and run the rest of the script as a normal user
@@ -251,6 +253,12 @@ setup_apt() {
             ;;
         esac >"$TEMPDIR/apt/sources.list"
     fi
+
+    local apt_repo
+    for apt_repo in "${EXTRA_REPOS[@]}"; do
+        printf "%s\\n" "$apt_repo" >>"$TEMPDIR/apt/sources.list"
+    done
+
     apt-update
 }
 
