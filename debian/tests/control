@@ -55,7 +55,7 @@ Tests: initramfs-hook
 Depends: cryptsetup-initramfs, e2fsprogs, zstd
 Restrictions: allow-stderr, needs-root, isolation-machine
 
-Tests: cryptroot-lvm, cryptroot-lvm2, cryptroot-legacy
+Tests: cryptroot-lvm, cryptroot-legacy
 # Only dependencies required to set the VM here are listed here;
 # cryptsetup is not listed since we only install it in the VM.
 Depends: cryptsetup-bin,
@@ -75,6 +75,22 @@ Architecture: amd64 i386
 
 Tests: cryptroot-md
 Depends: cryptsetup-bin,
+         dosfstools [arm64 armhf],
+         fdisk,
+         genext2fs,
+         initramfs-tools-core,
+         lvm2,
+         mdadm,
+         qemu-efi-aarch64 [arm64],
+         qemu-efi-arm [armhf],
+         qemu-system-arm [arm64 armhf] | qemu-system-x86 [amd64 i386] | qemu-system,
+         udev
+Restrictions: allow-stderr, needs-root
+Architecture: amd64 i386
+
+Tests: cryptroot-nested
+Depends: btrfs-progs,
+         cryptsetup-bin,
          dosfstools [arm64 armhf],
          fdisk,
          genext2fs,

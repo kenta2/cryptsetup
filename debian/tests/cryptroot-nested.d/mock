@@ -1,0 +1,44 @@
+#!/usr/bin/perl -T
+
+BEGIN {
+    require "./debian/tests/utils/mock.pm";
+    Cryptsetup::Mock::->import();
+}
+
+my %passphrases;
+$passphrases{$_} = $_ foreach qw/testvg-lv0_crypt testvg-lv1_crypt md0_crypt vdd_crypt/;
+unlock_disk(\%passphrases) for 1 .. scalar(%passphrases);
+
+# check that the above was done at initramfs stage
+expect(ttyS0 => qr#\bRunning /scripts/init-bottom\s*\.\.\. #);
+
+login_nopassword("root");
+
+# make sure the root FS and swap are help by dm-crypt devices
+assert_command(q{cryptsetup luksOpen --test-passphrase /dev/md0 <<<md0_crypt});
+assert_command(q{cryptsetup luksOpen --test-passphrase /dev/vdd <<<vdd_crypt});
+assert_command(q{cryptsetup luksOpen --test-passphrase /dev/testvg/lv1 <<<testvg-lv1_crypt});
+
+my $out = shell_command(q{lsblk -in -oNAME,TYPE,MOUNTPOINT /dev/vda3});
+die unless $out =~ m#^[`|]-testvg-lv0\s+lvm\s*$#m;
+die unless $out =~ m#^[| ] `-testvg-lv0_crypt\s+crypt\s+\[SWAP\]\s*$#m;
+die unless $out =~ m#^[`|]-testvg-lv1\s+lvm\s*$#m;
+die unless $out =~ m#^[| ] `-testvg-lv1_crypt\s+crypt\s*$#m;
+die unless $out =~ m#^[| ]   `-md0\s+raid1\s*$#m;
+die unless $out =~ m#^[| ]     `-md0_crypt\s+crypt(?:\s+/(?:home|usr|var)?)?\s*$#m;
+
+$out = shell_command(q{lsblk -in -oNAME,TYPE,MOUNTPOINT /dev/vdb});
+die unless $out =~ m#^`-testvg-lv1\s+lvm\s*$#m;
+die unless $out =~ m#^  `-testvg-lv1_crypt\s+crypt\s*$#m;
+die unless $out =~ m#^    `-md0\s+raid1\s*$#m;
+die unless $out =~ m#^      `-md0_crypt\s+crypt(?:\s+/(?:home|usr|var)?)?\s*$#m;
+
+$out = shell_command(q{lsblk -in -oNAME,TYPE,MOUNTPOINT /dev/vdc});
+die unless $out =~ m#^`-md0\s+raid1\s*$#m;
+die unless $out =~ m#^  `-md0_crypt\s+crypt(?:\s+/(?:home|usr|var)?)?\s*$#m;
+
+$out = shell_command(q{btrfs filesystem show /});
+die unless $out =~ m#^\s*devid\s+1\s.*\s/dev/mapper/vdd_crypt\s*$#m;
+die unless $out =~ m#^\s*devid\s+2\s.*\s/dev/mapper/md0_crypt\s*$#m;
+
+poweroff();
