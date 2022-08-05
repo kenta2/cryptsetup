@@ -24,4 +24,8 @@ die unless $out =~ m#^[| ] `-swap_crypt\s+crypt\s+\[SWAP\]\s*$#m;
 die unless $out =~ m#^[`|]-testvg-cryptroot\s+lvm\s*$#m;
 die unless $out =~ m#^[| ] `-root_crypt\s+crypt\s+/\s*$#m;
 
+$out = shell_command(q{lsblk -in -oNAME,TYPE,MOUNTPOINT /dev/vdb});
+die unless $out =~ m#^`-testvg-cryptroot\s+lvm\s*$#m;
+die unless $out =~ m#^  `-root_crypt\s+crypt\s+/\s*$#m;
+
 poweroff();

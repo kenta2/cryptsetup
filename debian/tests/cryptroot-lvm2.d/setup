@@ -9,7 +9,8 @@ sfdisk --append /dev/vda <<-EOF
 EOF
 
 lvm pvcreate /dev/vda3
-lvm vgcreate "testvg" /dev/vda3
+lvm pvcreate /dev/vdb
+lvm vgcreate "testvg" /dev/vda3 /dev/vdb
 lvm lvcreate -Zn --size 64m --name "cryptswap" "testvg"
 lvm lvcreate -Zn -l100%FREE --name "cryptroot" "testvg"
 lvm vgchange -ay "testvg"
