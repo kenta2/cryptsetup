@@ -1,3 +1,41 @@
+cryptsetup (2:2.5.0-2) UNRELEASED; urgency=low
+
+  [ Matthias Klose ]
+  * Add support for 'noudeb' build profile. (Closes: #983318)
+
+  [ Christoph Anton Mitterer ]
+  * initramfs hook: align busybox check on klibc-utils's hook.
+
+  [ Benjamin Drung ]
+  * initramfs hook: Fix broken compatibility with OpenSSL3 when cryptsetup
+    needs legacy hashes (currently ripemd160 and whirlpool). (LP: #1979159)
+
+  [ Guilhem Moulin ]
+  * DEP-8: relax cryptroot's kernel.deb regex.
+  * New DEP-8 test for crude checks of the initramfs hook.
+  * Minor changes to the legacy.so inclusion logic.
+  * DEP-8: Add checks for OpenSSL's legacy.so inclusion.
+  * DEP-8: Add more partition type GUIDs.
+  * DEP-8: Rename 'testvg' Volume Group to 'cryptvg'.
+  * New DEP-8 test for LUKS-on-LVM layout (backed by two Physical Volumes).
+  * New DEP-8 test for LVM-on-MD-on-LUKS2 layout backed by 4 independently
+    encrypted partitions (each unlocked at initramfs stage).
+  * d/rules: Inspect DEB_BUILD_* with $(filter ,) not $(findstring ,).
+  * d/t: Use file: not file:// in sources.list(5).
+  * d/t: Add convenience wrapper script for local cryptroot-* test runs.
+  * initramfs boot script: Remove custom LVM handling.  Since 2.03.15-1 lvm2
+    doesn't ship an initramfs boot script anymore and relies solely on udev
+    rules instead.  We therefore don't have to manually activate LVs/VGs
+    anymore, but cryptsetup-initramfs now conflicts with earlier lvm2
+    versions. (Closes: #928943)
+  * initramfs hook: Don't overwrite crypttab(5) source to /dev/mapper/$NAME
+    for mapped devices. (Closes: #1016455)
+  * d/README.initramfs: Improve section about cryptopts= kernel parameter.
+  * d/Debian.README: Mention that systemd masks /etc/init.d/cryptdisks.
+    (Closes: #1010708)
+
+ -- Guilhem Moulin <guilhem@debian.org>  Sat, 06 Aug 2022 00:15:59 +0200
+
 cryptsetup (2:2.5.0-1) unstable; urgency=medium
 
   * New upstream release. (Closes: #1000634, #1011128)
