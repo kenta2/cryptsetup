@@ -18,7 +18,7 @@ DEB_DATE := $(strip $(shell LC_ALL=C date -u +%F -d@$(SOURCE_DATE_EPOCH)))
 %:
 	dh $@
 
-ifneq (,$(findstring nodoc,$(DEB_BUILD_OPTIONS)))
+ifneq (,$(filter nodoc, $(DEB_BUILD_OPTIONS)))
 CONFFLAGS += --disable-asciidoc
 endif
 
@@ -40,7 +40,7 @@ execute_after_dh_auto_build:
 	$(CC) -o debian/scripts/suspend/cryptsetup-suspend debian/scripts/suspend/cryptsetup-suspend.c \
 		 -Wall -Werror $(CFLAGS) $(CPPFLAGS) -I$(CURDIR)/lib $(LDFLAGS) -L$(CURDIR)/.libs -lcryptsetup -pedantic
 
-ifeq (,$(findstring nodoc,$(DEB_BUILD_OPTIONS)))
+ifeq (,$(filter nodoc, $(DEB_BUILD_OPTIONS)))
 	# generate manpages
 	sed 's/VERSION/$(DEB_VERSION)/;s/DATE/$(DEB_DATE)/' \
 		debian/doc/variables.xml.in >debian/doc/variables.xml
