@@ -40,27 +40,22 @@ crypttab_find_and_print_entry() {
 # crypttab_print_entry()
 #   Print an unmangled crypttab(5) entry to FD nr. 3, using CRYPTTAB_*
 #   and _CRYPTTAB_* values.
-#   _CRYPTTAB_SOURCE is replaced with /dev/mapper/$sourcename for mapped
-#   sources, otherwise by UUID=<uuid> if possible (eg, for LUKS).  If
-#   the entry uses the 'decrypt_derived' keyscript, the other
-#   crypttab(5) entries it depends on are (recursively) printed before
-#   hand.
+#   _CRYPTTAB_SOURCE is replaced with UUID=<uuid> if possible (eg, for
+#   LUKS), unless the value starts with /dev/mapper/ or is already a
+#   specification (such as LABEL= or PARTUUID=).  If the entry uses the
+#   'decrypt_derived' keyscript, the other crypttab(5) entries it
+#   depends on are (recursively) printed before hand.
 #   Various checks are performed on the key and crypttab options, but no
 #   parsing is done so it's the responsibility of the caller to call
 #   crypttab_parse_options().
 #   Return 0 on success, 1 on error.
 crypttab_print_entry() {
-    local DEV MAJ MIN sourcename uuid keyfile
+    local DEV MAJ MIN uuid keyfile
     if _resolve_device "$CRYPTTAB_SOURCE"; then
         if [ "$(dmsetup info -c --noheadings -o devnos_used -- "$CRYPTTAB_NAME" 2>/dev/null)" != "$MAJ:$MIN" ]; then
             cryptsetup_message "ERROR: $CRYPTTAB_NAME: Source mismatch"
-        elif sourcename="$(dmsetup info -c --noheadings -o mangled_name -j "$MAJ" -m "$MIN" 2>/dev/null)" &&
-               [ -b "/dev/mapper/$sourcename" ]; then
-            # for mapped sources, use the dm name as the lvm
-            # local-block script doesn't work with UUIDs (#902943)
-            _CRYPTTAB_SOURCE="/dev/mapper/$sourcename"
-        elif uuid="$(_device_uuid "$DEV")"; then
-            # otherwise, use its UUID if possible (eg. for LUKS)
+        elif [ "${_CRYPTTAB_SOURCE#*=}" = "$_CRYPTTAB_SOURCE" ] && [ "${CRYPTTAB_SOURCE#/dev/mapper/}" = "$CRYPTTAB_SOURCE" ] \
+                && uuid="$(_device_uuid "$DEV")"; then
             _CRYPTTAB_SOURCE="UUID=$uuid"
         fi
         # on failure _resolve_device() prints a warning and we try our
