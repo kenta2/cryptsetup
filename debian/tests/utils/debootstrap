@@ -115,7 +115,7 @@ while [ -s "$TEMPDIR/dpkg/avail" ]; do
 done
 
 echo apt apt >/var/lib/dpkg/cmethopt
-echo "deb [trusted=yes] file:///media/dists ./" >/etc/apt/sources.list
+echo "deb [trusted=yes] file:/media/dists /" >/etc/apt/sources.list
 cat >/etc/apt/apt.conf.d/99debootstrap <<-EOF
 	Acquire::Languages "none";
 	APT::Install-Recommends "false";

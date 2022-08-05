@@ -225,7 +225,7 @@ setup_apt() {
         apt-get indextargets --format "deb \$(SITE) \$(SUITE) \$(COMPONENT)" "Origin: Debian" >"$TEMPDIR/apt/sources.list"
         # replace autopkgtests' file: URIs so --download-only actually copies .deb files
         apt-get indextargets --format "\$(REPO_URI)" "Trusted: Yes" | \
-            sed -rn 's#^(file|copy):((/+[^/[:blank:]]+)*/autopkgtest[.-].*[^/])/?$#deb [trusted=yes] copy://\2 /#p' \
+            sed -rn 's#^(file|copy):((/+[^/[:blank:]]+)*/autopkgtest[.-].*[^/])/?$#deb [trusted=yes] copy:\2 /#p' \
             >>"$TEMPDIR/apt/sources.list"
     else
         # generate new sources.list
