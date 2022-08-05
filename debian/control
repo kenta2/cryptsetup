@@ -101,6 +101,7 @@ Depends: busybox | busybox-static,
 Recommends: console-setup, kbd
 Breaks: cryptsetup (<< 2:2.0.3-1)
 Replaces: cryptsetup (<< 2:2.0.3-1)
+Conflicts: lvm2 (<< 2.03.15-1)
 Description: disk encryption support - initramfs integration
  Cryptsetup provides an interface for configuring encryption on block
  devices (such as /home or swap partitions), using the Linux kernel
