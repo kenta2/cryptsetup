@@ -1,6 +1,6 @@
 # Rather convoluted LVM-on-MD-on-LUKS2 layout with 2 swap areas, /boot
 # on RAID1, SWAP0 on RAID0, LVM on RAID1 and 4 independently encrypted
-# partitions:
+# partitions decrypt at early boot stage:
 
 #    NAME                 TYPE  MOUNTPOINTS
 #    vda                  disk

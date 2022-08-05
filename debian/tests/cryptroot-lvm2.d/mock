@@ -17,6 +17,7 @@ login_nopassword("root");
 # make sure the root FS and swap are help by dm-crypt devices
 assert_command(q{cryptsetup luksOpen --test-passphrase /dev/testvg/cryptroot <<<root_crypt});
 assert_command(q{cryptsetup luksOpen --test-passphrase /dev/testvg/cryptswap <<<swap_crypt});
+
 my $out = shell_command(q{lsblk -in -oNAME,TYPE,MOUNTPOINT /dev/vda3});
 die unless $out =~ m#^[`|]-testvg-cryptswap\s+lvm\s*$#m;
 die unless $out =~ m#^[| ] `-swap_crypt\s+crypt\s+\[SWAP\]\s*$#m;
