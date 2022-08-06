@@ -2,7 +2,7 @@
 # of d-i with the "encrypted LVM" partioning method.
 
 # create two new partitions for /boot and LUKS respectively (the first
-# one is always used for BIOS/EFI and never exceets sector 64*1024*2)
+# one is always used for BIOS/EFI and never exceeds sector 64*1024*2)
 sfdisk --append /dev/vda <<-EOF
 	unit: sectors
 
