@@ -74,6 +74,20 @@ if [ "$DEB_DISTRIBUTION" = "UNRELEASED" ]; then
     echo "WARN: Using Distribution: $DEB_DISTRIBUTION instead of UNRELEASED" >&2
 fi
 
+# determine suitable values for the APT repository Origin (for
+# autopkgtests) and URI (used outside autopkgtests) fields
+load_os_release() {
+    local os_release # see os-release(5)
+    [ -e "/etc/os-release" ] && os_release="/etc/os-release" || os_release="/usr/lib/os-release"
+    . "$os_release"
+}
+case "${DISTRIBUTOR_ID:="$(load_os_release && printf "%s" "${ID,,[A-Z]}")"}" in
+    debian) APT_REPO_ORIGIN="Debian"; APT_REPO_URI="http://deb.debian.org/debian";;
+    # suitable values for derivative can be added here
+    *) echo "ERROR: Unknown distributor ID '$DISTRIBUTOR_ID', can't extract APT origin" >&2;
+       exit 1;;
+esac
+
 # QEMU command and default options
 unset QEMU_MACHINE_TYPE QEMU_ACCEL QEMU_CPU_MODEL QEMU_SMP QEMU_MEMORY BOOT
 if [ -c /dev/kvm ] && dd if=/dev/kvm count=0 status=none; then
@@ -213,8 +227,6 @@ trap "teardown 1" INT TERM
 
 # set up APT for the testbed
 setup_apt() {
-    local mirror="http://deb.debian.org/debian" # mirror for the new sources.list
-
     # we need a new cache to reliably determine essential and extra packages
     APT_CACHE="$TEMPDIR/apt/cache"
     APT_LISTS="$TEMPDIR/apt/lists"
@@ -226,7 +238,7 @@ setup_apt() {
         # reuse existing sources.list
         apt-get indextargets \
             --format "\$(TARGET_OF) \$(REPO_URI) \$(RELEASE) \$(COMPONENT)" \
-            "Target-Of: deb" "Origin: Debian" \
+            "Target-Of: deb" "Origin: $APT_REPO_ORIGIN" \
             >"$TEMPDIR/apt/sources.list"
         # local autopkgtest repo has Repo-URI: file:/tmp/autopkgtest.XXXXXX/binaries/ ,
         # Release: (empty) and no Component:
@@ -238,22 +250,22 @@ setup_apt() {
         # generate new sources.list
         case "$DEB_DISTRIBUTION" in
             experimental) cat <<-EOF
-				deb $mirror unstable main
-				deb $mirror experimental main
+				deb $APT_REPO_URI unstable main
+				deb $APT_REPO_URI experimental main
 			EOF
             ;;
             *-security) cat <<-EOF
-				deb $mirror ${DEB_DISTRIBUTION%-security} main
-				deb $mirror-security $DEB_DISTRIBUTION main
+				deb $APT_REPO_URI ${DEB_DISTRIBUTION%-security} main
+				deb $APT_REPO_URI-security $DEB_DISTRIBUTION main
 			EOF
             ;;
             *-*) cat <<-EOF
-				deb $mirror ${DEB_DISTRIBUTION%%-*} main
-				deb $mirror $DEB_DISTRIBUTION main
+				deb $APT_REPO_URI ${DEB_DISTRIBUTION%%-*} main
+				deb $APT_REPO_URI $DEB_DISTRIBUTION main
 			EOF
             ;;
             *) cat <<-EOF
-				deb $mirror $DEB_DISTRIBUTION main
+				deb $APT_REPO_URI $DEB_DISTRIBUTION main
 			EOF
             ;;
         esac >"$TEMPDIR/apt/sources.list"
