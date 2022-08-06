@@ -73,7 +73,7 @@ for deb in "${EXTRA_PKGS[@]}"; do
 done
 
 ( cd "$PKG_DIR" && apt-ftparchive packages . >./Packages && apt-ftparchive release . >./Release )
-EXTRA_REPO="deb [trusted=yes] copy:$PKG_DIR /"
+EXTRA_REPO="deb file:$PKG_DIR /"
 
 runtest() {
     local rv=0 ts_start ts_stop

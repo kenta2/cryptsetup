@@ -224,10 +224,15 @@ setup_apt() {
 
     if [ -n "${AUTOPKGTEST_TMP-}" ]; then
         # reuse existing sources.list
-        apt-get indextargets --format "deb \$(SITE) \$(SUITE) \$(COMPONENT)" "Origin: Debian" >"$TEMPDIR/apt/sources.list"
-        # replace autopkgtests' file: URIs so --download-only actually copies .deb files
-        apt-get indextargets --format "\$(REPO_URI)" "Trusted: Yes" | \
-            sed -rn 's#^(file|copy):((/+[^/[:blank:]]+)*/autopkgtest[.-].*[^/])/?$#deb [trusted=yes] copy:\2 /#p' \
+        apt-get indextargets \
+            --format "\$(TARGET_OF) \$(REPO_URI) \$(RELEASE) \$(COMPONENT)" \
+            "Target-Of: deb" "Origin: Debian" \
+            >"$TEMPDIR/apt/sources.list"
+        # local autopkgtest repo has Repo-URI: file:/tmp/autopkgtest.XXXXXX/binaries/ ,
+        # Release: (empty) and no Component:
+        apt-get indextargets \
+            --format "\$(TARGET_OF) \$(REPO_URI) /" \
+            "Target-Of: deb" "Trusted: Yes" "Release: " \
             >>"$TEMPDIR/apt/sources.list"
     else
         # generate new sources.list
@@ -258,6 +263,11 @@ setup_apt() {
     for apt_repo in "${EXTRA_REPOS[@]}"; do
         printf "%s\\n" "$apt_repo" >>"$TEMPDIR/apt/sources.list"
     done
+
+    # replace file: URIs with copy: as we rely on --download-only copying .deb files to APT's cache
+    sed -ri 's/^(deb\S*)\s+\[([^]]+)\]\s+file:/\1 [\2,trusted=yes] copy:/;
+             s/^(deb\S*)\s+file:/\1 [trusted=yes] copy:/' \
+        -- "$TEMPDIR/apt/sources.list"
 
     apt-update
 }
