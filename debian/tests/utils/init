@@ -38,6 +38,12 @@ modprobe virtio_rng # /dev/hwrng (avoid entropy starvation)
 modprobe virtio_pci
 modprobe virtio_blk # /dev/vd[a-z]
 
+# start udevd
+/lib/systemd/systemd-udevd --daemon
+udevadm trigger --type=subsystems --action=add
+udevadm trigger --type=devices --action=add
+udevadm settle
+
 . /init.conf
 
 # https://en.wikipedia.org/wiki/GUID_Partition_Table#Partition_type_GUIDs
@@ -70,6 +76,7 @@ sfdisk /dev/vda <<-EOF
 EOF
 
 . /init.setup
+udevadm settle
 
 mkdir /media
 DEBIAN_DIST="$(blkid -l -t LABEL="debian_dist" -o device)"
@@ -137,6 +144,7 @@ echo "MODULES=dep" >/target/etc/initramfs-tools/conf.d/modules
 cp /init.preinst /target/init.preinst
 chroot /target /bin/sh -eux /init.preinst
 rm -f /target/init.preinst
+udevadm settle
 
 # install extra packages
 chroot /target apt-get -oAPT::Sandbox::User="root" install --yes $PACKAGES
@@ -197,6 +205,9 @@ if [ "$BOOT" = "efi" ]; then
 fi
 umount /target/media
 sh -eux /init.bottom
+
+# stop udevd
+udevadm control --exit
 
 # exiting this script yields "Kernel panic - not syncing: Attempted to
 # kill init!", so give the asyncronous SysRq trigger a chance to power

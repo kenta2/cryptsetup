@@ -66,7 +66,8 @@ Depends: cryptsetup-bin,
          lvm2,
          qemu-efi-aarch64 [arm64],
          qemu-efi-arm [armhf],
-         qemu-system-arm [arm64 armhf] | qemu-system-x86 [amd64 i386] | qemu-system
+         qemu-system-arm [arm64 armhf] | qemu-system-x86 [amd64 i386] | qemu-system,
+         udev
 # We only need root to create /dev/kvm, really.  And while it works
 # locally and on debci, it doesn't work on salsa CI..
 Restrictions: allow-stderr, needs-root
@@ -82,7 +83,8 @@ Depends: cryptsetup-bin,
          mdadm,
          qemu-efi-aarch64 [arm64],
          qemu-efi-arm [armhf],
-         qemu-system-arm [arm64 armhf] | qemu-system-x86 [amd64 i386] | qemu-system
+         qemu-system-arm [arm64 armhf] | qemu-system-x86 [amd64 i386] | qemu-system,
+         udev
 Restrictions: allow-stderr, needs-root
 Architecture: amd64 i386
 
@@ -94,7 +96,8 @@ Depends: cryptsetup-bin,
          initramfs-tools-core,
          qemu-efi-aarch64 [arm64],
          qemu-efi-arm [armhf],
-         qemu-system-arm [arm64 armhf] | qemu-system-x86 [amd64 i386] | qemu-system
+         qemu-system-arm [arm64 armhf] | qemu-system-x86 [amd64 i386] | qemu-system,
+         udev
 Restrictions: allow-stderr, needs-root
 Architecture: amd64 i386
 

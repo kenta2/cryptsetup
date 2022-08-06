@@ -104,6 +104,7 @@ copy_exec /sbin/mkswap
 copy_exec /sbin/swapon
 copy_exec /sbin/swapoff
 copy_exec /sbin/cryptsetup
+copy_exec /sbin/dmsetup
 copy_exec /usr/bin/dpkg-deb
 copy_exec /bin/tar
 
@@ -133,6 +134,23 @@ for cmd in cat chroot ln ls mkdir mount mv sh umount uname; do
         exit 1
     fi
     copy_exec "$exe" /bin
+done
+
+# copy udevd and (some of) its rules
+copy_exec /lib/systemd/systemd-udevd
+copy_exec /bin/udevadm
+
+mkdir -p -- "$DESTDIR/etc/udev" "$DESTDIR/lib/udev/rules.d"
+cat >"$DESTDIR/etc/udev/udev.conf" <<-EOF
+	udev_log=info
+	resolve_names=never
+EOF
+for rules in 50-udev-default.rules 55-dm.rules 60-block.rules \
+        60-persistent-storage.rules 60-persistent-storage-dm.rules \
+        63-md-raid-arrays.rules 95-dm-notify.rules; do
+    if [ -e "/lib/udev/rules.d/$rules" ]; then
+        cp -T "/lib/udev/rules.d/$rules" "$DESTDIR/lib/udev/rules.d/$rules"
+    fi
 done
 
 cd "$DESTDIR"
