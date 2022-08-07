@@ -27,11 +27,14 @@ use Time::HiRes ();
 
 my (%SOCKET, %BUFFER);
 my ($WBITS, $RBITS);
+my ($SERIAL, $MONITOR);
+
 use Exporter qw/import/;
 BEGIN {
+    ($SERIAL, $MONITOR) = qw/ttyS0 mon0/;
     my $dir = $ARGV[1] =~ m#\A(/\p{Print}+)\z# ? $1 : die "Invalid base directory\n"; # untaint
     my $epoch = Time::HiRes::time();
-    foreach my $id (qw/mon0 ttyS0/) {
+    foreach my $id ($MONITOR, $SERIAL) {
         my $path = $dir . "/" . $id;
         my $sockaddr = Socket::pack_sockaddr_un($path) // die;
         socket(my $socket, PF_UNIX, SOCK_STREAM|SOCK_CLOEXEC|SOCK_NONBLOCK, 0) or die "socket: $!";
@@ -69,7 +72,6 @@ BEGIN {
     /;
 }
 
-my $SERIAL = "ttyS0";
 sub read_data($) {
     my $bits = shift;
     while (my ($chan, $fh) = each %SOCKET) {
@@ -228,14 +230,14 @@ sub login_nopassword($) {
 
 sub poweroff() {
     # XXX would be nice to use the QEMU monitor here but the guest
-    # doesn't seem respond to system_powerdown QMP commands
+    # doesn't seem to respond to system_powerdown QMP commands
     wait_for_prompt($SERIAL => $PS1);
-    type_data($SERIAL => "echo o >/proc/sysrq-trigger");
+    type_data($SERIAL => q{echo o >/proc/sysrq-trigger});
     expect(); # wait for QEMU to terminate
 }
 sub hibernate() {
     wait_for_prompt($SERIAL => $PS1);
-    type_data($SERIAL => "echo disk >/sys/power/state");
+    type_data($SERIAL => q{echo disk >/sys/power/state});
     expect(); # wait for QEMU to terminate
 }
 
