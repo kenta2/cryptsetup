@@ -22,8 +22,14 @@ if ($POWERCYCLE_COUNT == 0) {
     # create a stamp in memory, hibernate (suspend on disk) and thaw
     shell_command(q{echo hello >/dev/shm/foo.stamp});
     hibernate();
-} else {
+}
+else {
     # no need to relogin, we get the shell as we left it
     assert_command(q{grep -Fx hello </dev/shm/foo.stamp});
     poweroff();
+
+    # XXX would be nice to test cryptsetup-suspend here, but it's not
+    # trivial to do since it doesn't use the serial console but VT8 for
+    # the prompt, which makes sense for a graphical environment but
+    # that's not a channel we can easily mock
 }

@@ -236,6 +236,9 @@ sub poweroff() {
     expect(); # wait for QEMU to terminate
 }
 sub hibernate() {
+    # an alternative is to send {"execute":"guest-suspend-disk"} on the
+    # guest agent socket, but we don't want to require qemu-guest-agent
+    # on the guest so this will have to do
     wait_for_prompt($SERIAL => $PS1);
     type_data($SERIAL => q{echo disk >/sys/power/state});
     expect(); # wait for QEMU to terminate
