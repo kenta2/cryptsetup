@@ -185,6 +185,11 @@ cat >"$ROOT/root/.profile" <<-EOF
 	run_verbose df -h
 EOF
 
+cat >"$ROOT/root/.inputrc" <<-EOF
+	# disabled bracketed paste mode
+	set enable-bracketed-paste off
+EOF
+
 if [ -f "$ROOT/etc/inittab" ]; then
     # for sysvinit
     cat >>"$ROOT/etc/inittab" <<-EOF

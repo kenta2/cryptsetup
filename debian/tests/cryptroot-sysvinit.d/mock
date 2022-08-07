@@ -2,28 +2,28 @@
 
 BEGIN {
     require "./debian/tests/utils/mock.pm";
-    Cryptsetup::Mock::->import();
+    CryptrootTest::Mock::->import();
 }
 
 unlock_disk("topsecret");
-login_nopassword("root");
+login("root");
 
 # make sure the root FS, swap, and /home are help by dm-crypt devices
-assert_command(q{cryptsetup luksOpen --test-passphrase /dev/vda5 <<<topsecret});
-my $out = shell_command(q{lsblk -in -oNAME,TYPE,MOUNTPOINT /dev/vda3});
+shell(q{cryptsetup luksOpen --test-passphrase /dev/vda5 <<<topsecret}, rv => 0);
+my $out = shell(q{lsblk -in -oNAME,TYPE,MOUNTPOINT /dev/vda3});
 die unless $out =~ m#\Avda3\s.*\r?\n^`-vda3_crypt\s+crypt\s+/home\s*\r?\n\z#m;
 
-$out = shell_command(q{lsblk -in -oNAME,TYPE,MOUNTPOINT /dev/vda4});
+$out = shell(q{lsblk -in -oNAME,TYPE,MOUNTPOINT /dev/vda4});
 die unless $out =~ m#\Avda4\s.*\r?\n^`-vda4_crypt\s+crypt\s+\[SWAP\]\s*\r?\n\z#m;
 
-$out = shell_command(q{lsblk -in -oNAME,TYPE,MOUNTPOINT /dev/vda5});
+$out = shell(q{lsblk -in -oNAME,TYPE,MOUNTPOINT /dev/vda5});
 die unless $out =~ m#\Avda5\s.*\r?\n^`-vda5_crypt\s+crypt\s+/\s*\r?\n\z#m;
 
 # make sure only vda5 is processed at initramfs stage
 # XXX unmkinitramfs doesn't work on /initrd.img with COMPRESS=zstd, cf. #1015954
-shell_command(q{unmkinitramfs /boot/initrd.img-`uname -r` /tmp/initramfs});
-shell_command(q{grep -E '^vd\S+_crypt\s' </tmp/initramfs/cryptroot/crypttab >/tmp/out});
-assert_command(q{grep -E  '^vda5_crypt\s' </tmp/out}, 0);
-assert_command(q{grep -Ev '^vda5_crypt\s' </tmp/out}, 1);
+shell(q{unmkinitramfs /boot/initrd.img-`uname -r` /tmp/initramfs});
+shell(q{grep -E '^vd\S+_crypt\s' </tmp/initramfs/cryptroot/crypttab >/tmp/out});
+shell(q{grep -E  '^vda5_crypt\s' </tmp/out}, rv => 0);
+shell(q{grep -Ev '^vda5_crypt\s' </tmp/out}, rv => 1);
 
 poweroff();

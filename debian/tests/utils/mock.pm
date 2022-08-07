@@ -1,5 +1,3 @@
-package Cryptsetup::Mock;
-
 # Mock terminal interaction on a guest system
 #
 # Copyright © 2021-2022 Guilhem Moulin <guilhem@debian.org>
@@ -21,15 +19,16 @@ use v5.14.2;
 use warnings;
 use strict;
 
+our ($SERIAL, $CONSOLE, $MONITOR);
+package CryptrootTest::Utils;
+
 use Socket qw/PF_UNIX SOCK_STREAM SOCK_CLOEXEC SOCK_NONBLOCK SHUT_RD SHUT_WR/;
 use Errno qw/EINTR ENOENT ECONNREFUSED/;
 use Time::HiRes ();
 
 my (%SOCKET, %BUFFER);
-my ($WBITS, $RBITS);
-our ($SERIAL, $CONSOLE, $MONITOR);
+my (%SOCKET, $WBITS, $RBITS);
 
-use Exporter qw/import/;
 BEGIN {
     ($SERIAL, $CONSOLE, $MONITOR) = qw/ttyS0 hvc0 mon0/;
     my $dir = $ARGV[1] =~ m#\A(/\p{Print}+)\z# ? $1 : die "Invalid base directory\n"; # untaint
@@ -56,21 +55,6 @@ BEGIN {
         $SOCKET{$id} = $socket;
         $BUFFER{$id} = "";
     }
-
-    our @EXPORT = qw/
-        expect
-        unlock_disk
-        login
-        login_nopassword
-        type_data
-        type_password
-        type_at_prompt
-        shell_command
-        shell_command2
-        assert_command
-        poweroff
-        hibernate
-    /;
 }
 
 sub read_data($) {
@@ -88,6 +72,7 @@ sub read_data($) {
         }
     }
 }
+
 sub expect(;$$) {
     my ($chan, $prompt) = @_;
 
@@ -103,12 +88,8 @@ sub expect(;$$) {
         return wantarray ? %+ : undef if defined $buffer and $$buffer =~ s/$prompt//;
     }
 }
-sub wait_for_prompt($$) {
-    my ($chan, $prompt) = @_;
-    return expect($chan => qr/\A(?:.*?\r\n?)?$prompt/aasm);
-}
 
-sub type_data($$%) {
+sub write_data($$%) {
     my $chan = shift;
     my $data = shift;
 
@@ -133,13 +114,15 @@ sub type_data($$%) {
         }
     }
 
-    if ($options{echo}) {
+    my $rdata = $options{echo} ? $data : "";
+    $rdata .= $options{reol};
+
+    if ($rdata ne "") {
         my $buf = \$BUFFER{$chan};
         my $rfh = $SOCKET{$chan} // die;
         my $rfd = fileno($rfh) // die;
         vec(my $rin, $rfd, 1) = 1;
 
-        my $rdata = $data . $options{reol};
         my $rlen = length($rdata);
         while($rlen > 0) {
             my $rout = $rin;
@@ -163,44 +146,26 @@ sub type_data($$%) {
     }
 }
 
-sub type_at_prompt($$%) {
-    my ($prompt, $data, %options) = @_;
-    wait_for_prompt($CONSOLE => $prompt);
-    type_data($CONSOLE => $data, %options);
-}
-sub type_password($$%) {
-    my ($prompt, $password, %options) = @_;
-    type_at_prompt($prompt => $password, %options, echo => 0);
+package CryptrootTest::Mock;
+
+use Exporter qw/import/;
+BEGIN {
+    our @EXPORT = qw/
+        unlock_disk
+        login
+        shell
+        hibernate
+        poweroff
+        expect
+    /;
 }
 
-my $CSI = qr/\x1B\[ [\x30-\x3F]* [\x20-\x2F]* [\x40-\x7E] /x; # control sequence introducer
-my $PS1 = qr/$CSI? root\@[\-\.0-9A-Z_a-z]+ : [~\/][\-\.\/0-9A-Z_a-z]* [\#\$]\ /aax;
-my $COMMAND_OUTPUT = qr/\A$CSI? \r (?<result>.*?\r\n)? (?<rest>$PS1) /msx;
-
-sub shell_command($) {
-    my $command = shift;
-    wait_for_prompt($CONSOLE => $PS1);
-    type_data($CONSOLE => $command);
-    my %r = expect($CONSOLE => $COMMAND_OUTPUT);
-    $BUFFER{$CONSOLE} = $r{rest} . $BUFFER{$CONSOLE}; # reinject prompt into buffered output
-    return $r{result} // "";
-}
-sub shell_command2($) {
-    my $out = shell_command(shift);
-    my $rv = shell_command("echo \$?");
-    return ($rv+0, $out);
-}
-sub assert_command($;$) {
-    my $command = shift;
-    my $assert_rv = shift // 0;
-    my ($rv, $out) = shell_command2($command);
-    die "Command \`$command\` exited with status $rv\n" unless $rv == $assert_rv;
-    return $out;
-}
+*expect     = \&CryptrootTest::Utils::expect;
+*write_data = \&CryptrootTest::Utils::write_data;
 
 sub unlock_disk($) {
     my $passphrase = shift;
-    my %r = expect($SERIAL => qr/\A(?:.*?(?:\r\n|\.\.\. ))?Please unlock disk (?<name>\p{Graph}+): /aasm);
+    my %r = expect($SERIAL => qr/\A(?:.*?(?:\r\n|\.\.\. ))?Please unlock disk (?<name>\p{Graph}+): \z/aams);
     if ((my $ref = ref($passphrase)) ne "") {
         my $name = $r{name};
         unless (defined $name) {
@@ -214,33 +179,56 @@ sub unlock_disk($) {
         }
     }
     die "Unable to unlock, aborting.\n" unless defined $passphrase;
-    type_data($SERIAL => $passphrase, echo => 0);
+    CryptrootTest::Utils::write_data($SERIAL => $passphrase, echo => 0, reol => "\r");
 }
 
-my $LOGIN_PROMPT = qr/Debian [^\r\n]+ [0-9A-Za-z]+(?:\r\n)+(?<hostname>[[:alnum:]._-]+) login: /aa;
-sub login($$) {
+my $PS1 = qr/root\@[\-\.0-9A-Z_a-z]+ : [~\/][\-\.\/0-9A-Z_a-z]* [\#\$]\ /aax;
+sub login($;$) {
     my ($username, $password) = @_;
-    type_at_prompt($LOGIN_PROMPT, $username, reol => "\r");
-    type_password(qr/Password: / => $password);
+    expect($CONSOLE => qr/\A[\r\n]*Debian [^\r\n]+ [0-9A-Za-z]+(?:\r\n)+[[:alnum:]._-]+ login: \z/aams);
+    write_data($CONSOLE => $username, reol => "\r");
+
+    if (defined $password) {
+        expect($CONSOLE => qr/\A[\r\n]*Password: \z/aams);
+        write_data($CONSOLE => $username, echo => 0, reol => "\r");
+    }
+
+    # consume motd(5) or similar
+    expect($CONSOLE => qr/\A .*\r\n $PS1 \z/aamsx);
 }
-sub login_nopassword($) {
-    my ($username) = @_;
-    type_at_prompt($LOGIN_PROMPT, $username, reol => "\r");
+
+sub shell($%);
+sub shell($%) {
+    my $command = shift;
+    my %options = @_;
+
+    write_data($CONSOLE => $command);
+    my %r = expect($CONSOLE => qr/\A (?<out>.*) $PS1 \z/aamsx);
+    my $out = $r{out};
+
+    if (exists $options{rv}) {
+        my $rv = shell(q{echo $?});
+        unless ($rv =~ s/\r?\n\z// and $rv =~ /\A([0-9]+)\z/ and $rv == $options{rv}) {
+            my @loc = caller;
+            die "ERROR: Command \`$command\` exited with status $rv != $options{rv}",
+                " at line $loc[2] in $loc[1]\n";
+        }
+    }
+    return $out;
+}
+
+sub hibernate() {
+    # an alternative is to send {"execute":"guest-suspend-disk"} on the
+    # guest agent socket, but we don't want to require qemu-guest-agent
+    # on the guest so this will have to do
+    write_data($CONSOLE => q{systemctl hibernate});
+    expect();# wait for QEMU to terminate
 }
 
 sub poweroff() {
     # XXX would be nice to use the QEMU monitor here but the guest
     # doesn't seem to respond to system_powerdown QMP commands
-    wait_for_prompt($CONSOLE => $PS1);
-    type_data($CONSOLE => q{poweroff});
-    expect(); # wait for QEMU to terminate
-}
-sub hibernate() {
-    # an alternative is to send {"execute":"guest-suspend-disk"} on the
-    # guest agent socket, but we don't want to require qemu-guest-agent
-    # on the guest so this will have to do
-    wait_for_prompt($CONSOLE => $PS1);
-    type_data($CONSOLE => q{systemctl hibernate});
+    write_data($CONSOLE => q{poweroff});
     expect(); # wait for QEMU to terminate
 }
 
