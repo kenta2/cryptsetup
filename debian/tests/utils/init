@@ -106,8 +106,8 @@ fi
 # move pseudo and temporary filesystems to /target
 mount -no move /dev /target/dev
 mount -no move /proc /target/proc
-mount -no move /run /target/run
 mount -no move /sys /target/sys
+mount -t tmpfs -o nodev,noexec,nosuid,size=5%,mode=0755 tmpfs /target/run
 
 # prevent any services from starting during package installation, taken
 # from debootstrap(8)
@@ -197,13 +197,13 @@ rm /target/usr/sbin/policy-rc.d
 # move pseudo and temporary filesystems back
 mount -no move /target/dev /dev
 mount -no move /target/proc /proc
-mount -no move /target/run /run
 mount -no move /target/sys /sys
 
 if [ "$BOOT" = "efi" ]; then
     umount /target/boot/efi
 fi
 umount /target/media
+umount /target/run
 sh -eux /init.bottom
 
 # stop udevd
