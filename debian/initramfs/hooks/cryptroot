@@ -41,10 +41,11 @@ crypttab_find_and_print_entry() {
 #   Print an unmangled crypttab(5) entry to FD nr. 3, using CRYPTTAB_*
 #   and _CRYPTTAB_* values.
 #   _CRYPTTAB_SOURCE is replaced with UUID=<uuid> if possible (eg, for
-#   LUKS), unless the value starts with /dev/mapper/ or is already a
-#   specification (such as LABEL= or PARTUUID=).  If the entry uses the
-#   'decrypt_derived' keyscript, the other crypttab(5) entries it
-#   depends on are (recursively) printed before hand.
+#   LUKS), unless the value starts with /dev/disk/by- or /dev/mapper/,
+#   or is already a device specification (such as LABEL= or PARTUUID=).
+#   If the entry uses the 'decrypt_derived' keyscript, the other
+#   crypttab(5) entries it depends on are (recursively) printed before
+#   hand.
 #   Various checks are performed on the key and crypttab options, but no
 #   parsing is done so it's the responsibility of the caller to call
 #   crypttab_parse_options().
@@ -54,8 +55,10 @@ crypttab_print_entry() {
     if _resolve_device "$CRYPTTAB_SOURCE"; then
         if [ "$(dmsetup info -c --noheadings -o devnos_used -- "$CRYPTTAB_NAME" 2>/dev/null)" != "$MAJ:$MIN" ]; then
             cryptsetup_message "ERROR: $CRYPTTAB_NAME: Source mismatch"
-        elif [ "${_CRYPTTAB_SOURCE#*=}" = "$_CRYPTTAB_SOURCE" ] && [ "${CRYPTTAB_SOURCE#/dev/mapper/}" = "$CRYPTTAB_SOURCE" ] \
-                && uuid="$(_device_uuid "$DEV")"; then
+        elif [ "${_CRYPTTAB_SOURCE#[A-Za-z]*=}" = "$_CRYPTTAB_SOURCE" ] && \
+                [ "${CRYPTTAB_SOURCE#/dev/disk/by-}" = "$CRYPTTAB_SOURCE" ] && \
+                [ "${CRYPTTAB_SOURCE#/dev/mapper/}" = "$CRYPTTAB_SOURCE" ] && \
+                uuid="$(_device_uuid "$DEV")"; then
             _CRYPTTAB_SOURCE="UUID=$uuid"
         fi
         # on failure _resolve_device() prints a warning and we try our
