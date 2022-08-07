@@ -1,13 +1,13 @@
-install -m0600 /dev/null /etc/rootfs.key
-head -c512 /dev/urandom >/etc/rootfs.key
+install -m0600 /dev/null /etc/homefs.key
+head -c512 /dev/urandom >/etc/homefs.key
 cryptsetup luksFormat --batch-mode \
-    --key-file=/etc/rootfs.key \
+    --key-file=/etc/homefs.key \
     --type=luks2 \
     --pbkdf=argon2id \
     --pbkdf-force-iterations=4 \
     --pbkdf-memory=32 \
     -- /dev/vda3
-cryptsetup luksOpen --key-file=/etc/rootfs.key --allow-discards \
+cryptsetup luksOpen --key-file=/etc/homefs.key --allow-discards \
     -- /dev/vda3 "vda3_crypt"
 mke2fs -Ft ext4 /dev/mapper/vda3_crypt
 cryptsetup close "vda3_crypt"

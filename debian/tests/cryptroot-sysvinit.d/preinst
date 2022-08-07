@@ -1,5 +1,5 @@
 cat >/etc/crypttab <<-EOF
-	vda3_crypt /dev/vda3 /etc/rootfs.key luks,discard
+	vda3_crypt /dev/vda3 /etc/homefs.key luks,discard
 	vda4_crypt /dev/vda4 /dev/urandom plain,cipher=aes-xts-plain64,size=256,discard,swap
 	vda5_crypt UUID=$(blkid -s UUID -o value /dev/vda5) none luks,discard
 EOF
