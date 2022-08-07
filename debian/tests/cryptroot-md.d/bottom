@@ -1,5 +1,5 @@
-umount /target/boot
-umount /target
+umount "$ROOT/boot"
+umount "$ROOT"
 
 swapoff /dev/md1
 mdadm --stop /dev/md1

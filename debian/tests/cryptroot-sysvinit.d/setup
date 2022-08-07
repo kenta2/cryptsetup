@@ -27,13 +27,12 @@ cryptsetup luksOpen --key-file=/rootfs.key --allow-discards \
 cryptsetup open --type=plain --key-file=/dev/urandom --allow-discards \
     -- /dev/vda4 "vda4_crypt"
 
-mkdir /target
 mke2fs -Ft ext4 /dev/mapper/vda5_crypt
-mount -t ext4 /dev/mapper/vda5_crypt /target
+mount -t ext4 /dev/mapper/vda5_crypt "$ROOT"
 
-mkdir /target/boot
+mkdir "$ROOT/boot"
 mke2fs -Ft ext2 -m0 /dev/vda2
-mount -t ext2 /dev/vda2 /target/boot
+mount -t ext2 /dev/vda2 "$ROOT/boot"
 
 mkswap /dev/mapper/vda4_crypt
 swapon /dev/mapper/vda4_crypt

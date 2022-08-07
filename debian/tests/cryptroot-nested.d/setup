@@ -72,29 +72,28 @@ for d in md0 vdd; do
         -- "/dev/${d}" "${d}_crypt"
 done
 
-mkdir /target
 # create multi-device btrfs filesystem for the root FS; we list /dev/mapper/vdd_crypt
 # first since it's smaller and we want data to span across both devices
 mkfs.btrfs -d single /dev/mapper/vdd_crypt /dev/mapper/md0_crypt
 
 # create subvolumes
-mount -t btrfs -o compress=lzo,device=/dev/mapper/md0_crypt /dev/mapper/vdd_crypt /target
-btrfs subvol create /target/@
-btrfs subvol create /target/@usr
-btrfs subvol create /target/@var
-btrfs subvol create /target/@home
-umount /target
+mount -t btrfs -o compress=lzo,device=/dev/mapper/md0_crypt /dev/mapper/vdd_crypt "$ROOT"
+btrfs subvol create "$ROOT/@"
+btrfs subvol create "$ROOT/@usr"
+btrfs subvol create "$ROOT/@var"
+btrfs subvol create "$ROOT/@home"
+umount "$ROOT"
 
 # now mount the subvolumes
-mount -t btrfs -o compress=lzo,device=/dev/mapper/md0_crypt,subvol="@" /dev/mapper/vdd_crypt /target
+mount -t btrfs -o compress=lzo,device=/dev/mapper/md0_crypt,subvol="@" /dev/mapper/vdd_crypt "$ROOT"
 for s in home usr var; do
-    mkdir -m0755 "/target/$s"
-    mount -t btrfs -o compress=lzo,device=/dev/mapper/md0_crypt,subvol="@$s" /dev/mapper/vdd_crypt "/target/$s"
+    mkdir -m0755 "$ROOT/$s"
+    mount -t btrfs -o compress=lzo,device=/dev/mapper/md0_crypt,subvol="@$s" /dev/mapper/vdd_crypt "$ROOT/$s"
 done
 
-mkdir /target/boot
+mkdir "$ROOT/boot"
 mke2fs -Ft ext2 -m0 /dev/vda2
-mount -t ext2 /dev/vda2 /target/boot
+mount -t ext2 /dev/vda2 "$ROOT/boot"
 
 mkswap /dev/mapper/testvg-lv0_crypt
 swapon /dev/mapper/testvg-lv0_crypt

@@ -30,13 +30,12 @@ lvm lvcreate -Zn -l100%FREE --name "root" "cryptvg"
 lvm vgchange -ay "cryptvg"
 lvm vgmknodes
 
-mkdir /target
 mke2fs -Ft ext4 /dev/cryptvg/root
-mount -t ext4 /dev/cryptvg/root /target
+mount -t ext4 /dev/cryptvg/root "$ROOT"
 
-mkdir /target/boot
+mkdir "$ROOT/boot"
 mke2fs -Ft ext2 -m0 /dev/vda2
-mount -t ext2 /dev/vda2 /target/boot
+mount -t ext2 /dev/vda2 "$ROOT/boot"
 
 mkswap /dev/cryptvg/swap
 swapon /dev/cryptvg/swap

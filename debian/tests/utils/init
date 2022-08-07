@@ -75,19 +75,27 @@ sfdisk /dev/vda <<-EOF
 	start=$((1024*2)), size=$((BOOT_PARTITION_SIZE*1024*2)), type=$BOOT_PARTITION_TYPE
 EOF
 
+ROOT="/target"
+mkdir -m0755 "$ROOT"
+# /init.setup is expected to create the root filesystem of the target
+# system and mount it (alongside other filesystems) on $ROOT
 . /init.setup
 udevadm settle
+
+# NOTE: we don't explicitely create a merged-/usr directories scheme on
+# the target system, but we'll do once Bookworm is released and usrmerge
+# becomes (transitively) essential
 
 mkdir /media
 DEBIAN_DIST="$(blkid -l -t LABEL="debian_dist" -o device)"
 mount -t ext2 -o ro "$DEBIAN_DIST" /media
 for pkg in /media/__stage1__/*.deb; do
-    dpkg-deb --extract "$pkg" /target
+    dpkg-deb --extract "$pkg" "$ROOT"
 done
 
 # setup hosts(5) and hostname(5)
-echo "$HOSTNAME" >/target/etc/hostname
-echo "127.0.0.1 localhost $HOSTNAME" >/target/etc/hosts
+echo "$HOSTNAME" >"$ROOT/etc/hostname"
+echo "127.0.0.1 localhost $HOSTNAME" >"$ROOT/etc/hosts"
 
 # EFI
 if [ "$BOOT" = "efi" ]; then
@@ -95,63 +103,63 @@ if [ "$BOOT" = "efi" ]; then
     mount -t efivarfs efivarfs /sys/firmware/efi/efivars
 
     mkfs.vfat -F 32 /dev/vda1
-    mkdir /target/boot/efi
-    mount -t vfat /dev/vda1 /target/boot/efi
+    mkdir "$ROOT/boot/efi"
+    mount -t vfat /dev/vda1 "$ROOT/boot/efi"
 
-    cat >>/target/etc/fstab <<-EOF
+    cat >>"$ROOT/etc/fstab" <<-EOF
 		UUID=$(blkid -s UUID -o value /dev/vda1) /boot/efi auto defaults 0 2
 	EOF
 fi
 
-# move pseudo and temporary filesystems to /target
-mount -no move /dev /target/dev
-mount -no move /proc /target/proc
-mount -no move /sys /target/sys
-mount -t tmpfs -o nodev,noexec,nosuid,size=5%,mode=0755 tmpfs /target/run
+# move pseudo and temporary filesystems to "$ROOT"
+mount -no move /dev "$ROOT/dev"
+mount -no move /proc "$ROOT/proc"
+mount -no move /sys "$ROOT/sys"
+mount -t tmpfs -o nodev,noexec,nosuid,size=5%,mode=0755 tmpfs "$ROOT/run"
 
 # prevent any services from starting during package installation, taken
 # from debootstrap(8)
-cat >/target/usr/sbin/policy-rc.d <<-EOF
+cat >"$ROOT/usr/sbin/policy-rc.d" <<-EOF
 	#!/bin/sh
 	exit 101
 EOF
-chmod +x /target/usr/sbin/policy-rc.d
+chmod +x "$ROOT/usr/sbin/policy-rc.d"
 
-mv /target/sbin/start-stop-daemon /target/sbin/start-stop-daemon.REAL
-cat >/target/sbin/start-stop-daemon <<-EOF
+mv "$ROOT/sbin/start-stop-daemon" "$ROOT/sbin/start-stop-daemon.REAL"
+cat >"$ROOT/sbin/start-stop-daemon" <<-EOF
 	#!/bin/sh
 	echo
 	echo "Warning: Fake start-stop-daemon called, doing nothing"
 EOF
-chmod +x /target/usr/sbin/policy-rc.d /target/sbin/start-stop-daemon
+chmod +x "$ROOT/usr/sbin/policy-rc.d" "$ROOT/sbin/start-stop-daemon"
 
 DEBIAN_FRONTEND="noninteractive"
 DEBCONF_NONINTERACTIVE_SEEN="true"
 export DEBIAN_FRONTEND DEBCONF_NONINTERACTIVE_SEEN
 
 # debootstrap the target system
-mkdir /target/media
-mount -no move /media /target/media
-cp -p /debootstrap /target/debootstrap
-chroot /target /debootstrap
-rm -f /target/debootstrap
+mkdir "$ROOT/media"
+mount -no move /media "$ROOT/media"
+cp -p /debootstrap "$ROOT/debootstrap"
+chroot "$ROOT" /debootstrap
+rm -f "$ROOT/debootstrap"
 
 # use MODULES=dep (if it works with fewer modules then it also works
 # with the default MODULES=most)
-mkdir -p /target/etc/initramfs-tools/conf.d
-echo "MODULES=dep" >/target/etc/initramfs-tools/conf.d/modules
+mkdir -p "$ROOT/etc/initramfs-tools/conf.d"
+echo "MODULES=dep" >"$ROOT/etc/initramfs-tools/conf.d/modules"
 
-cp /init.preinst /target/init.preinst
-chroot /target /bin/sh -eux /init.preinst
-rm -f /target/init.preinst
+cp /init.preinst "$ROOT/init.preinst"
+chroot "$ROOT" /bin/sh -eux /init.preinst
+rm -f "$ROOT/init.preinst"
 udevadm settle
 
 # install extra packages
-chroot /target apt-get -oAPT::Sandbox::User="root" install --yes $PACKAGES
-rm -f /target/etc/apt/sources.list
+chroot "$ROOT" apt-get -oAPT::Sandbox::User="root" install --yes $PACKAGES
+rm -f "$ROOT/etc/apt/sources.list"
 
 # configure and install GRUB
-cat >/target/etc/default/grub <<-EOF
+cat >"$ROOT/etc/default/grub" <<-EOF
 	GRUB_DEFAULT=0
 	GRUB_TIMEOUT=0
 	GRUB_CMDLINE_LINUX_DEFAULT=""
@@ -160,13 +168,13 @@ cat >/target/etc/default/grub <<-EOF
 	GRUB_TERMINAL="console serial"
 	GRUB_SERIAL_COMMAND="serial --speed=115200"
 EOF
-chroot /target grub-install --no-floppy --modules=part_gpt /dev/vda
-chroot /target update-grub
+chroot "$ROOT" grub-install --no-floppy --modules=part_gpt /dev/vda
+chroot "$ROOT" update-grub
 
-chroot /target passwd --delete root # make root account passwordless
+chroot "$ROOT" passwd --delete root # make root account passwordless
 
 # show some system info right after login to ease troubleshooting
-cat >/target/root/.profile <<-EOF
+cat >"$ROOT/root/.profile" <<-EOF
 	run_verbose() {
 	    printf "\\\`%s\\\` output:\\\\n" "\$*"
 	    "\$@"
@@ -177,34 +185,36 @@ cat >/target/root/.profile <<-EOF
 	run_verbose df -h
 EOF
 
-if [ -f /target/etc/inittab ]; then
+if [ -f "$ROOT/etc/inittab" ]; then
     # for sysvinit
-    cat >>/target/etc/inittab <<-EOF
+    cat >>"$ROOT/etc/inittab" <<-EOF
 		S0:23:respawn:/sbin/getty -8 -L 115200 $CONSOLE linux
 	EOF
 fi
 
 if [ -f /init.postinst ]; then
-    cp /init.postinst /target/init.postinst
-    chroot /target /bin/sh -eux /init.postinst
-    rm -f /target/init.postinst
+    cp /init.postinst "$ROOT/init.postinst"
+    chroot "$ROOT" /bin/sh -eux /init.postinst
+    rm -f "$ROOT/init.postinst"
 fi
 
 # allow service startup again
-mv /target/sbin/start-stop-daemon.REAL /target/sbin/start-stop-daemon
-rm /target/usr/sbin/policy-rc.d
+mv "$ROOT/sbin/start-stop-daemon.REAL" "$ROOT/sbin/start-stop-daemon"
+rm "$ROOT/usr/sbin/policy-rc.d"
 
 # move pseudo and temporary filesystems back
-mount -no move /target/dev /dev
-mount -no move /target/proc /proc
-mount -no move /target/sys /sys
+mount -no move "$ROOT/dev" /dev
+mount -no move "$ROOT/proc" /proc
+mount -no move "$ROOT/sys" /sys
 
 if [ "$BOOT" = "efi" ]; then
-    umount /target/boot/efi
+    umount "$ROOT/boot/efi"
 fi
-umount /target/media
-umount /target/run
-sh -eux /init.bottom
+umount "$ROOT/media"
+umount "$ROOT/run"
+
+# /init.bottom is expected to umount $ROOT and its submounts
+ROOT="$ROOT" sh -eux /init.bottom
 
 # stop udevd
 udevadm control --exit

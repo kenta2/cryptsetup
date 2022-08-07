@@ -64,13 +64,12 @@ lvm vgchange -ay "cryptvg"
 lvm vgmknodes
 
 
-mkdir /target
 mke2fs -Ft ext4 /dev/cryptvg/root
-mount -t ext4 /dev/cryptvg/root /target
+mount -t ext4 /dev/cryptvg/root "$ROOT"
 
-mkdir /target/boot
+mkdir "$ROOT/boot"
 mke2fs -Ft ext2 -m0 /dev/md0
-mount -t ext2 /dev/md0 /target/boot
+mount -t ext2 /dev/md0 "$ROOT/boot"
 
 mkswap /dev/cryptvg/swap
 swapon /dev/cryptvg/swap

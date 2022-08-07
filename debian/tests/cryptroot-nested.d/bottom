@@ -1,8 +1,8 @@
-umount /target/boot
-umount /target/home
-umount /target/usr
-umount /target/var
-umount /target
+umount "$ROOT/boot"
+umount "$ROOT/home"
+umount "$ROOT/usr"
+umount "$ROOT/var"
+umount "$ROOT"
 
 swapoff /dev/mapper/testvg-lv0_crypt
 cryptsetup close "testvg-lv0_crypt"
