@@ -1,6 +1,6 @@
 PKGS_EXTRA+=( e2fsprogs ) # for fsck.ext4
 PKGS_EXTRA+=( lvm2 )
-PKGS_EXTRA+=( cryptsetup-initramfs cryptsetup )
+PKGS_EXTRA+=( cryptsetup-initramfs )
 
 # disable AES and SHA instructions
 if [[ "$QEMU_CPU_MODEL" =~ ^(.*),\+aes(,.*)?$ ]]; then
