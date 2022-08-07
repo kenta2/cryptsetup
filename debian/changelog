@@ -1,4 +1,4 @@
-cryptsetup (2:2.5.0-2) UNRELEASED; urgency=low
+cryptsetup (2:2.5.0-2) unstable; urgency=low
 
   [ Matthias Klose ]
   * Add support for 'noudeb' build profile. (Closes: #983318)
@@ -11,30 +11,50 @@ cryptsetup (2:2.5.0-2) UNRELEASED; urgency=low
     needs legacy hashes (currently ripemd160 and whirlpool). (LP: #1979159)
 
   [ Guilhem Moulin ]
-  * DEP-8: relax cryptroot's kernel.deb regex.
   * New DEP-8 test for crude checks of the initramfs hook.
   * Minor changes to the legacy.so inclusion logic.
   * DEP-8: Add checks for OpenSSL's legacy.so inclusion.
-  * DEP-8: Add more partition type GUIDs.
-  * DEP-8: Rename 'testvg' Volume Group to 'cryptvg'.
-  * New DEP-8 test for LUKS-on-LVM layout (backed by two Physical Volumes).
-  * New DEP-8 test for LVM-on-MD-on-LUKS2 layout backed by 4 independently
-    encrypted partitions (each unlocked at initramfs stage).
   * d/rules: Inspect DEB_BUILD_* with $(filter ,) not $(findstring ,).
-  * d/t: Use file: not file:// in sources.list(5).
-  * d/t: Add convenience wrapper script for local cryptroot-* test runs.
   * initramfs boot script: Remove custom LVM handling.  Since 2.03.15-1 lvm2
     doesn't ship an initramfs boot script anymore and relies solely on udev
     rules instead.  We therefore don't have to manually activate LVs/VGs
     anymore, but cryptsetup-initramfs now conflicts with earlier lvm2
     versions. (Closes: #928943)
+  * Override lintian tag 'conflicts-with-version' given the above.
   * initramfs hook: Don't overwrite crypttab(5) source to /dev/mapper/$NAME
     for mapped devices. (Closes: #1016455)
+  * initramfs hook: Preserve crypttab source specifications and devices
+    starting with /dev/disk/by- or /dev/mapper/.
   * d/README.initramfs: Improve section about cryptopts= kernel parameter.
   * d/Debian.README: Mention that systemd masks /etc/init.d/cryptdisks.
+  * Rename systemd_cryptsetup-suspend.conf to systemd/cryptsetup-suspend.conf.
+  * cryptsetup-suspend-wrapper: Fix grep calls in some corner cases such as
+    template cgroups.
+  * cryptsetup-suspend-wrapper: Avoid double slash in cgroup paths.
+  * cryptsetup-suspend-wrapper: Consolidate style.
     (Closes: #1010708)
+  * d/t/cryptroot-*: Relax the kernel.deb regex to account for release
+    candidates.
+  * d/t/cryptroot-*: Add more partition type GUIDs.
+  * d/t/cryptroot-*: Improve sources.list(5) generation.
+  * d/t/cryptroot-*: Make APT repository Origin and URI configurable.
+  * d/t/cryptroot-*: Start udevd before setting up the guest.
+  * d/t/cryptroot-*: Use a separate /run partition when bootstrapping.
+  * Run `chmod +x d/t/cryptdisks d/t/utils/init` for consistency.
+  * d/t/cryptroot-*.d/config: Remove 'cryptsetup' from PKGS_EXTRA as it's only
+    needed for cryptroot-sysvinit.
+  * d/t/cryptroot-sysvinit: Rename 'rootfs.key' keyfile to 'homefs.key' which
+    better describes the purpose of the keyfile.
+  * d/t/cryptroot-*: Replace /target with '$ROOT'.
+  * d/t/cryptroot-*: Rename 'testvg' Volume Group to 'cryptvg'.
+  * d/t/cryptroot-*: Add note about testing cryptsetup-suspend.
+  * d/t: Add convenience wrapper script for local cryptroot-* test runs.
+  * New DEP-8 test for LVM-on-MD-on-LUKS2 layout backed by 4 independently
+    encrypted partitions (all unlocked at initramfs stage).
+  * New DEP-8 test for a complex nested block device stack.
+  * Salsa CI: Disable autopkgtest job for now.
 
- -- Guilhem Moulin <guilhem@debian.org>  Sat, 06 Aug 2022 00:15:59 +0200
+ -- Guilhem Moulin <guilhem@debian.org>  Tue, 09 Aug 2022 01:40:50 +0200
 
 cryptsetup (2:2.5.0-1) unstable; urgency=medium
 
