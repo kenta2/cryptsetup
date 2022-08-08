@@ -1,6 +1,6 @@
 #!/bin/sh
 
-set -e
+set -ue
 PATH="/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
 
@@ -100,6 +100,7 @@ mount_initramfs() {
 }
 
 umount_initramfs() {
+    local p
     if [ "$KEEP_INITRAMFS" = "true" ]; then
         # recursively unmount bind mounts, but keep initramfs
         for p in $BIND_PATHS; do
@@ -114,6 +115,7 @@ umount_initramfs() {
 
 CGROUP_FREEZER=
 freeze_cgroups() {
+    local CGROUPS CGROUPS_SYSTEM CGROUP_SYSTEMD MY_CGROUP c val
     # add all machines/containers and user cgroups
     CGROUPS="$hierarchy/machine.slice/cgroup.freeze \
         $hierarchy/user.slice/cgroup.freeze"
@@ -129,8 +131,8 @@ freeze_cgroups() {
 
     # freeze all unfrozen cgroups
     for c in $CGROUPS $CGROUPS_SYSTEM "$CGROUP_SYSTEMD"; do
-        [ ! -f "$c" ] && continue
-        local val="$(cat "$c")"
+        [ -f "$c" ] || continue
+        val="$(cat "$c")"
 
         # dont freeze our cgroup, systemd-suspend/udevd or frozen cgroups
         # freezing udevd blocks luksResume
@@ -143,14 +145,16 @@ freeze_cgroups() {
 }
 
 thaw_cgroups() {
+    local c
     for c in $CGROUP_FREEZER; do
-       echo 0 > "$c"
+       echo 0 >"$c"
     done
 }
 
 get_active_devices() {
+    local m
     for m in $dm_devices; do
-        [ "x$m" = "x$CRYPTTAB_NAME" ] || continue
+        [ "$m" = "$CRYPTTAB_NAME" ] || continue
         crypttab_parse_options --quiet
         _get_crypt_type
         if [ "$CRYPTTAB_TYPE" != "luks" ]; then
@@ -196,9 +200,9 @@ clean_up() {
 
 # check unified cgroups hierarchy
 # https://github.com/systemd/systemd/blob/master/docs/CGROUP_DELEGATION.md
-if [ -d /sys/fs/cgroup/system.slice/ ]; then
+if [ -d /sys/fs/cgroup/system.slice ]; then
     hierarchy="/sys/fs/cgroup"
-elif [ -d /sys/fs/cgroup/unified/system.slice/ ]; then
+elif [ -d /sys/fs/cgroup/unified/system.slice ]; then
     # hybrid cgroup hierarchy
     hierarchy="/sys/fs/cgroup/unified"
 else
