@@ -197,7 +197,7 @@ clean_up() {
 # check unified cgroups hierarchy
 # https://github.com/systemd/systemd/blob/master/docs/CGROUP_DELEGATION.md
 if [ -d /sys/fs/cgroup/system.slice/ ]; then
-    hierarchy="/sys/fs/cgroup/"
+    hierarchy="/sys/fs/cgroup"
 elif [ -d /sys/fs/cgroup/unified/system.slice/ ]; then
     # hybrid cgroup hierarchy
     hierarchy="/sys/fs/cgroup/unified"
