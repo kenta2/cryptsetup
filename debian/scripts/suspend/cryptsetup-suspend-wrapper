@@ -155,33 +155,34 @@ umount_initramfs() {
 }
 
 CGROUP_FREEZER=
+freeze_cgroup() {
+    local c="$1" v
+    # freeze cgroup if non-frozen
+    if [ -f "$c" ] && v="$(cat <"$c")" && [ $v -eq 0 ]; then
+        echo 1 >"$c"
+        CGROUP_FREEZER="$c${CGROUP_FREEZER:+" $CGROUP_FREEZER"}"
+    fi
+}
 freeze_cgroups() {
-    local CGROUPS CGROUPS_SYSTEM CGROUP_SYSTEMD MY_CGROUP c val
-    # add all machines/containers and user cgroups
-    CGROUPS="$hierarchy/machine.slice/cgroup.freeze \
-        $hierarchy/user.slice/cgroup.freeze"
+    local mycgroup c
 
-    # add all system cgroups but us
-    CGROUPS_SYSTEM="$(find "$hierarchy"/system.slice/ -mindepth 2 -maxdepth 2 -name cgroup.freeze)"
-
-    # add systemd itself
-    CGROUP_SYSTEMD="$hierarchy/init.scope/cgroup.freeze"
+    # freeze all machines/containers and user cgroups
+    freeze_cgroup "$hierarchy/machine.slice/cgroup.freeze"
+    freeze_cgroup "$hierarchy/user.slice/cgroup.freeze"
 
     # get my second level cgroup
-    MY_CGROUP="$(grep -m1 ^0:: /proc/self/cgroup | cut -sd/ -f3)"
+    mycgroup="$(grep -m1 "^0::" /proc/self/cgroup | cut -sd/ -f3)"
 
-    # freeze all unfrozen cgroups
-    for c in $CGROUPS $CGROUPS_SYSTEM "$CGROUP_SYSTEMD"; do
-        [ -f "$c" ] || continue
-        val="$(cat "$c")"
-
-        # dont freeze our cgroup, systemd-suspend or frozen cgroups
-        if ! printf "%s" "$c" | grep -qF -e "systemd-suspend" -e "$MY_CGROUP" \
-                && [ $val -eq 0 ]; then
-            echo 1 > "$c"
-            CGROUP_FREEZER="$c $CGROUP_FREEZER"
+    # freeze all system cgroups except ours and systemd-suspend
+    for c in "$hierarchy"/system.slice/*/cgroup.freeze; do
+        if  [ "$c" != "$hierarchy/system.slice/$mycgroup/cgroup.freeze" ] && \
+                [ "${c#"$hierarchy/system.slice/systemd-suspend."}" = "$c" ]; then
+            freeze_cgroup "$c"
         fi
     done
+
+    # freeze systemd itself
+    freeze_cgroup "$hierarchy/init.scope/cgroup.freeze"
 }
 
 thaw_cgroups() {
