@@ -131,13 +131,11 @@ freeze_cgroups() {
     for c in $CGROUPS $CGROUPS_SYSTEM "$CGROUP_SYSTEMD"; do
         [ ! -f "$c" ] && continue
         local val="$(cat "$c")"
-        printf "%s" "$c" | grep -qE "systemd-suspend|systemd-udev|$MY_CGROUP" && continue
 
         # dont freeze our cgroup, systemd-suspend/udevd or frozen cgroups
         # freezing udevd blocks luksResume
-        printf "%s" "$c" | grep -qE "systemd-suspend|systemd-udev|$MY_CGROUP" && continue
-
-        if [ 0 -eq "$val" ]; then
+        if ! printf "%s" "$c" | grep -qF -e "systemd-suspend" -e "systemd-udev" -e "$MY_CGROUP" \
+                && [ $val -eq 0 ]; then
             echo 1 > "$c"
             CGROUP_FREEZER="$c $CGROUP_FREEZER"
         fi
@@ -210,7 +208,7 @@ fi
 
 # check that not run as user
 # XXX: We should catch also cases where libpam-systemd is not installed
-if grep -q "user.slice" /proc/self/cgroup; then
+if grep -Eq '^[0-9]+:[^:]*:/user\.slice/' /proc/self/cgroup; then
     log_error "Don't run this script as user"
     exit 1
 fi
