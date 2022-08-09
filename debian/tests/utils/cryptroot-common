@@ -412,7 +412,7 @@ declare -a QEMU_COMMON_ARGS=(
     ${QEMU_CPU_MODEL:+-cpu "$QEMU_CPU_MODEL"}
     ${QEMU_SMP:+-smp "$QEMU_SMP"}
     ${QEMU_MEMORY:+-m "$QEMU_MEMORY"}
-    -vga virtio
+    -vga none
     -display none
     -object "rng-random,id=rng0,filename=/dev/urandom" -device "virtio-rng-pci,rng=rng0"
     -boot "order=c,strict=on"
