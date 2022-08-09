@@ -232,7 +232,7 @@ sub poweroff() {
     # XXX would be nice to use the QEMU monitor here but the guest
     # doesn't seem to respond to system_powerdown QMP commands
     wait_for_prompt($CONSOLE => $PS1);
-    type_data($CONSOLE => q{echo o >/proc/sysrq-trigger});
+    type_data($CONSOLE => q{poweroff});
     expect(); # wait for QEMU to terminate
 }
 sub hibernate() {
