@@ -24,6 +24,8 @@ if ($POWERCYCLE_COUNT == 0) {
     hibernate();
 }
 else {
+    expect($Cryptsetup::Mock::SERIAL => qr/(?:^|\s)?PM: hibernation: hibernation exit\r\n/m);
+    type_data($Cryptsetup::Mock::CONSOLE => ""); # get a new prompt
     # no need to relogin, we get the shell as we left it
     assert_command(q{grep -Fx hello </dev/shm/foo.stamp});
     poweroff();

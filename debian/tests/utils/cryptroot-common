@@ -456,7 +456,6 @@ if [ "$INTERACTIVE" = "y" ]; then
         "$QEMU_SYSTEM_CMD" "${QEMU_COMMON_ARGS[@]}" "${QEMU_STDIO_ARGS[@]}"
     done
 else
-    echo "To interact with the machine, run \`minicom -D unix#$TEMPDIR/hvc0\`" >&2
     for ((i=0; i <= GUEST_POWERCYCLE; i++)); do
         "$QEMU_SYSTEM_CMD" "${QEMU_COMMON_ARGS[@]}" \
             -chardev "socket,id=mon0,path=$TEMPDIR/mon0,server=on,wait=off,$QEMU_CHARDEV_LOG" \

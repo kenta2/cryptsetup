@@ -27,14 +27,14 @@ use Time::HiRes ();
 
 my (%SOCKET, %BUFFER);
 my ($WBITS, $RBITS);
-my ($SERIAL, $MONITOR);
+our ($SERIAL, $CONSOLE, $MONITOR);
 
 use Exporter qw/import/;
 BEGIN {
-    ($SERIAL, $MONITOR) = qw/ttyS0 mon0/;
+    ($SERIAL, $CONSOLE, $MONITOR) = qw/ttyS0 hvc0 mon0/;
     my $dir = $ARGV[1] =~ m#\A(/\p{Print}+)\z# ? $1 : die "Invalid base directory\n"; # untaint
     my $epoch = Time::HiRes::time();
-    foreach my $id ($MONITOR, $SERIAL) {
+    foreach my $id ($SERIAL, $CONSOLE, $MONITOR) {
         my $path = $dir . "/" . $id;
         my $sockaddr = Socket::pack_sockaddr_un($path) // die;
         socket(my $socket, PF_UNIX, SOCK_STREAM|SOCK_CLOEXEC|SOCK_NONBLOCK, 0) or die "socket: $!";
@@ -62,6 +62,7 @@ BEGIN {
         unlock_disk
         login
         login_nopassword
+        type_data
         type_password
         type_at_prompt
         shell_command
@@ -104,7 +105,7 @@ sub expect(;$$) {
 }
 sub wait_for_prompt($$) {
     my ($chan, $prompt) = @_;
-    return expect($chan => qr/\A(?:.*?\r\n)?$prompt/aasm);
+    return expect($chan => qr/\A(?:.*?\r\n?)?$prompt/aasm);
 }
 
 sub type_data($$%) {
@@ -164,8 +165,8 @@ sub type_data($$%) {
 
 sub type_at_prompt($$%) {
     my ($prompt, $data, %options) = @_;
-    wait_for_prompt($SERIAL => $prompt);
-    type_data($SERIAL => $data, %options);
+    wait_for_prompt($CONSOLE => $prompt);
+    type_data($CONSOLE => $data, %options);
 }
 sub type_password($$%) {
     my ($prompt, $password, %options) = @_;
@@ -178,10 +179,10 @@ my $COMMAND_OUTPUT = qr/\A$CSI? \r (?<result>.*?\r\n)? (?<rest>$PS1) /msx;
 
 sub shell_command($) {
     my $command = shift;
-    wait_for_prompt($SERIAL => $PS1);
-    type_data($SERIAL => $command);
-    my %r = expect($SERIAL => $COMMAND_OUTPUT);
-    $BUFFER{$SERIAL} = $r{rest} . $BUFFER{$SERIAL}; # reinject prompt into buffered output
+    wait_for_prompt($CONSOLE => $PS1);
+    type_data($CONSOLE => $command);
+    my %r = expect($CONSOLE => $COMMAND_OUTPUT);
+    $BUFFER{$CONSOLE} = $r{rest} . $BUFFER{$CONSOLE}; # reinject prompt into buffered output
     return $r{result} // "";
 }
 sub shell_command2($) {
@@ -199,8 +200,7 @@ sub assert_command($;$) {
 
 sub unlock_disk($) {
     my $passphrase = shift;
-    my $console = "ttyS0";
-    my %r = expect($console => qr/\A(?:.*?(?:\r\n|\.\.\. ))?Please unlock disk (?<name>\p{Graph}+): /aasm);
+    my %r = expect($SERIAL => qr/\A(?:.*?(?:\r\n|\.\.\. ))?Please unlock disk (?<name>\p{Graph}+): /aasm);
     if ((my $ref = ref($passphrase)) ne "") {
         my $name = $r{name};
         unless (defined $name) {
@@ -214,7 +214,7 @@ sub unlock_disk($) {
         }
     }
     die "Unable to unlock, aborting.\n" unless defined $passphrase;
-    type_data($console => $passphrase, echo => 0);
+    type_data($SERIAL => $passphrase, echo => 0);
 }
 
 my $LOGIN_PROMPT = qr/Debian [^\r\n]+ [0-9A-Za-z]+(?:\r\n)+(?<hostname>[[:alnum:]._-]+) login: /aa;
@@ -231,16 +231,16 @@ sub login_nopassword($) {
 sub poweroff() {
     # XXX would be nice to use the QEMU monitor here but the guest
     # doesn't seem to respond to system_powerdown QMP commands
-    wait_for_prompt($SERIAL => $PS1);
-    type_data($SERIAL => q{echo o >/proc/sysrq-trigger});
+    wait_for_prompt($CONSOLE => $PS1);
+    type_data($CONSOLE => q{echo o >/proc/sysrq-trigger});
     expect(); # wait for QEMU to terminate
 }
 sub hibernate() {
     # an alternative is to send {"execute":"guest-suspend-disk"} on the
     # guest agent socket, but we don't want to require qemu-guest-agent
     # on the guest so this will have to do
-    wait_for_prompt($SERIAL => $PS1);
-    type_data($SERIAL => q{echo disk >/sys/power/state});
+    wait_for_prompt($CONSOLE => $PS1);
+    type_data($CONSOLE => q{echo disk >/sys/power/state});
     expect(); # wait for QEMU to terminate
 }
 

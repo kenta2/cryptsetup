@@ -163,7 +163,7 @@ cat >"$ROOT/etc/default/grub" <<-EOF
 	GRUB_DEFAULT=0
 	GRUB_TIMEOUT=0
 	GRUB_CMDLINE_LINUX_DEFAULT=""
-	GRUB_CMDLINE_LINUX="console=tty0 console=hvc0 console=$CONSOLE,115200n8"
+	GRUB_CMDLINE_LINUX="console=tty0 console=$CONSOLE,115200n8"
 	GRUB_DISABLE_RECOVERY=true
 	GRUB_TERMINAL="console serial"
 	GRUB_SERIAL_COMMAND="serial --speed=115200"
@@ -189,7 +189,15 @@ if [ -f "$ROOT/etc/inittab" ]; then
     # for sysvinit
     cat >>"$ROOT/etc/inittab" <<-EOF
 		S0:23:respawn:/sbin/getty -8 -L 115200 $CONSOLE linux
+		h0:2345:respawn:/sbin/agetty -8 -L 115200 hvc0 linux
 	EOF
+fi
+
+if [ -d "$ROOT/etc/systemd/system" ]; then
+    # for systemd
+    # (getty is automatically enabled on ttyS0 due to the console= kernel parameter)
+    ln -s "/lib/systemd/system/serial-getty@.service" \
+          "$ROOT/etc/systemd/system/getty.target.wants/serial-getty@hvc0.service"
 fi
 
 if [ -f /init.postinst ]; then
