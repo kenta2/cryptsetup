@@ -1,4 +1,5 @@
 PKGS_EXTRA+=( e2fsprogs ) # for fsck.ext4
+PKGS_EXTRA+=( dbus ) # for systemctl(1)
 PKGS_EXTRA+=( lvm2 )
 PKGS_EXTRA+=( cryptsetup-initramfs )
 

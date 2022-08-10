@@ -240,7 +240,7 @@ sub hibernate() {
     # guest agent socket, but we don't want to require qemu-guest-agent
     # on the guest so this will have to do
     wait_for_prompt($CONSOLE => $PS1);
-    type_data($CONSOLE => q{echo disk >/sys/power/state});
+    type_data($CONSOLE => q{systemctl hibernate});
     expect(); # wait for QEMU to terminate
 }
 
