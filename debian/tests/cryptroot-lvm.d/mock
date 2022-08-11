@@ -27,7 +27,7 @@ else {
     expect($SERIAL => qr/(?:^|\s)?PM: hibernation: hibernation exit\r\n/m);
     # no need to relogin, we get the shell as we left it
     shell(q{grep -Fx hello </dev/shm/foo.stamp}, rv => 0);
-    poweroff();
+    QMP::quit();
 
     # XXX would be nice to test cryptsetup-suspend here, but it's not
     # trivial to do since it doesn't use the serial console but VT8 for

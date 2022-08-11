@@ -26,4 +26,6 @@ shell(q{grep -E '^vd\S+_crypt\s' </tmp/initramfs/cryptroot/crypttab >/tmp/out});
 shell(q{grep -E  '^vda5_crypt\s' </tmp/out}, rv => 0);
 shell(q{grep -Ev '^vda5_crypt\s' </tmp/out}, rv => 1);
 
+# don't use QMP::quit() here since we want to run our init scripts in
+# shutdown phase
 poweroff();

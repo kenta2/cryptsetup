@@ -29,4 +29,4 @@ $out = shell(q{cat /proc/crypto});
 die unless $out =~ m#^name\s*:.*\baes\b#mi;
 die if $out =~ m#^(?:name|driver)\s*:.*\b__(?:.*\b)?aes\b#mi;
 
-poweroff();
+QMP::quit();

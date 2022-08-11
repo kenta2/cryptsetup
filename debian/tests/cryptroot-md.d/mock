@@ -38,4 +38,4 @@ die unless $out =~ m#^`-vdb4_crypt\s+crypt\s*$#m;
 die unless $out =~ m#^    [`|]-cryptvg-swap\s+lvm\s+\[SWAP\]\s*$#m;
 die unless $out =~ m#^    [`|]-cryptvg-root\s+lvm\s+/\s*$#m;
 
-poweroff();
+QMP::quit();

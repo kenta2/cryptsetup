@@ -222,6 +222,7 @@ sub hibernate() {
     # guest agent socket, but we don't want to require qemu-guest-agent
     # on the guest so this will have to do
     write_data($CONSOLE => q{systemctl hibernate});
+    QMP::wait_for_event("SUSPEND_DISK");
     expect();# wait for QEMU to terminate
 }
 
@@ -229,7 +230,74 @@ sub poweroff() {
     # XXX would be nice to use the QEMU monitor here but the guest
     # doesn't seem to respond to system_powerdown QMP commands
     write_data($CONSOLE => q{poweroff});
+    QMP::wait_for_event("SHUTDOWN");
     expect(); # wait for QEMU to terminate
+}
+
+
+package QMP;
+
+# QMP protocol
+# https://qemu.readthedocs.io/en/latest/interop/qemu-qmp-ref.html
+
+use JSON ();
+
+# read and decode a QMP server line
+sub getline() {
+    my %r = CryptrootTest::Utils::expect($MONITOR => qr/\A(?<str>.+)\r\n\z/m);
+    my $str = $r{str} // die;
+    return JSON::->new->decode($str) // die;
+}
+
+# send a QMP command and optional arguments
+sub command($;$) {
+    my ($command, $arguments) = @_;
+    my $cmd = { execute => $command };
+    $cmd->{arguments} = $arguments if defined $arguments;
+
+    $cmd = JSON::->new->encode($cmd);
+    STDOUT->printflush($cmd . "\n");
+    CryptrootTest::Utils::write_data($MONITOR => $cmd, eol => "\r\n", echo => 0, reol => "");
+
+    my $resp = QMP::getline();
+    return $resp->{return} // die;
+}
+
+# wait for the QMP greeting line
+my @CAPABILITIES;
+sub greeting() {
+    my $greeting = QMP::getline();
+    $greeting = $greeting->{QMP} // die;
+    @CAPABILITIES = @{$greeting->{capabilities}} if defined $greeting->{capabilities};
+}
+
+# negotiate QMP capabilities
+sub capabilities(@) {
+    my $r = QMP::command(qmp_capabilities => {enable => \@_});
+    die if %$r;
+}
+
+BEGIN {
+    # https://gitlab.com/qemu-project/qemu/-/blob/master/docs/interop/qmp-spec.txt sec 4
+    QMP::greeting();
+    QMP::capabilities();
+}
+
+sub wait_for_event($) {
+    my $event_name = shift;
+    while(1) {
+        my $resp = QMP::getline() // next;
+        next unless defined $resp->{event};
+        last if $resp->{event} eq $event_name;
+    }
+}
+
+sub quit() {
+    # don't use QMP::command() here since we might never receive a response
+    my $cmd = JSON::->new->encode({ execute => "quit" });
+    STDOUT->printflush($cmd . "\n");
+    CryptrootTest::Utils::write_data($MONITOR => $cmd, eol => "\r\n", echo => 0, reol => "");
+    CryptrootTest::Utils::expect(); # wait for QEMU to terminate
 }
 
 1;

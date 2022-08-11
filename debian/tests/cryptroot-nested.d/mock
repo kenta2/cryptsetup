@@ -41,4 +41,4 @@ $out = shell(q{btrfs filesystem show /});
 die unless $out =~ m#^\s*devid\s+1\s.*\s/dev/mapper/vdd_crypt\s*$#m;
 die unless $out =~ m#^\s*devid\s+2\s.*\s/dev/mapper/md0_crypt\s*$#m;
 
-poweroff();
+QMP::quit();
