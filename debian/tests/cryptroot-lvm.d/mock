@@ -27,10 +27,18 @@ else {
     expect($SERIAL => qr/(?:^|\s)?PM: (?:hibernation: )?hibernation exit\r\n/m);
     # no need to relogin, we get the shell as we left it
     shell(q{grep -Fx hello </dev/shm/foo.stamp}, rv => 0);
-    QMP::quit();
 
-    # XXX would be nice to test cryptsetup-suspend here, but it's not
-    # trivial to do since it doesn't use the serial console but VT8 for
-    # the prompt, which makes sense for a graphical environment but
-    # that's not a channel we can easily mock
+    # briefly suspend
+    suspend();
+
+    # make sure wakeup yields a cryptsetup prompt
+    wakeup();
+    expect($SERIAL => qr/(?:^|\s)?PM: suspend exit\r\n/m);
+    unlock_disk("topsecret");
+
+    # consume PS1 to make sure we're at a shell prompt
+    expect($CONSOLE => qr/\A $PS1 \z/aamsx);
+    shell(q{echo ping});
+
+    QMP::quit();
 }

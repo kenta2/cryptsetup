@@ -20,6 +20,8 @@ use warnings;
 use strict;
 
 our ($SERIAL, $CONSOLE, $MONITOR);
+our $PS1 = qr/root\@[\-\.0-9A-Z_a-z]+ : [~\/][\-\.\/0-9A-Z_a-z]* [\#\$]\ /aax;
+
 package CryptrootTest::Utils;
 
 use Socket qw/PF_UNIX SOCK_STREAM SOCK_CLOEXEC SOCK_NONBLOCK SHUT_RD SHUT_WR/;
@@ -154,6 +156,8 @@ BEGIN {
         unlock_disk
         login
         shell
+        suspend
+        wakeup
         hibernate
         poweroff
         expect
@@ -182,7 +186,6 @@ sub unlock_disk($) {
     write_data($SERIAL => $passphrase, echo => 0, reol => "\r");
 }
 
-my $PS1 = qr/root\@[\-\.0-9A-Z_a-z]+ : [~\/][\-\.\/0-9A-Z_a-z]* [\#\$]\ /aax;
 sub login($;$) {
     my ($username, $password) = @_;
     expect($CONSOLE => qr/\A[\r\n]*Debian [^\r\n]+ [0-9A-Za-z]+(?:\r\n)+[[:alnum:]._-]+ login: \z/aams);
@@ -215,6 +218,34 @@ sub shell($%) {
         }
     }
     return $out;
+}
+
+# enter S3 sleep state (suspend to ram aka standby)
+sub suspend() {
+    write_data($CONSOLE => q{systemctl suspend});
+    # while the command is asynchronous the system might suspend before
+    # we have a chance to read the next $PS1
+
+    # wait for the SUSPEND event
+    QMP::wait_for_event("SUSPEND");
+
+    # double check that the guest is indeed suspended
+    my $resp = QMP::command(q{query-status});
+    die unless defined $resp->{status} and  $resp->{status} eq "suspended" and
+        defined $resp->{running} and $resp->{running} == JSON::false();
+}
+
+sub wakeup() {
+    my $r = QMP::command(q{system_wakeup});
+    die if %$r;
+
+    # wait for the WAKEUP event
+    QMP::wait_for_event("WAKEUP");
+
+    # double check that the guest is indeed running
+    my $resp = QMP::command(q{query-status});
+    die unless defined $resp->{status} and  $resp->{status} eq "running" and
+        defined $resp->{running} and $resp->{running} == JSON::true();
 }
 
 # enter S4 sleep state (suspend to disk aka hibernate)
