@@ -435,10 +435,11 @@ if [ "$BOOT" = "efi" ]; then
     )
 fi
 
-QEMU_CHARDEV_LOG="logfile=$TEMPDIR/qemu.log,logappend=on"
+LOGDIR="$TEMPDIR"
+SOCKETDIR="$TEMPDIR"
 declare -a QEMU_STDIO_ARGS=(
     # setup is always fully unattended
-    -chardev "stdio,id=char0,mux=on,$QEMU_CHARDEV_LOG"
+    -chardev "stdio,id=char0,mux=on,logfile=$LOGDIR/qemu.log,logappend=on"
     -serial "chardev:char0"
     -mon "chardev=char0,mode=readline"
 )
@@ -458,16 +459,16 @@ if [ "$INTERACTIVE" = "y" ]; then
 else
     for ((i=0; i <= GUEST_POWERCYCLE; i++)); do
         "$QEMU_SYSTEM_CMD" "${QEMU_COMMON_ARGS[@]}" \
-            -chardev "socket,id=mon0,path=$TEMPDIR/mon0,server=on,wait=off,$QEMU_CHARDEV_LOG" \
+            -chardev "socket,id=mon0,path=$SOCKETDIR/mon0,server=on,wait=off,logfile=$LOGDIR/mon0.log,logappend=on" \
             -mon "chardev=mon0,mode=control" \
-            -chardev "socket,id=ttyS0,path=$TEMPDIR/ttyS0,server=on,wait=on,$QEMU_CHARDEV_LOG" \
+            -chardev "socket,id=ttyS0,path=$SOCKETDIR/ttyS0,server=on,wait=on,logfile=$LOGDIR/ttyS0.log,logappend=on" \
             -serial "chardev:ttyS0" \
-            -chardev "socket,id=hvc0,path=$TEMPDIR/hvc0,server=on,wait=off,$QEMU_CHARDEV_LOG" \
+            -chardev "socket,id=hvc0,path=$SOCKETDIR/hvc0,server=on,wait=off,logfile=$LOGDIR/hvc0.log,logappend=on" \
             -device "virtio-serial" \
             -device "virtconsole,chardev=hvc0" \
             &
         QEMU_PID=$!
-        "$TESTDIR/$TESTNAME.d/mock" "$i" "$TEMPDIR" || exit 1
+        "$TESTDIR/$TESTNAME.d/mock" "$i" "$SOCKETDIR" || exit 1
         wait $QEMU_PID && rv=0 || rv=$?
         unset QEMU_PID
         [ $rv -eq 0 ] || exit $rv
