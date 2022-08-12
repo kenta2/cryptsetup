@@ -7,12 +7,10 @@ variables:
   # takes 20-30min on Salsa CI runners as they don't support KVM acceleration
   # cf. https://salsa.debian.org/salsa-ci-team/pipeline/-/issues/266 ,
   # and other tests are skipped anyway since they require machine-level
-  # isolation which the runners don't provide.
-  # Running 'cryptroot-lvm' only is better than disabling the autopkgtest
-  # job altogether.
-  # XXX as of autopkgtest 5.22 this doesn't work due to https://bugs.debian.org/1010338#20
-  #SALSA_CI_AUTOPKGTEST_ARGS: '--test-name=cryptroot-lvm'
-  SALSA_CI_DISABLE_AUTOPKGTEST: 1
+  # isolation which the runners currently don't provide.
+  # Running 'cryptroot-lvm' and 'cryptroot-legacy' only is significantly
+  # better than disabling the autopkgtest job altogether.
+  SALSA_CI_AUTOPKGTEST_ARGS: '--test-name=cryptroot-lvm --test-name=cryptroot-legacy'
 
 # Run reprotest job under 'nocheck' build profile.  The job runs with
 # root privileges, which trigger extra tests within the upstream test
