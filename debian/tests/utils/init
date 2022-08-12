@@ -199,6 +199,12 @@ if [ -d "$ROOT/etc/systemd/system" ]; then
         ln -s "/lib/systemd/system/serial-getty@.service" \
             "$ROOT/etc/systemd/system/getty.target.wants/serial-getty@hvc0.service"
     fi
+
+    # mask all timer units
+    for t in "$ROOT"/lib/systemd/system/*.timer; do
+        test -f "$t" || continue
+        ln -s "/dev/null" "$ROOT/etc/systemd/system/${t##*/}"
+    done
 fi
 
 if [ -f "$ROOT/etc/inittab" ]; then
