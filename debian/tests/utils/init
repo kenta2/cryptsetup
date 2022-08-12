@@ -37,6 +37,7 @@ mount -t sysfs -o nodev,noexec,nosuid sysfs /sys
 modprobe virtio_rng # /dev/hwrng (avoid entropy starvation)
 modprobe virtio_pci
 modprobe virtio_blk # /dev/vd[a-z]
+modprobe virtio_console # /dev/hvc[0-7]
 
 # start udevd
 /lib/systemd/systemd-udevd --daemon
@@ -190,19 +191,23 @@ cat >"$ROOT/root/.inputrc" <<-EOF
 	set enable-bracketed-paste off
 EOF
 
-if [ -f "$ROOT/etc/inittab" ]; then
-    # for sysvinit
-    cat >>"$ROOT/etc/inittab" <<-EOF
-		S0:23:respawn:/sbin/getty -8 -L 115200 $CONSOLE linux
-		h0:2345:respawn:/sbin/agetty -8 -L 115200 hvc0 linux
-	EOF
+if [ -d "$ROOT/etc/systemd/system" ]; then
+    # systemd
+    if [ -c "$ROOT/dev/hvc0" ]; then
+        # serial-getty@ttyS0.service is automatically enabled due to the console= kernel parameter
+        ln -s "/dev/null" "$ROOT/etc/systemd/system/serial-getty@ttyS0.service"
+        ln -s "/lib/systemd/system/serial-getty@.service" \
+            "$ROOT/etc/systemd/system/getty.target.wants/serial-getty@hvc0.service"
+    fi
 fi
 
-if [ -d "$ROOT/etc/systemd/system" ]; then
-    # for systemd
-    # (getty is automatically enabled on ttyS0 due to the console= kernel parameter)
-    ln -s "/lib/systemd/system/serial-getty@.service" \
-          "$ROOT/etc/systemd/system/getty.target.wants/serial-getty@hvc0.service"
+if [ -f "$ROOT/etc/inittab" ]; then
+    # sysvinit
+    if [ -c "$ROOT/dev/hvc0" ]; then
+        echo "h0:2345:respawn:/sbin/agetty -8 -L 115200 hvc0 linux"
+    else
+        echo "S0:23:respawn:/sbin/getty -8 -L 115200 $CONSOLE linux"
+    fi >>"$ROOT/etc/inittab"
 fi
 
 if [ -f /init.postinst ]; then

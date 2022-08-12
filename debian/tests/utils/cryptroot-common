@@ -437,6 +437,14 @@ fi
 
 LOGDIR="$TEMPDIR"
 SOCKETDIR="$TEMPDIR"
+if [ "$INTERACTIVE" != "y" ]; then
+    QEMU_COMMON_ARGS+=(
+        -device "virtio-serial"
+        -chardev "socket,id=hvc0,path=$SOCKETDIR/hvc0,server=on,wait=off,logfile=$LOGDIR/hvc0.log,logappend=on"
+        -device "virtconsole,chardev=hvc0"
+    )
+fi
+
 declare -a QEMU_STDIO_ARGS=(
     # setup is always fully unattended
     -chardev "stdio,id=char0,mux=on,logfile=$LOGDIR/qemu.log,logappend=on"
@@ -463,9 +471,6 @@ else
             -mon "chardev=mon0,mode=control" \
             -chardev "socket,id=ttyS0,path=$SOCKETDIR/ttyS0,server=on,wait=on,logfile=$LOGDIR/ttyS0.log,logappend=on" \
             -serial "chardev:ttyS0" \
-            -chardev "socket,id=hvc0,path=$SOCKETDIR/hvc0,server=on,wait=off,logfile=$LOGDIR/hvc0.log,logappend=on" \
-            -device "virtio-serial" \
-            -device "virtconsole,chardev=hvc0" \
             &
         QEMU_PID=$!
         "$TESTDIR/$TESTNAME.d/mock" "$i" "$SOCKETDIR" || exit 1

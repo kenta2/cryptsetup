@@ -64,7 +64,7 @@ if [ "$BOOT" = "efi" ]; then
 fi
 
 depmod -ab "$EXTRACT_DIR" "$KERNEL_VERSION"
-for kmod in virtio_blk virtio_pci virtio_rng \
+for kmod in virtio_console virtio_blk virtio_pci virtio_rng \
         "$EXTRACT_DIR/lib/modules/$KERNEL_VERSION"/kernel/arch/*/crypto/*.ko \
         "$EXTRACT_DIR/lib/modules/$KERNEL_VERSION"/kernel/crypto/*.ko \
         $MODULES; do
