@@ -165,7 +165,7 @@ BEGIN {
 
 sub unlock_disk($) {
     my $passphrase = shift;
-    my %r = expect($SERIAL => qr/\A(?:.*?(?:\r\n|\.\.\. ))?Please unlock disk (?<name>\p{Graph}+): \z/aams);
+    my %r = expect($SERIAL => qr/\A(?:.*(?:\r\n|\.\.\. ))?Please unlock disk (?<name>\p{Graph}+): \z/aams);
     if ((my $ref = ref($passphrase)) ne "") {
         my $name = $r{name};
         unless (defined $name) {
@@ -179,7 +179,7 @@ sub unlock_disk($) {
         }
     }
     die "Unable to unlock, aborting.\n" unless defined $passphrase;
-    CryptrootTest::Utils::write_data($SERIAL => $passphrase, echo => 0, reol => "\r");
+    write_data($SERIAL => $passphrase, echo => 0, reol => "\r");
 }
 
 my $PS1 = qr/root\@[\-\.0-9A-Z_a-z]+ : [~\/][\-\.\/0-9A-Z_a-z]* [\#\$]\ /aax;
@@ -217,11 +217,14 @@ sub shell($%) {
     return $out;
 }
 
+# enter S4 sleep state (suspend to disk aka hibernate)
 sub hibernate() {
     # an alternative is to send {"execute":"guest-suspend-disk"} on the
     # guest agent socket, but we don't want to require qemu-guest-agent
     # on the guest so this will have to do
     write_data($CONSOLE => q{systemctl hibernate});
+    # while the command is asynchronous the system might hibernate
+    # before we have a chance to read the next $PS1
     QMP::wait_for_event("SUSPEND_DISK");
     expect();# wait for QEMU to terminate
 }
@@ -230,6 +233,8 @@ sub poweroff() {
     # XXX would be nice to use the QEMU monitor here but the guest
     # doesn't seem to respond to system_powerdown QMP commands
     write_data($CONSOLE => q{poweroff});
+    # while the command is asynchronous the system might shutdown
+    # before we have a chance to read the next $PS1
     QMP::wait_for_event("SHUTDOWN");
     expect(); # wait for QEMU to terminate
 }

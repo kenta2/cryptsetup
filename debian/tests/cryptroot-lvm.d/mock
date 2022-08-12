@@ -24,7 +24,7 @@ if ($POWERCYCLE_COUNT == 0) {
     hibernate();
 }
 else {
-    expect($SERIAL => qr/(?:^|\s)?PM: hibernation: hibernation exit\r\n/m);
+    expect($SERIAL => qr/(?:^|\s)?PM: (?:hibernation: )?hibernation exit\r\n/m);
     # no need to relogin, we get the shell as we left it
     shell(q{grep -Fx hello </dev/shm/foo.stamp}, rv => 0);
     QMP::quit();
