@@ -78,8 +78,11 @@ sub read_data($) {
 sub expect(;$$) {
     my ($chan, $prompt) = @_;
 
-    my $buffer = \$BUFFER{$chan} if defined $chan;
-    return wantarray ? %+ : undef if defined $buffer and $$buffer =~ s/$prompt//;
+    my $buffer = defined $chan ? \$BUFFER{$chan} : undef;
+    if (defined $buffer and $$buffer =~ $prompt) {
+        $$buffer = $' // die;
+        return %+;
+    }
 
     while(unpack("b*", $RBITS) != 0) {
         my $rout = $RBITS;
@@ -87,8 +90,12 @@ sub expect(;$$) {
             die "select: $!" unless $! == EINTR; # try again immediately if select(2) was interrupted
         }
         read_data($rout);
-        return wantarray ? %+ : undef if defined $buffer and $$buffer =~ s/$prompt//;
+        if (defined $buffer and $$buffer =~ $prompt) {
+            $$buffer = $' // die;
+            return %+;
+        }
     }
+    #print STDERR "INFO done reading\n";
 }
 
 sub write_data($$%) {
@@ -188,7 +195,7 @@ sub unlock_disk($) {
 
 sub login($;$) {
     my ($username, $password) = @_;
-    expect($CONSOLE => qr/\A.*\r\ncryptroot-[[:alnum:]._-]+ login: \z/aams);
+    expect($CONSOLE => qr/\r\ncryptroot-[[:alnum:]._-]+ login: \z/aams);
     write_data($CONSOLE => $username, reol => "\r");
 
     if (defined $password) {
@@ -197,7 +204,7 @@ sub login($;$) {
     }
 
     # consume motd(5) or similar
-    expect($CONSOLE => qr/\A .*\r\n $PS1 \z/aamsx);
+    expect($CONSOLE => qr/\r\n $PS1 \z/aamsx);
 }
 
 sub shell($%);
@@ -211,7 +218,7 @@ sub shell($%) {
 
     if (exists $options{rv}) {
         my $rv = shell(q{echo $?});
-        unless ($rv =~ s/\r?\n\z// and $rv =~ /\A([0-9]+)\z/ and $rv == $options{rv}) {
+        unless ($rv =~ s/\r?\n\z// and $rv =~ /\A[0-9]+\z/ and $rv == $options{rv}) {
             my @loc = caller;
             die "ERROR: Command \`$command\` exited with status $rv != $options{rv}",
                 " at line $loc[2] in $loc[1]\n";
