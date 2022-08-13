@@ -188,7 +188,7 @@ sub unlock_disk($) {
 
 sub login($;$) {
     my ($username, $password) = @_;
-    expect($CONSOLE => qr/\A[\r\n]*Debian [^\r\n]+ [0-9A-Za-z]+(?:\r\n)+[[:alnum:]._-]+ login: \z/aams);
+    expect($CONSOLE => qr/\A.*\r\ncryptroot-[[:alnum:]._-]+ login: \z/aams);
     write_data($CONSOLE => $username, reol => "\r");
 
     if (defined $password) {
