@@ -38,7 +38,8 @@ else {
 
     # consume PS1 to make sure we're at a shell prompt
     expect($CONSOLE => qr/\A $PS1 \z/aamsx);
-    shell(q{echo ping});
+    my $out = shell(q{echo ping});
+    die unless $out =~ /\Aping\r?\n\z/m;
 
     QMP::quit();
 }
