@@ -259,12 +259,12 @@ devices_remaining="$(chroot "$INITRAMFS_DIR" /bin/sh -c "
                  CRYPTTAB_KEY \
                  CRYPTTAB_OPTIONS
 
-        crypttab_find_entry --quiet \$dev
-        if [ -n \"\$CRYPTTAB_SOURCE\" ]; then
-            resume_device \$dev || true
+        crypttab_find_entry --quiet \"\$dev\"
+        if [ -n \"\${CRYPTTAB_SOURCE+x}\" ]; then
+            resume_device \"\$dev\" || true
         else
             # write remaining devices to stdout
-            printf \"%s \" \$dev
+            printf \"%s \" \"\$dev\"
         fi
     done
 ")"
@@ -277,7 +277,7 @@ for dev in $devices_remaining; do
              CRYPTTAB_OPTIONS
 
     crypttab_find_entry --quiet "$dev"
-    if [ -n "$CRYPTTAB_SOURCE" ]; then
+    if [ -n "${CRYPTTAB_SOURCE+x}" ]; then
         resume_device "$dev" || true
     else
         log_error "'$dev' not found in /etc/crypttab"
