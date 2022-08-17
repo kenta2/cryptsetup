@@ -286,9 +286,9 @@ use JSON ();
 
 # read and decode a QMP server line
 sub getline() {
-    my %r = CryptrootTest::Utils::expect($MONITOR => qr/\A(?<str>.+)\r\n\z/m);
+    my %r = CryptrootTest::Utils::expect($MONITOR => qr/\A(?<str>.+?)\r\n/m);
     my $str = $r{str} // die;
-    return JSON::->new->decode($str) // die;
+    return JSON::->new->decode($str);
 }
 
 # send a QMP command and optional arguments
@@ -301,14 +301,17 @@ sub command($;$) {
     STDOUT->printflush($cmd . "\n");
     CryptrootTest::Utils::write_data($MONITOR => $cmd, eol => "\r\n", echo => 0, reol => "");
 
-    my $resp = QMP::getline();
-    return $resp->{return} // die;
+    while(1) {
+        my $resp = QMP::getline() // next;
+        # ignore unsolicited server responses (such as events)
+        return $resp->{return} if exists $resp->{return};
+    }
 }
 
 # wait for the QMP greeting line
 my @CAPABILITIES;
 sub greeting() {
-    my $greeting = QMP::getline();
+    my $greeting = QMP::getline() // die;
     $greeting = $greeting->{QMP} // die;
     @CAPABILITIES = @{$greeting->{capabilities}} if defined $greeting->{capabilities};
 }
@@ -329,8 +332,7 @@ sub wait_for_event($) {
     my $event_name = shift;
     while(1) {
         my $resp = QMP::getline() // next;
-        next unless defined $resp->{event};
-        last if $resp->{event} eq $event_name;
+        return if exists $resp->{event} and $resp->{event} eq $event_name;
     }
 }
 
