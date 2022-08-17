@@ -1,3 +1,31 @@
+cryptsetup (2:2.5.0-3) UNRELEASED; urgency=medium
+
+  * d/t/cryptroot-*: Disable VGA card on the guest.
+  * d/t/cryptroot-*: Communicate with guests on /dev/hvc0 and remove
+    console=hvc0 from the kernel command line to get a noise-free channel.
+  * d/t/cryptroot-*: poweroff(): Use poweroff(8) not `echo o
+    >/proc/sysrq-trigger`.
+  * d/t/cryptroot-*: hibernate(): Use systemctl(1) not `echo disk
+    >/sys/power/state`.
+  * d/t/cryptroot-*: Use a separate logfile for each communication channel.
+  * Refactor d/t/utils/mock.pm and add QMP support; this adds 'Depends:
+    libjson-perl' to cryptroot-* autopkgtests.
+  * d/t/cryptroot-*: Use the QMP "quit" command to destroy guests early.
+  * d/t/cryptroot-*: Start getty on /dev/hvc0 only (not /dev/ttyS0) in
+    non-interactive mode.
+  * d/t/cryptroot-*: Remove console=tty0 from the kernel command line.
+  * d/t/cryptroot-*: Mask all timer units to avoid cluttering test
+    environments with background jobs.
+  * d/t/cryptroot-lvm: Also test cryptsetup-suspend (enter to and resume from
+    S3 state).
+  * d/t/cryptroot-*: Simplify login prompt regex.
+  * d/t/cryptroot-*: Use $' when consuming input buffers.
+  * Salsa CI: Include recipes/debian.yml.
+  * Salsa CI: Remove redundant variable RELEASE=unstable.
+  * Salsa CI: Re-enable autopkgtest job with partial coverage.
+
+ -- Guilhem Moulin <guilhem@debian.org>  Wed, 17 Aug 2022 20:00:08 +0200
+
 cryptsetup (2:2.5.0-2) unstable; urgency=low
 
   [ Matthias Klose ]
