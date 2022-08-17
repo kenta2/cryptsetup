@@ -55,12 +55,12 @@ cryptsetup (2:2.5.0-2) unstable; urgency=low
     starting with /dev/disk/by- or /dev/mapper/.
   * d/README.initramfs: Improve section about cryptopts= kernel parameter.
   * d/Debian.README: Mention that systemd masks /etc/init.d/cryptdisks.
+    (Closes: #1010708)
   * Rename systemd_cryptsetup-suspend.conf to systemd/cryptsetup-suspend.conf.
   * cryptsetup-suspend-wrapper: Fix grep calls in some corner cases such as
     template cgroups.
   * cryptsetup-suspend-wrapper: Avoid double slash in cgroup paths.
   * cryptsetup-suspend-wrapper: Consolidate style.
-    (Closes: #1010708)
   * d/t/cryptroot-*: Relax the kernel.deb regex to account for release
     candidates.
   * d/t/cryptroot-*: Add more partition type GUIDs.
