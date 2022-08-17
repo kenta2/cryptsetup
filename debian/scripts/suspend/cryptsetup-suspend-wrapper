@@ -254,13 +254,7 @@ devices_remaining="$(chroot "$INITRAMFS_DIR" /bin/sh -c "
 
     # resume active luks devices (only initramfs devices)
     for dev in $devices; do
-        unset -v CRYPTTAB_NAME \
-                 CRYPTTAB_SOURCE \
-                 CRYPTTAB_KEY \
-                 CRYPTTAB_OPTIONS
-
-        crypttab_find_entry --quiet \"\$dev\"
-        if [ -n \"\${CRYPTTAB_SOURCE+x}\" ]; then
+        if crypttab_find_entry --quiet \"\$dev\"; then
             resume_device \"\$dev\" || true
         else
             # write remaining devices to stdout
@@ -271,13 +265,7 @@ devices_remaining="$(chroot "$INITRAMFS_DIR" /bin/sh -c "
 
 # resume remaining active luks devices (non-initramfs devices)
 for dev in $devices_remaining; do
-    unset -v CRYPTTAB_NAME \
-             CRYPTTAB_SOURCE \
-             CRYPTTAB_KEY \
-             CRYPTTAB_OPTIONS
-
-    crypttab_find_entry --quiet "$dev"
-    if [ -n "${CRYPTTAB_SOURCE+x}" ]; then
+    if crypttab_find_entry --quiet "$dev"; then
         resume_device "$dev" || true
     else
         log_error "'$dev' not found in /etc/crypttab"
