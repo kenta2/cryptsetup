@@ -462,7 +462,8 @@ QEMU_DEBIANIMG_DRIVE="file=$DEBIAN_IMG,format=raw,if=virtio,readonly=on,media=cd
 
 if [ "$INTERACTIVE" = "y" ]; then
     for ((i=0; i <= GUEST_POWERCYCLE; i++)); do
-        "$QEMU_SYSTEM_CMD" "${QEMU_COMMON_ARGS[@]}" "${QEMU_STDIO_ARGS[@]}"
+        "$QEMU_SYSTEM_CMD" "${QEMU_COMMON_ARGS[@]}" "${QEMU_STDIO_ARGS[@]}" \
+            -netdev "user,id=net0" -device "virtio-net-pci,netdev=net0"
     done
 else
     for ((i=0; i <= GUEST_POWERCYCLE; i++)); do
