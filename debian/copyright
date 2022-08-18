@@ -35,7 +35,7 @@ License: GPL-2+
 
 Files: debian/initramfs/cryptroot-unlock
 Copyright: © 2015-2018 Guilhem Moulin <guilhem@debian.org>
-License: GPL-2+
+License: GPL-3+
 
 Files: debian/README.opensc
 Copyright: © 2008 Benjamin Kiessling <benjaminkiessling@bttec.org>
@@ -58,7 +58,7 @@ License: GPL-2+
 
 Files: debian/tests/*
 Copyright: © 2021-2022 Guilhem Moulin <guilhem@debian.org>
-License: GPL-2+
+License: GPL-3+
 
 Files: docs/examples/* tests/all-symbols-test.c
 Copyright: © 2011-2022 Red Hat, Inc.
