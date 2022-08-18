@@ -18,6 +18,11 @@ Copyright: © 2004-2005 Wesley W. Terpstra <terpstra@debian.org>
            © 2016-2022 Guilhem Moulin <guilhem@debian.org>
 License: GPL-2+
 
+Files: debian/scripts/suspend/cryptsetup-suspend.c
+Copyright: © 2018 Guilhem Moulin <guilhem@debian.org>
+           © 2018-2020 Jonas Meurer <jonas@freesources.org>
+License: GPL-3+
+
 Files: debian/askpass.c debian/scripts/passdev.c
 Copyright: © 2008 David Härdeman <david@hardeman.nu>
 License: GPL-2+
@@ -167,6 +172,24 @@ License: GPL-2+ with OpenSSL exception
  do so, delete this exception statement from your version.  If you
  delete this exception statement from all source files in the program,
  then also delete it here.
+
+License: GPL-3+
+ This program is free software; you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation; either version 3 of the License, or
+ (at your option) any later version.
+ .
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+ .
+ You should have received a copy of the GNU General Public License
+ along with this program; if not, write to the Free Software Foundation,
+ Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ .
+ On Debian systems, the complete text of the GNU General Public License
+ version 3 can be found in `/usr/share/common-licenses/GPL-3`.
 
 License: LGPL-2.1+
  This program is free software; you can redistribute it and/or modify it
