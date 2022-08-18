@@ -28,9 +28,9 @@ export PATH
 . /lib/cryptsetup/functions
 
 INITRAMFS_MNT="/run/cryptsetup/cryptsetup-suspend-initramfs"
-INITRAMFS_DIR="$INITRAMFS_MNT"
 SYSTEM_SLEEP_PATH="/lib/systemd/system-sleep"
 CONFIG_FILE="/etc/cryptsetup/suspend.conf"
+unset -v INITRAMFS_DIR
 
 read_config() {
     # define defaults
@@ -93,9 +93,14 @@ mount_initramfs() {
         new="y"
     fi
 
-    # unmkinitramfs extracts microcode into folders "early*" and the actual initramfs into "main"
-    if [ -d "$INITRAMFS_MNT/main" ]; then
+    # unmkinitramfs(8) extracts microcode into folders "early*" and the actual initramfs into "main"
+    if [ -f "$INITRAMFS_MNT/sbin/cryptsetup" ]; then
+        INITRAMFS_DIR="$INITRAMFS_MNT"
+    elif [ -f "$INITRAMFS_MNT/main/sbin/cryptsetup" ]; then
         INITRAMFS_DIR="$INITRAMFS_MNT/main"
+    else
+        log_error "Directory $INITRAMFS_MNT has unpected content" >&2
+        exit 1
     fi
 
     if [ "$new" = "y" ]; then
@@ -126,10 +131,13 @@ mount_initramfs() {
 }
 
 umount_initramfs() {
-    umount -- "$INITRAMFS_DIR/dev"
-    umount -- "$INITRAMFS_DIR/proc"
-    umount -- "$INITRAMFS_DIR/sys"
-    if [ "$KEEP_INITRAMFS" != "true" ]; then
+    if [ -d "${INITRAMFS_DIR-}" ]; then
+        umount -- "$INITRAMFS_DIR/dev"
+        umount -- "$INITRAMFS_DIR/proc"
+        umount -- "$INITRAMFS_DIR/sys"
+    fi
+    if [ "$KEEP_INITRAMFS" != "true" ] || [ -z "${INITRAMFS_DIR+x}" ]; then
+        # always unmount if we error out before setting INITRAMFS_DIR
         umount -- "$INITRAMFS_MNT"
         rmdir -- "$INITRAMFS_MNT"
     fi
