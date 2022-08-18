@@ -23,6 +23,12 @@ Copyright: © 2018 Guilhem Moulin <guilhem@debian.org>
            © 2018-2020 Jonas Meurer <jonas@freesources.org>
 License: GPL-3+
 
+Files: debian/scripts/suspend/cryptsetup-suspend-wrapper
+Copyright: © 2019-2020 Tim <tim@systemli.org>
+           © 2019-2020 Jonas Meurer <jonas@freesources.org>
+           © 2020-2022 Guilhem Moulin <guilhem@debian.org>
+License: GPL-3+
+
 Files: debian/askpass.c debian/scripts/passdev.c
 Copyright: © 2008 David Härdeman <david@hardeman.nu>
 License: GPL-2+
