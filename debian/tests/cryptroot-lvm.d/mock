@@ -38,8 +38,12 @@ else {
 
     # consume PS1 to make sure we're at a shell prompt
     expect($CONSOLE => qr/\A $PS1 \z/aamsx);
-    my $out = shell(q{echo ping});
-    die unless $out =~ /\Aping\r?\n\z/m;
+    my $out = shell(q{dmsetup info -c --noheadings -omangled_name,suspended --separator ' '});
+    die if grep !/[:[:blank:]]Active$/i, split(/\r?\n/, $out);
+
+    # test I/O on the root file system
+    shell(q{cp -vT /dev/shm/foo.stamp /cryptroot.stamp});
+    shell(q{grep -Fx hello </cryptroot.stamp}, rv => 0);
 
     QMP::quit();
 }
