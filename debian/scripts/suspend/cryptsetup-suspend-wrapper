@@ -115,7 +115,7 @@ mount_initramfs() {
 
         # copy all firmware files to ramdisk to prevent dead-lock
         # see https://salsa.debian.org/mejo/cryptsetup-suspend/issues/38)
-        # XXX we should probably identify which firmwares need to be loaded
+        # TODO we should try to identify which firmwares need to be loaded
         # and only copy those
         if [ -d /lib/firmware ]; then
             cp -dR -T -- /lib/firmware "$INITRAMFS_DIR/lib/firmware"
