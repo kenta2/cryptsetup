@@ -161,7 +161,7 @@ int main(int argc, char *argv[]) {
         crypt_free(cd);
     }
 
-    /* Add some more memory to be on the save side
+    /* Add some more memory to be on the safe side
      * TODO: find a reasonable value */
     argon2i_max_memory_kb += 2 * 1024; // 2MB
 
