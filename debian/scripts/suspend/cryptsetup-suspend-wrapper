@@ -85,8 +85,8 @@ mount_initramfs() {
             exit 1
         fi
 
-        mkdir "$INITRAMFS_MNT"
-        mount -t ramfs -o mode=0755 ramfs "$INITRAMFS_MNT"
+        mkdir -m0700 "$INITRAMFS_MNT"
+        mount -t ramfs -o nodev,mode=0700 ramfs "$INITRAMFS_MNT"
 
         # extract initrd.img to initramfs dir
         unmkinitramfs "$INITRAMFS" "$INITRAMFS_MNT"
@@ -125,15 +125,18 @@ mount_initramfs() {
     # from initramfs-tools-core's /usr/share/initramfs-tools/init
     mount -t devtmpfs -o noexec,nosuid,mode=0755 udev "$INITRAMFS_DIR/dev"
     mount -t proc -o nodev,noexec,nosuid proc "$INITRAMFS_DIR/proc"
+    mount -t ramfs -o nodev,noexec,nosuid,mode=0755 ramfs "$INITRAMFS_DIR/run"
     mount -t sysfs -o nodev,noexec,nosuid sysfs "$INITRAMFS_DIR/sys"
 
-    mount --make-rprivate "$INITRAMFS_MNT"
+    # remount read-only, private and unbindable
+    mount -oremount,ro --make-rprivate --make-runbindable "$INITRAMFS_MNT"
 }
 
 umount_initramfs() {
     if [ -d "${INITRAMFS_DIR-}" ]; then
         umount -- "$INITRAMFS_DIR/dev"
         umount -- "$INITRAMFS_DIR/proc"
+        umount -- "$INITRAMFS_DIR/run"
         umount -- "$INITRAMFS_DIR/sys"
     fi
     if [ "$KEEP_INITRAMFS" != "true" ] || [ -z "${INITRAMFS_DIR+x}" ]; then
