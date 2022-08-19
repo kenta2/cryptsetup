@@ -204,7 +204,7 @@ populate_CRYPTO_HASHES() {
     local hash source newline="
 "
 
-    if [ -n "${CRYPTTAB_OPTION_header+x}" ]; then
+    if crypttab_parse_options --quiet && [ -n "${CRYPTTAB_OPTION_header+x}" ]; then
         source="$CRYPTTAB_OPTION_header"
     else
         source="$(_resolve_device_spec "$CRYPTTAB_SOURCE")" || source=""
