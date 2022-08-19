@@ -420,7 +420,7 @@ resume_device() {
 
     # Loop endlessly until the resume command succeeded
     while true; do
-        if [ "$CRYPTTAB_KEY" != "none" ]; then
+        if [ -z "${CRYPTTAB_OPTION_keyscript+x}" ] && [ "$CRYPTTAB_KEY" != "none" ]; then
             resume_mapping "$CRYPTTAB_KEY" && break || true
         else
             run_keyscript 1 | resume_mapping && break || true
