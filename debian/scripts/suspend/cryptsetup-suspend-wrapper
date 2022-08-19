@@ -187,7 +187,7 @@ freeze_cgroups() {
 thaw_cgroups() {
     local c
     for c in $CGROUP_FREEZER; do
-       echo 0 >"$c"
+        echo 0 >"$c"
     done
 }
 
