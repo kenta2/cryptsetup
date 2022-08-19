@@ -191,19 +191,35 @@ thaw_cgroups() {
     done
 }
 
-get_active_devices() {
-    local m
-    for m in $dm_devices; do
-        [ "$m" = "$CRYPTTAB_NAME" ] || continue
-        crypttab_parse_options --quiet
-        _get_crypt_type
-        if [ "$CRYPTTAB_TYPE" != "luks" ]; then
-            cryptsetup_message "WARNING: $CRYPTTAB_NAME: unable to suspend non-luks device"
-            continue
-        fi
-        printf "%s " "$m"
-        break
-    done
+populate_ACTIVE_DEVICES() {
+    local DEV MAJ MIN
+    if ! dm_blkdevname "$CRYPTTAB_NAME" >/dev/null; then
+        # silently ignore unmapped devices
+        return 0
+    elif [ "$(dmsetup info --noheadings -c -o subsystem -- "$CRYPTTAB_NAME")" != "CRYPT" ]; then
+        cryptsetup_message "ERROR: $CRYPTTAB_NAME: Subsystem mismatch"
+        return 1
+    elif ! _resolve_device "$CRYPTTAB_SOURCE"; then
+        cryptsetup_message "ERROR: $CRYPTTAB_NAME: Missing source $CRYPTTAB_SOURCE"
+        return 1
+    elif [ "$(dmsetup info -c --noheadings -o devnos_used -- "$CRYPTTAB_NAME" 2>/dev/null)" != "$MAJ:$MIN" ]; then
+        cryptsetup_message "ERROR: $CRYPTTAB_NAME: Source mismatch"
+        return 1
+    fi
+
+    if ! crypttab_parse_options --quiet; then
+        cryptsetup_message "ERROR: $CRYPTTAB_NAME: Unable to parse options field"
+        return 1
+    elif [ "$CRYPTTAB_TYPE" != "luks" ]; then
+        # XXX does it even work with detached headers?
+        cryptsetup_message "WARNING: $CRYPTTAB_NAME: unable to suspend non-LUKS device"
+        return 0
+    fi
+
+    # XXX that's not robust since $CRYPTTAB_NAME might contain spaces or
+    # special characters; we need to create a NUL-delimited list in a
+    # file instead
+    ACTIVE_DEVICES="${ACTIVE_DEVICES:+"$ACTIVE_DEVICES "}$CRYPTTAB_NAME"
 }
 
 clean_up() {
@@ -256,9 +272,9 @@ mount_initramfs
 # Run pre-suspend scripts
 run_dir pre suspend
 
-# get list of active crypt devices
-dm_devices="$(dm_active_crypt_devices)"
-devices="$(crypttab_foreach_entry get_active_devices)"
+# populate list of active crypt devices
+ACTIVE_DEVICES=""
+crypttab_foreach_entry populate_ACTIVE_DEVICES
 
 # freeze all cgroups but us
 freeze_cgroups
@@ -269,13 +285,13 @@ set +e
 # change into ramdisk
 devices_remaining="$(chroot "$INITRAMFS_DIR" /bin/sh -c "
     # suspend active luks devices (in reverse order) and system
-    /bin/cryptsetup-suspend --reverse $devices
+    /bin/cryptsetup-suspend --reverse $ACTIVE_DEVICES
 
     TABFILE=\"/cryptroot/crypttab\"
     . /lib/cryptsetup/functions
 
     # resume active luks devices (only initramfs devices)
-    for dev in $devices; do
+    for dev in $ACTIVE_DEVICES; do
         if crypttab_find_entry --quiet \"\$dev\"; then
             resume_device \"\$dev\" || sleep 5
         else
