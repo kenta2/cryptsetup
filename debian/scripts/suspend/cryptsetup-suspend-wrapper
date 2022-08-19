@@ -125,7 +125,7 @@ mount_initramfs() {
         # see https://salsa.debian.org/mejo/cryptsetup-suspend/issues/38)
         # TODO we should try to identify which firmwares need to be loaded
         # and only copy those
-        if [ -d /lib/firmware ]; then
+        if [ -d /lib/firmware ] && [ ! -d "$INITRAMFS_DIR/lib/firmware" ]; then
             cp -dR -T -- /lib/firmware "$INITRAMFS_DIR/lib/firmware"
         fi
     fi
