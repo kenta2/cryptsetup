@@ -136,12 +136,16 @@ mount_initramfs() {
     mount -t ramfs -o nodev,noexec,nosuid,mode=0755 ramfs "$INITRAMFS_DIR/run"
     mount -t sysfs -o nodev,noexec,nosuid sysfs "$INITRAMFS_DIR/sys"
 
+    [ -d "$INITRAMFS_DIR/dev/pts" ] || mkdir -m0755 "$INITRAMFS_DIR/dev/pts"
+    mount -t devpts -o noexec,nosuid,gid=5,mode=0620 devpts "$INITRAMFS_DIR/dev/pts" || true
+
     # remount read-only, private and unbindable
     mount -oremount,ro --make-rprivate --make-runbindable "$INITRAMFS_MNT"
 }
 
 umount_initramfs() {
     if [ -d "${INITRAMFS_DIR-}" ]; then
+        umount -- "$INITRAMFS_DIR/dev/pts"
         umount -- "$INITRAMFS_DIR/dev"
         umount -- "$INITRAMFS_DIR/proc"
         umount -- "$INITRAMFS_DIR/run"
