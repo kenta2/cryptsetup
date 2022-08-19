@@ -135,7 +135,6 @@ get_resume_devno() {
 
     # regular swsusp
     dev="$(sed -nr 's,^(.*\s)?resume=(\S+)(\s.*)?$,\2,p' /proc/cmdline)"
-    dev="$(printf '%b' "$dev")" # unmangle
     _print_devno "$(printf '%b' "$dev")" # unmangle
 
     # initramfs-tools >=0.129
