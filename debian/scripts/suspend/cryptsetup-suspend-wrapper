@@ -175,9 +175,8 @@ freeze_cgroups() {
         [ -f "$c" ] || continue
         val="$(cat "$c")"
 
-        # dont freeze our cgroup, systemd-suspend/udevd or frozen cgroups
-        # freezing udevd blocks luksResume
-        if ! printf "%s" "$c" | grep -qF -e "systemd-suspend" -e "systemd-udev" -e "$MY_CGROUP" \
+        # dont freeze our cgroup, systemd-suspend or frozen cgroups
+        if ! printf "%s" "$c" | grep -qF -e "systemd-suspend" -e "$MY_CGROUP" \
                 && [ $val -eq 0 ]; then
             echo 1 > "$c"
             CGROUP_FREEZER="$c $CGROUP_FREEZER"
@@ -207,24 +206,12 @@ get_active_devices() {
     done
 }
 
-# Stop udev service and prevent it to be autostarted.
-# Otherwise, luksResume will hang waiting for udev, which is itself waiting
-# for I/O on the root device.
-udev_service() {
-    systemctl "$1" systemd-udevd-control.socket
-    systemctl "$1" systemd-udevd-kernel.socket
-    systemctl "$1" systemd-udevd.service
-}
-
 clean_up() {
     # we always want to run through the whole cleanup
     set +e
 
     # thaw all frozen cgroups
     thaw_cgroups
-
-    # restart systemd-udevd
-    udev_service start
 
     # Run post-suspend scripts
     run_dir post suspend
@@ -268,9 +255,6 @@ mount_initramfs
 
 # Run pre-suspend scripts
 run_dir pre suspend
-
-# freezing of udevd was not possible, but it still blocks sometimes
-udev_service stop
 
 # get list of active crypt devices
 dm_devices="$(dm_active_crypt_devices)"
