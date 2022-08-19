@@ -53,6 +53,7 @@ crypttab_parse_options() {
     done
 
     local IFS=',' x OPTION VALUE
+    CRYPTTAB_TYPE=""
     unset -v CRYPTTAB_OPTION_cipher \
              CRYPTTAB_OPTION_size \
              CRYPTTAB_OPTION_sector_size \
