@@ -293,7 +293,7 @@ devices_remaining="$(chroot "$INITRAMFS_DIR" /bin/sh -c "
     # resume active luks devices (only initramfs devices)
     for dev in $devices; do
         if crypttab_find_entry --quiet \"\$dev\"; then
-            resume_device \"\$dev\" || true
+            resume_device \"\$dev\" || sleep 5
         else
             # write remaining devices to stdout
             printf \"%s \" \"\$dev\"

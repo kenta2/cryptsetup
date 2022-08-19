@@ -389,11 +389,6 @@ unlock_mapping() {
 resume_mapping() {
     local keyfile="${1:--}"
 
-    if [ "$CRYPTTAB_TYPE" != "luks" ]; then
-        cryptsetup_message "ERROR: $CRYPTTAB_NAME: unable to resume non-luks device"
-        return 1
-    fi
-
     /sbin/cryptsetup -T1 \
         ${CRYPTTAB_OPTION_header:+--header="$CRYPTTAB_OPTION_header"} \
         ${CRYPTTAB_OPTION_keyslot:+--key-slot="$CRYPTTAB_OPTION_keyslot"} \
@@ -408,15 +403,20 @@ resume_mapping() {
 resume_device() {
     local device="$1"
     # check if device is really suspended
-    if dmsetup info -c --noheadings -o suspended -- "$device" 2>/dev/null | grep -Fxq "Active"; then
-        cryptsetup_message "ERROR: $CRYPTTAB_NAME: device was not suspendend"
-        sleep 5
+    if [ "$(dmsetup info -c --noheadings -o suspended -- "$device" 2>/dev/null)" != "Suspended" ]; then
+        cryptsetup_message "ERROR: $device: device was not suspendend"
         return 1
     fi
 
-    crypttab_find_entry "$device"
-    crypttab_parse_options --quiet
-    _get_crypt_type
+    if ! crypttab_find_entry "$device" || ! crypttab_parse_options --quiet; then
+        cryptsetup_message "ERROR: $device: not found in $TABFILE"
+        return 1
+    fi
+
+    if [ "$CRYPTTAB_TYPE" != "luks" ]; then
+        cryptsetup_message "ERROR: $CRYPTTAB_NAME: unable to resume non-LUKS device"
+        return 1
+    fi
 
     # Loop endlessly until the resume command succeeded
     while true; do
