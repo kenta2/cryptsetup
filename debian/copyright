@@ -116,7 +116,7 @@ License: CC0 or Apache-2.0
 Files: lib/crypto_backend/crc32.c
 Copyright: © 1986 Gary S. Brown
 License: public-domain
- Gary S. Brown's licence is as follows:
+ Gary S. Brown's license is as follows:
  .
  You may use this program, or code or tables extracted from it, as
  desired without restriction.
@@ -124,7 +124,7 @@ License: public-domain
 Files: lib/bitops.h
 Copyright: © Karel Zak <kzak@redhat.com>
 License: public-domain
- Karel Zak's licence is as follows:
+ Karel Zak's license is as follows:
  .
  No copyright is claimed.  This code is in the public domain; do with it
  what you wish.
