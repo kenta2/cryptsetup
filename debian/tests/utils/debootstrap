@@ -52,12 +52,6 @@ for deb in "$ESSENTIAL"/*.deb; do
     mv -T -- "$TEMPDIR/deps" "$TEMPDIR/dpkg/depends/$pkg"
 done
 
-# XXX dash.postinst calls debian-utils' add-shell(8) if available, but
-# that requires awk; as of buster it's also used by apt's
-# /etc/kernel/postinst.d/apt-auto-removal
-echo awk >>"$TEMPDIR/dpkg/pre-depends/dash"
-echo awk >>"$TEMPDIR/dpkg/pre-depends/apt"
-
 # recursively append dependencies to $OUT; abort and return 1 if one of
 # the (recursive) dependency has an unsatisfied Pre-Depends
 resolve_deps() {
