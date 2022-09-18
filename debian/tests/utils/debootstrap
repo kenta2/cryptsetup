@@ -47,7 +47,7 @@ for deb in "$ESSENTIAL"/*.deb; do
     dpkg-deb --show --showformat="\${Pre-Depends}\\n" "$deb" >"$TEMPDIR/predeps"
     dpkg-deb --show --showformat="\${Depends}\\n" "$deb" >"$TEMPDIR/deps"
     sed -ri "s/,\\s*/\\n/g" -- "$TEMPDIR/predeps" "$TEMPDIR/deps"
-    sed -i "s/\\s.*//; /^\\s*$/d" -- "$TEMPDIR/predeps" "$TEMPDIR/deps"
+    sed -i "s/[[:blank:]:].*//; /^[[:blank:]]*$/d" -- "$TEMPDIR/predeps" "$TEMPDIR/deps"
     mv -T -- "$TEMPDIR/predeps" "$TEMPDIR/dpkg/pre-depends/$pkg"
     mv -T -- "$TEMPDIR/deps" "$TEMPDIR/dpkg/depends/$pkg"
 done
