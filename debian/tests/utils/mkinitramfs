@@ -46,6 +46,8 @@ cat >"$DESTDIR/init.conf" <<- EOF
 	PACKAGES="$PACKAGES"
 	BOOT="$BOOT"
 	CONSOLE="$CONSOLE"
+	ARCH="$ARCH"
+	MERGED_USR="$MERGED_USR"
 EOF
 
 for p in setup preinst postinst bottom; do

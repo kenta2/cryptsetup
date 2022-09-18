@@ -168,6 +168,7 @@ case "$BOOT" in
 esac
 PKG_KERNEL="linux-image-$KERNEL_ARCH"
 PKG_INIT="systemd-sysv" # default pid1
+MERGED_USR="" # use default layout for the target version
 declare -a PKGS_EXTRA=() DRIVE_SIZES=( "2G" )
 PKGS_EXTRA+=( "zstd" ) # default initrd compression, see #976054
 
@@ -202,6 +203,21 @@ if [ "$BOOT" = "efi" ]; then
         fi
     done
 fi
+
+case "${DEB_DISTRIBUTION%%-*}" in
+    etch|lenny|squeeze|wheezy|jessie|stretch|buster|bullseye)
+        if [ -z "$MERGED_USR" ]; then
+            MERGED_USR="no"
+        fi
+        ;;
+    *)  if [ -z "$MERGED_USR" ]; then
+            MERGED_USR="yes"
+        elif [ "$MERGED_USR" = "no" ]; then
+            # #978636: Debian 12 (codename Bookworm) should only support merged-/usr layout
+            echo "WARN: this system is not supported! (unmerged-/usr)" >&2
+        fi
+        ;;
+esac
 
 unset QEMU_PID
 TEMPDIR="$(mktemp --tmpdir="${AUTOPKGTEST_TMP:-"${TMPDIR:-/tmp}"}" --directory "$TESTNAME.XXXXXXXXXX")"
@@ -316,20 +332,27 @@ _apt() {
 
 # create a disk image with essential and extra packages
 create_debian_img() {
-    local img="$1" dir size deb
+    local img="$1" dir size deb usr_is_merged
 
     dir="$(mktemp --tmpdir="$TEMPDIR" --directory debian.XXXXXXXXXX)"
     mkdir -- "$dir/dists" "$dir/pool"
 
+    # TODO remove this once Bookworm is released, assuming
+    # init-system-helpers no longer has "Depends: usrmerge | usr-is-merged"
+    [ "$MERGED_USR" = "yes" ] && usr_is_merged="usr-is-merged" || usr_is_merged=""
+
     # apt considers itself essential so we explicitely exclude it for stage1
     mkdir -- "$dir/__stage1__"
-    apt-download -- "?and(?essential, ?not(?exact-name(apt)))"
+    apt-download -- "?and(?essential, ?not(?exact-name(apt)))" ${usr_is_merged:+"$usr_is_merged"}
     for deb in "$APT_CACHE"/archives/*.deb; do
         ln -sT "../pool/${deb##*/}" "$dir/__stage1__/${deb##*/}"
     done
 
+    # useless for stage1
+    rm -f "$dir"/__stage1__/usr-is-merged_*.deb "$dir"/__stage1__/usrmerge_*.deb
+
     mkdir -- "$dir/__essential__"
-    apt-download -- "?essential" "apt"
+    apt-download -- "?essential" "apt" ${usr_is_merged:+"$usr_is_merged"}
     for deb in "$APT_CACHE"/archives/*.deb; do
         ln -sT "../pool/${deb##*/}" "$dir/__essential__/${deb##*/}"
     done
@@ -348,7 +371,7 @@ create_debian_img() {
 makedist() {
     local basedir="$1"
     local distdir="$basedir/dists"
-    apt-download -- "?essential" "apt" \
+    apt-download -- "?essential" "apt" ${usr_is_merged:+"$usr_is_merged"} \
         "$PKG_BOOTLOADER" "$PKG_KERNEL" "$PKG_INIT" \
         "${PKGS_EXTRA[@]}"
     rm -f -- "$APT_CACHE/archives/$PKG_KERNEL"_*.deb # remove the generic .deb (only keep its dependency with versioned ABI)
@@ -400,7 +423,11 @@ case "$DEB_BUILD_ARCHITECTURE" in
     *) CONSOLE="ttyS0";;
 esac
 
-env PACKAGES="$PKG_BOOTLOADER linux-image-$KERNEL_VERSION $PKG_INIT ${PKGS_EXTRA[*]}" BOOT="$BOOT" CONSOLE="$CONSOLE" \
+env PACKAGES="$PKG_BOOTLOADER linux-image-$KERNEL_VERSION $PKG_INIT ${PKGS_EXTRA[*]}" \
+    BOOT="$BOOT" \
+    CONSOLE="$CONSOLE" \
+    ARCH="$DEB_BUILD_ARCHITECTURE" \
+    MERGED_USR="$MERGED_USR" \
     "$TESTDIR/utils/mkinitramfs" "$TEMPDIR/linux-image" "$KERNEL_VERSION" "$TEMPDIR/initrd.img-$KERNEL_VERSION"
 rm -rf -- "$TEMPDIR/apt" "$TEMPDIR/linux-image" # don't need that anymore
 

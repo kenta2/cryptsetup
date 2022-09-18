@@ -83,15 +83,34 @@ mkdir -m0755 "$ROOT"
 . /init.setup
 udevadm settle
 
-# NOTE: we don't explicitely create a merged-/usr directories scheme on
-# the target system, but we'll do once Bookworm is released and usrmerge
-# becomes (transitively) essential
+# inspired by debootstrap's /usr/share/debootstrap/functions
+if [ "$MERGED_USR" = "yes" ]; then
+    case "$ARCH" in
+        amd64) libdir="lib32 lib64 libx32";;
+        i386) libdir="lib64 libx32";;
+        mips|mipsel) libdir="lib32 lib64";;
+        mips64*|mipsn32*) libdir="lib32 lib64 libo32";;
+        loongarch64*) libdir="lib32 lib64";;
+        powerpc) libdir="lib64";;
+        ppc64) libdir="lib32 lib64";;
+        ppc64el) libdir="lib64";;
+        s390x) libdir="lib32";;
+        sparc) libdir="lib64";;
+        sparc64) libdir="lib32 lib64";;
+        x32) libdir="lib32 lib64 libx32";;
+        *) libdir="";;
+    esac
+    for dir in bin sbin lib $libdir; do
+        ln -s "usr/$dir" "$ROOT/$dir"
+        mkdir -p "$ROOT/usr/$dir"
+    done
+fi
 
 mkdir /media
 DEBIAN_DIST="$(blkid -l -t LABEL="debian_dist" -o device)"
 mount -t ext2 -o ro "$DEBIAN_DIST" /media
 for pkg in /media/__stage1__/*.deb; do
-    dpkg-deb --extract "$pkg" "$ROOT"
+    dpkg-deb --fsys-tarfile "$pkg" | tar -C "$ROOT" -xf - --keep-directory-symlink
 done
 
 # setup hosts(5) and hostname(5)

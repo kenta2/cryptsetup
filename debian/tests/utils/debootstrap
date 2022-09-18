@@ -52,6 +52,12 @@ for deb in "$ESSENTIAL"/*.deb; do
     mv -T -- "$TEMPDIR/deps" "$TEMPDIR/dpkg/depends/$pkg"
 done
 
+if [ -L /bin ] && [ -L /sbin ] && [ -L /lib ]; then
+    # TODO remove this once Bookworm is released, assuming
+    # init-system-helpers no longer has "Depends: usrmerge | usr-is-merged"
+    sed -i "s/^usrmerge$/usr-is-merged/" -- "$TEMPDIR/dpkg/depends/init-system-helpers"
+fi
+
 # recursively append dependencies to $OUT; abort and return 1 if one of
 # the (recursive) dependency has an unsatisfied Pre-Depends
 resolve_deps() {
