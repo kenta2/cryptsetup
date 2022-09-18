@@ -1,4 +1,4 @@
-cryptsetup (2:2.5.0-3) UNRELEASED; urgency=medium
+cryptsetup (2:2.5.0-3) unstable; urgency=low
 
   * d/t/cryptroot-*: Disable VGA card on the guest.
   * d/t/cryptroot-*: Communicate with guests on /dev/hvc0 and remove
@@ -23,8 +23,41 @@ cryptsetup (2:2.5.0-3) UNRELEASED; urgency=medium
   * Salsa CI: Include recipes/debian.yml.
   * Salsa CI: Remove redundant variable RELEASE=unstable.
   * Salsa CI: Re-enable autopkgtest job with partial coverage.
+  * cryptsetup-suspend-wrapper: Improve quoting.
+  * cryptsetup-suspend-wrapper: Use crypttab_find_entry()'s return status.
+  * d/copyright: Improve wording.
+  * d/copyright: Fix license for d/scripts/suspend/cryptsetup-suspend.c .
+  * Add license headers for d/scripts/suspend/*.
+  * Relicense own code from GPLv2+ to GPLv3+.
+  * cryptsetup-suspend-wrapper: Don't bindmount temporary filesystems.
+  * cryptsetup-suspend-wrapper: Improve $INITRAMFS_DIR detection and cleanup.
+  * cryptsetup-suspend-wrapper: Improve TODO comment.
+  * d/t/cryptroot-*: Add a network device in interactive mode.
+  * d/t/cryptroot-lvm: Test I/O on the root FS after wakeup to make sure the
+    device is not suspended.
+  * cryptsetup-suspend-wrapper: Harden chroot environment: mount ramfs
+    read-only and with the 'nodev' option, make it unbindable, and use a
+    restrictive root mode.
+  * initramfs hook: Remove duplicate unmangling.
+  * initramfs hook: populate_CRYPTO_HASHES(): Add missing call to
+    crypttab_parse_options().
+  * d/functions: crypttab_parse_options(): Always reset $CRYPTTAB_TYPE.
+  * cryptsetup-suspend-wrapper: Ignore $KEEP_INITRAMFS if a newer initrd is
+    detected.
+  * d/functions: resume_device(): Fix resuming by keyscript.
+  * d/functions: Refactor resume_device() and freeze_cgroups().
+  * cryptsetup-suspend-wrapper: Don't copy /lib/firmware if it already exists
+    in the initrd.
+  * cryptsetup-suspend-wrapper: Don't treat udevd specially as luksResume now
+    appears to work when udevd is still frozen.
+  * cryptsetup-suspend-wrapper: Populate ACTIVE_DEVICES via callback.
+  * cryptsetup-suspend-wrapper: Use FD3 to list remaining devices.
+  * d/t/utils/debootstrap: Strip colon and suffix from package (Pre-)Depends.
+  * d/t/utils/debootstrap: Remove obsolete comment and Pre-Depends.
+  * d/t/cryptroot-*: Manually create merged-/usr layout and install
+    usr-is-merged.
 
- -- Guilhem Moulin <guilhem@debian.org>  Wed, 17 Aug 2022 20:00:08 +0200
+ -- Guilhem Moulin <guilhem@debian.org>  Sun, 18 Sep 2022 23:01:46 +0200
 
 cryptsetup (2:2.5.0-2) unstable; urgency=low
 
