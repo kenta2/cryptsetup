@@ -81,7 +81,7 @@ runtest() {
         t="${t#"$TESTDIR/"}"
         echo ">>> Running $t..."
         ts_start="$(printf "%(%s)T")"
-        timeout 600s "$TESTDIR/$t" "$EXTRA_REPO" </dev/null || rv=$?
+        "$TESTDIR/$t" "$EXTRA_REPO" </dev/null || rv=$?
         ts_stop="$(printf "%(%s)T")"
 
         if [ $rv -ne 0 ] && [ $RV -eq 0 -o $rv -lt $RV ]; then
