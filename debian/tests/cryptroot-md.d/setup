@@ -35,9 +35,11 @@ sfdisk --append /dev/vda <<-EOF
 	start=$(((64+128)*1024*2)), size=$((64*1024*2)), type=${GUID_TYPE_LUKS}
 	start=$(((64+128+64)*1024*2)), type=${GUID_TYPE_LUKS}
 EOF
+udevadm settle
 
 # copy vda's partition table onto vdb
 sfdisk -d /dev/vda | sfdisk /dev/vdb
+udevadm settle
 
 for d in vda3 vda4 vdb3 vdb4; do
   echo -n "${d}_crypt" >/keyfile
@@ -50,11 +52,13 @@ for d in vda3 vda4 vdb3 vdb4; do
         -- "/dev/$d"
     cryptsetup luksOpen --key-file=/keyfile --allow-discards \
         -- "/dev/$d" "${d}_crypt"
+    udevadm settle
 done
 
 mdadm --create /dev/md0 --metadata=default --level=1 --raid-devices=2 /dev/vda2 /dev/vdb2
 mdadm --create /dev/md1 --metadata=default --level=0 --raid-devices=2 /dev/mapper/vda3_crypt /dev/mapper/vdb3_crypt
 mdadm --create /dev/md2 --metadata=default --level=1 --raid-devices=2 /dev/mapper/vda4_crypt /dev/mapper/vdb4_crypt
+udevadm settle
 
 lvm pvcreate /dev/md2
 lvm vgcreate "cryptvg" /dev/md2
@@ -62,6 +66,7 @@ lvm lvcreate -Zn --size 64m --name "swap" "cryptvg"
 lvm lvcreate -Zn -l100%FREE --name "root" "cryptvg"
 lvm vgchange -ay "cryptvg"
 lvm vgmknodes
+udevadm settle
 
 
 mke2fs -Ft ext4 /dev/cryptvg/root

@@ -75,6 +75,7 @@ sfdisk /dev/vda <<-EOF
 
 	start=$((1024*2)), size=$((BOOT_PARTITION_SIZE*1024*2)), type=$BOOT_PARTITION_TYPE
 EOF
+udevadm settle
 
 ROOT="/target"
 mkdir -m0755 "$ROOT"

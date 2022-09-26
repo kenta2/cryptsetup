@@ -9,6 +9,7 @@ sfdisk --append /dev/vda <<-EOF
 	start=$((64*1024*2)), size=$((128*1024*2)), type=${GUID_TYPE_Linux_FS}
 	start=$(((64+128)*1024*2)), type=${GUID_TYPE_LUKS}
 EOF
+udevadm settle
 
 # initialize a new LUKS partition and open it
 echo -n "topsecret" >/rootfs.key
@@ -21,6 +22,7 @@ cryptsetup luksFormat --batch-mode \
     -- /dev/vda3
 cryptsetup luksOpen --key-file=/rootfs.key --allow-discards \
     -- /dev/vda3 "vda3_crypt"
+udevadm settle
 
 lvm pvcreate /dev/mapper/vda3_crypt
 lvm vgcreate "cryptvg" /dev/mapper/vda3_crypt
@@ -28,6 +30,7 @@ lvm lvcreate -Zn --size 1024m --name "swap" "cryptvg"
 lvm lvcreate -Zn -l100%FREE --name "root" "cryptvg"
 lvm vgchange -ay "cryptvg"
 lvm vgmknodes
+udevadm settle
 
 mke2fs -Ft ext4 /dev/cryptvg/root
 mount -t ext4 /dev/cryptvg/root "$ROOT"

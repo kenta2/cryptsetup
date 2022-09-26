@@ -11,6 +11,7 @@ sfdisk --append /dev/vda <<-EOF
 	start=$(((64+128+64)*1024*2)), size=$((64*1024*2)), type=${GUID_TYPE_DMCRYPT}
 	start=$(((64+128+64+64)*1024*2)), type=${GUID_TYPE_LUKS}
 EOF
+udevadm settle
 
 # initialize a new LUKS partition and open it
 echo -n "topsecret" >/rootfs.key
@@ -23,9 +24,11 @@ cryptsetup luksFormat --batch-mode \
     -- /dev/vda5
 cryptsetup luksOpen --key-file=/rootfs.key --allow-discards \
     -- /dev/vda5 "vda5_crypt"
+udevadm settle
 
 cryptsetup open --type=plain --key-file=/dev/urandom --allow-discards \
     -- /dev/vda4 "vda4_crypt"
+udevadm settle
 
 mke2fs -Ft ext4 /dev/mapper/vda5_crypt
 mount -t ext4 /dev/mapper/vda5_crypt "$ROOT"
