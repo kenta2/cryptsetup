@@ -1,3 +1,19 @@
+cryptsetup (2:2.5.0-4) unstable; urgency=medium
+
+  * suspend.conf: Improve description and typofix.
+  * d/t/cryptroot-*: Fix race condition between creating new partition and
+    using them.
+  * d/t/cryptroot-*: Fail the test after a reasonable timeout.
+    (Closes: #1020714)
+  * d/t/cryptroot-*: setup_apt(): Add 'Identifier: Packages' to `apt-get
+    indextargets` filter.
+  * cryptsetup-suspend-wrapper: Explicitly disable udev support when resuming.
+    (Closes: #1020553)
+  * d/t/cryptroot-*: Pin versions for all packages in PKGS_EXTRA that are part
+    of src:cryptsetup.
+
+ -- Guilhem Moulin <guilhem@debian.org>  Tue, 04 Oct 2022 01:14:30 +0200
+
 cryptsetup (2:2.5.0-3) unstable; urgency=low
 
   * d/t/cryptroot-*: Disable VGA card on the guest.
