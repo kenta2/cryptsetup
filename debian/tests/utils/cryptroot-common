@@ -256,13 +256,13 @@ setup_apt() {
         # reuse existing sources.list
         apt-get indextargets \
             --format "\$(TARGET_OF) \$(REPO_URI) \$(RELEASE) \$(COMPONENT)" \
-            "Target-Of: deb" "Origin: $APT_REPO_ORIGIN" \
+            "Target-Of: deb" "Identifier: Packages" "Origin: $APT_REPO_ORIGIN" \
             >"$TEMPDIR/apt/sources.list"
         # local autopkgtest repo has Repo-URI: file:/tmp/autopkgtest.XXXXXX/binaries/ ,
         # Release: (empty) and no Component:
         apt-get indextargets \
             --format "\$(TARGET_OF) \$(REPO_URI) /" \
-            "Target-Of: deb" "Trusted: Yes" "Release: " \
+            "Target-Of: deb" "Identifier: Packages" "Trusted: Yes" "Release: " \
             >>"$TEMPDIR/apt/sources.list"
     else
         # generate new sources.list
