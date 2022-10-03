@@ -298,7 +298,7 @@ devices_remaining="$(chroot "$INITRAMFS_DIR" /bin/sh -c "
     # resume active luks devices (only initramfs devices)
     for dev in $ACTIVE_DEVICES; do
         if crypttab_find_entry --quiet \"\$dev\"; then
-            resume_device \"\$dev\" || sleep 5
+            DM_DISABLE_UDEV=y resume_device \"\$dev\" || sleep 5
         else
             # write remaining devices to FD3
             printf \"%s \" \"\$dev\" >&3
@@ -309,7 +309,10 @@ devices_remaining="$(chroot "$INITRAMFS_DIR" /bin/sh -c "
 # resume remaining active luks devices (non-initramfs devices)
 for dev in $devices_remaining; do
     if crypttab_find_entry --quiet "$dev"; then
-        resume_device "$dev" || true
+        # explicitely disable udev support, cf. #1020553
+        # XXX this is not ideal since udev might be required in some situations
+        # (detached header or key material on removable device comes to mind)
+        DM_DISABLE_UDEV=y resume_device "$dev" || true
     else
         log_error "'$dev' not found in /etc/crypttab"
     fi
