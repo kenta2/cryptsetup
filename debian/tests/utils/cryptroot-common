@@ -221,6 +221,18 @@ case "${DEB_DISTRIBUTION%%-*}" in
         ;;
 esac
 
+# pin versions for all packages in PKGS_EXTRA that are part of this source package
+declare -a MYPKGS
+MYPKGS=( $(sed -nr 's/^Package:\s*//Ip' debian/control) )
+for i in "${!PKGS_EXTRA[@]}"; do
+    [ "${PKGS_EXTRA[i]%[=/]*}" = "${PKGS_EXTRA[i]}" ] || continue
+    for mypkg in "${MYPKGS[@]}"; do
+        if [ "${PKGS_EXTRA[i]}" = "$mypkg" ]; then
+            PKGS_EXTRA[i]="${PKGS_EXTRA[i]}=$DEB_VERSION"
+        fi
+    done
+done
+
 unset QEMU_PID
 TEMPDIR="$(mktemp --tmpdir="${AUTOPKGTEST_TMP:-"${TMPDIR:-/tmp}"}" --directory "$TESTNAME.XXXXXXXXXX")"
 teardown() {
