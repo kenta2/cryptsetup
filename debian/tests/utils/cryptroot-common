@@ -486,7 +486,7 @@ if [ "$INTERACTIVE" != "y" ]; then
     )
 fi
 
-declare -a QEMU_TIMEOUT=() QEMU_STDIO_ARGS=(
+declare QEMU_STDIO_ARGS=(
     # setup is always fully unattended
     -chardev "stdio,id=char0,mux=on,logfile=$LOGDIR/qemu.log,logappend=on"
     -serial "chardev:char0"
@@ -494,12 +494,14 @@ declare -a QEMU_TIMEOUT=() QEMU_STDIO_ARGS=(
 )
 if [ "$INTERACTIVE" != "y" ] || [ -n "${AUTOPKGTEST_TMP+x}" ]; then
     # XXX if KVM is detected we could reduce the timeout to 300s or so
-    QEMU_TIMEOUT=( timeout 1800s )
+    QEMU_TIMEOUT="y"
     exec </dev/null
+else
+    QEMU_TIMEOUT=""
 fi
 
 QEMU_DEBIANIMG_DRIVE="file=$DEBIAN_IMG,format=raw,if=virtio,readonly=on,media=cdrom"
-${QEMU_TIMEOUT[@]} "$QEMU_SYSTEM_CMD" \
+${QEMU_TIMEOUT:+timeout 3600s} "$QEMU_SYSTEM_CMD" \
     "${QEMU_COMMON_ARGS[@]}" "${QEMU_STDIO_ARGS[@]}" \
     -drive "$QEMU_DEBIANIMG_DRIVE" \
     -kernel "$TEMPDIR/vmlinuz-$KERNEL_VERSION" \
@@ -509,13 +511,13 @@ ${QEMU_TIMEOUT[@]} "$QEMU_SYSTEM_CMD" \
 
 if [ "$INTERACTIVE" = "y" ]; then
     for ((i=0; i <= GUEST_POWERCYCLE; i++)); do
-        ${QEMU_TIMEOUT[@]} "$QEMU_SYSTEM_CMD" \
+        "$QEMU_SYSTEM_CMD" \
             "${QEMU_COMMON_ARGS[@]}" "${QEMU_STDIO_ARGS[@]}" \
             -netdev "user,id=net0" -device "virtio-net-pci,netdev=net0"
     done
 else
     for ((i=0; i <= GUEST_POWERCYCLE; i++)); do
-        ${QEMU_TIMEOUT[@]} "$QEMU_SYSTEM_CMD" \
+        ${QEMU_TIMEOUT:+timeout 900s} "$QEMU_SYSTEM_CMD" \
             "${QEMU_COMMON_ARGS[@]}" \
             -chardev "socket,id=mon0,path=$SOCKETDIR/mon0,server=on,wait=off,logfile=$LOGDIR/mon0.log,logappend=on" \
             -mon "chardev=mon0,mode=control" \
