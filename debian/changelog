@@ -1,3 +1,10 @@
+cryptsetup (2:2.5.0-5) unstable; urgency=medium
+
+  * d/t/cryptroot-*: Bump setup timeout to 3600s so autopkgtests don't fail on
+    debci runners lacking KVM support.
+
+ -- Guilhem Moulin <guilhem@debian.org>  Tue, 04 Oct 2022 20:01:50 +0200
+
 cryptsetup (2:2.5.0-4) unstable; urgency=medium
 
   * suspend.conf: Improve description and typofix.
