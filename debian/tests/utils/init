@@ -225,6 +225,9 @@ if [ -d "$ROOT/etc/systemd/system" ]; then
         test -f "$t" || continue
         ln -s "/dev/null" "$ROOT/etc/systemd/system/${t##*/}"
     done
+
+    # mask systemd-firstboot.service
+    ln -s "/dev/null" "/root/etc/systemd/system/systemd-firstboot.service"
 fi
 
 if [ -f "$ROOT/etc/inittab" ]; then
