@@ -331,15 +331,15 @@ _apt() {
     shift
     env -i DEBIAN_FRONTEND="noninteractive" \
     "apt-$cmd" \
-            -o Apt::Architecture="$DEB_BUILD_ARCHITECTURE" \
-            -o Apt::Architectures="$DEB_BUILD_ARCHITECTURE" \
+            -o APT::Architecture="$DEB_BUILD_ARCHITECTURE" \
+            -o APT::Architectures="$DEB_BUILD_ARCHITECTURE" \
             -o APT::Install-Recommends=false \
             -o Dir::State::Status="$TEMPDIR/apt/status" \
             -o Dir::Cache="$APT_CACHE" \
             -o APT::Get::Assume-Yes=true \
-            -o Dir::Etc::sourcelist="$TEMPDIR/apt/sources.list" \
-            -o Dir::Etc::sourceparts="" \
-            -o Dir::State::lists="$APT_LISTS" \
+            -o Dir::Etc::SourceList="$TEMPDIR/apt/sources.list" \
+            -o Dir::Etc::SourceParts="" \
+            -o Dir::State::Lists="$APT_LISTS" \
             "$@"
 }
 
