@@ -321,7 +321,7 @@ apt-download() {
     _apt get install --download-only "$@"
 }
 apt-update() {
-    _apt get -oAcquire::Languages="none" update
+    _apt get -o Acquire::Languages="none" update
 }
 apt-show() {
     _apt cache show "$@"
@@ -333,13 +333,13 @@ _apt() {
     "apt-$cmd" \
             -o APT::Architecture="$DEB_BUILD_ARCHITECTURE" \
             -o APT::Architectures="$DEB_BUILD_ARCHITECTURE" \
-            -o APT::Install-Recommends=false \
-            -o Dir::State::Status="$TEMPDIR/apt/status" \
-            -o Dir::Cache="$APT_CACHE" \
             -o APT::Get::Assume-Yes=true \
+            -o APT::Install-Recommends=false \
+            -o Dir::Cache="$APT_CACHE" \
             -o Dir::Etc::SourceList="$TEMPDIR/apt/sources.list" \
             -o Dir::Etc::SourceParts="" \
             -o Dir::State::Lists="$APT_LISTS" \
+            -o Dir::State::Status="$TEMPDIR/apt/status" \
             "$@"
 }
 
