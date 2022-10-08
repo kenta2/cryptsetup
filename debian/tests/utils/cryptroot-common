@@ -340,6 +340,7 @@ _apt() {
             -o Dir::Etc::SourceParts="" \
             -o Dir::State::Lists="$APT_LISTS" \
             -o Dir::State::Status="$TEMPDIR/apt/status" \
+            ${AUTOPKGTEST_TMP+-o Dir::Etc::Preferences="/etc/apt/preferences" -o Dir::Etc::PreferencesParts="/etc/apt/preferences.d/"} \
             "$@"
 }
 
