@@ -1,3 +1,14 @@
+cryptsetup (2:2.5.0-6) unstable; urgency=medium
+
+  * d/t/cryptroot-*: Mask systemd-firstboot.service.
+  * d/t/cryptroot-*: Use camel case for apt.conf(5) settings.
+  * d/t/cryptroot-*: _apt(): Sort apt.conf(5) settings.
+  * d/t/cryptroot-*: Honor apt_preferences(5) settings under autopkgtest.
+  * d/t/cryptroot-*: init: bind mount temporary filesystems to fix
+    autopkgtests with systemd 252. (Closes: #1022970)
+
+ -- Guilhem Moulin <guilhem@debian.org>  Fri, 28 Oct 2022 19:30:14 +0200
+
 cryptsetup (2:2.5.0-5) unstable; urgency=medium
 
   * d/t/cryptroot-*: Bump setup timeout to 3600s so autopkgtests don't fail on
