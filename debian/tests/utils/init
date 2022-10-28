@@ -132,10 +132,10 @@ if [ "$BOOT" = "efi" ]; then
 	EOF
 fi
 
-# move pseudo and temporary filesystems to "$ROOT"
-mount -no move /dev "$ROOT/dev"
-mount -no move /proc "$ROOT/proc"
-mount -no move /sys "$ROOT/sys"
+# bind mount pseudo and temporary filesystems to "$ROOT"
+mount -no bind /dev "$ROOT/dev"
+mount -no bind /proc "$ROOT/proc"
+mount -no bind /sys "$ROOT/sys"
 mount -t tmpfs -o nodev,noexec,nosuid,size=5%,mode=0755 tmpfs "$ROOT/run"
 
 # prevent any services from starting during package installation, taken
@@ -249,10 +249,10 @@ fi
 mv "$ROOT/sbin/start-stop-daemon.REAL" "$ROOT/sbin/start-stop-daemon"
 rm "$ROOT/usr/sbin/policy-rc.d"
 
-# move pseudo and temporary filesystems back
-mount -no move "$ROOT/dev" /dev
-mount -no move "$ROOT/proc" /proc
-mount -no move "$ROOT/sys" /sys
+# unmount pseudo filesystems from the target system
+umount "$ROOT/dev"
+umount "$ROOT/proc"
+umount "$ROOT/sys"
 
 if [ "$BOOT" = "efi" ]; then
     umount "$ROOT/boot/efi"
