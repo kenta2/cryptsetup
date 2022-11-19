@@ -11,6 +11,8 @@ usr/share/man/man8/cryptsetup-config.8
 usr/share/man/man8/cryptsetup-convert.8
 usr/share/man/man8/cryptsetup-create.8
 usr/share/man/man8/cryptsetup-erase.8
+usr/share/man/man8/cryptsetup-fvault2Dump.8
+usr/share/man/man8/cryptsetup-fvault2Open.8
 usr/share/man/man8/cryptsetup-isLuks.8
 usr/share/man/man8/cryptsetup-loopaesOpen.8
 usr/share/man/man8/cryptsetup-luksAddKey.8
