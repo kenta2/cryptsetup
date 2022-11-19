@@ -68,6 +68,7 @@ crypttab_parse_options() {
              CRYPTTAB_OPTION_tcrypt \
              CRYPTTAB_OPTION_veracrypt \
              CRYPTTAB_OPTION_bitlk \
+             CRYPTTAB_OPTION_fvault2 \
              CRYPTTAB_OPTION_swap \
              CRYPTTAB_OPTION_tmp \
              CRYPTTAB_OPTION_check \
@@ -241,6 +242,7 @@ crypttab_validate_option() {
         veracrypt) ;;
         tcrypthidden) ;;
         bitlk) ;;
+        fvault2) ;;
         same-cpu-crypt) ;;
         submit-from-crypt-cpus) ;;
         no-read-workqueue) ;;
@@ -311,6 +313,8 @@ _get_crypt_type() {
         t="plain"
     elif [ "${CRYPTTAB_OPTION_bitlk-}" = "yes" ]; then
         t="bitlk"
+    elif [ "${CRYPTTAB_OPTION_fvault2-}" = "yes" ]; then
+        t="fvault2"
     elif [ -n "${CRYPTTAB_OPTION_header+x}" ]; then
         # detached headers are only supported for LUKS devices
         if [ -e "$CRYPTTAB_OPTION_header" ] && /sbin/cryptsetup isLuks -- "$CRYPTTAB_OPTION_header"; then

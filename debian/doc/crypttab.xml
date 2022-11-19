@@ -81,8 +81,9 @@
   <simpara>
    The fourth field, <emphasis>options</emphasis>, is an optional comma-separated
    list of options and/or flags describing the device type (<emphasis>luks</emphasis>,
-   <emphasis>tcrypt</emphasis>, <emphasis>bitlk</emphasis>, or <emphasis>plain</emphasis>
-   which is also the default) and cryptsetup options associated with the encryption process.
+   <emphasis>tcrypt</emphasis>, <emphasis>bitlk</emphasis>, <emphasis>fvault2</emphasis>,
+   or <emphasis>plain</emphasis> which is also the default) and cryptsetup options
+   associated with the encryption process.
    The supported options are described below.
    For plain dm-crypt devices the <emphasis>cipher</emphasis>, <emphasis>hash</emphasis>
    and <emphasis>size</emphasis> options are required.
@@ -293,6 +294,19 @@
      <simpara>
        Force BITLK (Windows BitLocker-compatible) mode.
        WARNING: <emphasis>crypttab</emphasis> support is currently experimental.
+     </simpara>
+    </listitem>
+   </varlistentry>
+
+   <varlistentry>
+    <term><emphasis>fvault2</emphasis></term>
+    <listitem>
+     <simpara>
+       Force Apple's FileVault2 mode.
+       Only the (legacy) FileVault2 format based on Core Storage and HFS+
+       filesystem (introduced in MacOS X 10.7 Lion) is currently supported;
+       the new version of FileVault based on the APFS filesystem used in
+       recent macOS versions is not supported.
      </simpara>
     </listitem>
    </varlistentry>
