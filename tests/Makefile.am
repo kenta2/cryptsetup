@@ -20,6 +20,7 @@ TESTS = 00modules-test \
 	vectors-test \
 	blockwise-compat-test \
 	bitlk-compat-test \
+	fvault2-compat-test \
 	run-all-symbols \
 	unit-utils-crypt-test \
 	unit-wipe-test \
@@ -39,13 +40,23 @@ if SSHPLUGIN_TOKEN
 TESTS += ssh-test-plugin
 endif
 
-ssh-test-plugin: fake_token_path.so
+if EXTERNAL_TOKENS
+TESTS += systemd-test-plugin
+endif
 
-fake_token_path.so:
-	$(CC) $(CFLAGS) $(LDFLAGS) -I $(top_srcdir)/lib -fPIC -shared \
+ssh-test-plugin: fake_token_path.so
+systemd-test-plugin: fake_token_path.so fake_systemd_tpm_path.so
+
+# Do not use global CFLAGS here as the *.so link does not support sanitizers
+fake_token_path.so: fake_token_path.c
+	$(CC) $(LDFLAGS) -I $(top_srcdir)/lib -fPIC -shared -D_GNU_SOURCE \
 	-Wl,--version-script=$(top_srcdir)/lib/libcryptsetup.sym \
 	-o fake_token_path.so  $(top_srcdir)/tests/fake_token_path.c \
 	-DBUILD_DIR=\"$(abs_top_srcdir)/.libs/\"
+
+fake_systemd_tpm_path.so: fake_systemd_tpm_path.c
+	$(CC) $(LDFLAGS) -fPIC -shared -D_GNU_SOURCE -o fake_systemd_tpm_path.so \
+	$(top_srcdir)/tests/fake_systemd_tpm_path.c
 
 EXTRA_DIST = compatimage.img.xz compatv10image.img.xz \
 	compatimage2.img.xz \
@@ -88,15 +99,19 @@ EXTRA_DIST = compatimage.img.xz compatv10image.img.xz \
 	Makefile.localtest \
 	bitlk-compat-test \
 	bitlk-images.tar.xz \
+	fvault2-compat-test \
+	fvault2-images.tar.xz \
 	ssh-test-plugin \
 	generate-symbols-list \
 	run-all-symbols \
 	fake_token_path.c \
-	unit-wipe-test
+	fake_systemd_tpm_path.c \
+	unit-wipe-test \
+	systemd-test-plugin
 
-CLEANFILES = cryptsetup-tst* valglog* *-fail-*.log test-symbols-list.h fake_token_path.so
+CLEANFILES = cryptsetup-tst* valglog* *-fail-*.log test-symbols-list.h fake_token_path.so fake_systemd_tpm_path.so
 clean-local:
-	-rm -rf tcrypt-images luks1-images luks2-images bitlk-images conversion_imgs luks2_valid_hdr.img blkid-luks2-pv-img blkid-luks2-pv-img.bcp
+	-rm -rf tcrypt-images luks1-images luks2-images bitlk-images fvault2-images conversion_imgs luks2_valid_hdr.img blkid-luks2-pv-img blkid-luks2-pv-img.bcp external-tokens
 
 differ_SOURCES = differ.c
 differ_CFLAGS = $(AM_CFLAGS) -Wall -O2
@@ -151,7 +166,7 @@ all_symbols_test_CPPFLAGS = $(AM_CPPFLAGS) -D_GNU_SOURCE
 
 check_PROGRAMS = api-test api-test-2 differ vectors-test unit-utils-io unit-utils-crypt-test unit-wipe all-symbols-test
 
-check-programs: test-symbols-list.h $(check_PROGRAMS) fake_token_path.so
+check-programs: test-symbols-list.h $(check_PROGRAMS) fake_token_path.so fake_systemd_tpm_path.so
 
 conversion_imgs:
 	@tar xJf conversion_imgs.tar.xz
@@ -172,6 +187,21 @@ valgrind-check: api-test api-test-2 differ
 	@VALG=1 ./luks2-reencryption-mangle-test
 	@VALG=1 ./bitlk-compat-test
 	@VALG=1 ./tcrypt-compat-test
-	@grep -l "ERROR SUMMARY: [^0] errors" valglog* || echo "No leaks detected."
+	@VALG=1 ./align-test
+	@VALG=1 ./align-test2
+	@VALG=1 ./device-test
+	@VALG=1 ./discards-test
+	@VALG=1 ./keyring-compat-test
+	@VALG=1 ./loopaes-test
+	@VALG=1 ./luks1-compat-test
+	@VALG=1 ./luks2-integrity-test
+	@VALG=1 ./mode-test
+	@VALG=1 ./password-hash-test
+	@VALG=1 ./reencryption-compat-test
+	@[ -z "$RUN_SSH_PLUGIN_TEST" ] || VALG=1 ./ssh-test-plugin
+	@[ -z "$RUN_SYSTEMD_PLUGIN_TEST" ] || VALG=1 ./systemd-test-plugin
+	@INFOSTRING="unit-utils-crypt-test" ./valg-api.sh ./unit-utils-crypt-test
+	@INFOSTRING="vectors-test" ./valg-api.sh ./vectors-test
+	@grep -l "ERROR SUMMARY: [^0][0-9]* errors" valglog* || echo "No leaks detected."
 
 .PHONY: valgrind-check
