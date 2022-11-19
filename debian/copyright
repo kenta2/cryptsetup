@@ -102,6 +102,15 @@ Copyright: © 2009-2022 Red Hat, Inc.
            © 2010-2022 Milan Broz <gmazyland@gmail.com>
 License: LGPL-2.1+ with OpenSSL exception
 
+Files: lib/fvault2/fvault2.c lib/fvault2/fvault2.h
+Copyright: © 2021-2022 Pavel Tobias
+License: LGPL-2.1+ with OpenSSL exception
+
+Files: lib/keyslot_context.c lib/keyslot_context.h
+Copyright: © 2022 Red Hat, Inc.
+           © 2022 Ondrej Kozina <okozina@redhat.com>
+License: GPL-2+
+
 Files: lib/crypto_backend/argon2/*
 Copyright: © 2015 Daniel Dinu
            © 2015 Dmitry Khovratovich
