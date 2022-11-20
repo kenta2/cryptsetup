@@ -7,6 +7,7 @@ cryptsetup (2:2.6.0~rc0-1) experimental; urgency=medium
     HFS+ filesystem (introduced in MacOS X 10.7 Lion) is supported.  Moreover
     header formatting and changes are not supported; cryptsetup never changes
     the metadata on the device.
+    Closes: #923513.
   * Update d/copyright for 2:2.6.0~rc0-1.
   * Ship cryptsetup-fvault2Dump(8) and cryptsetup-fvault2Open(8) to
     cryptsetup-bin binary package.
