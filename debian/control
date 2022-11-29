@@ -159,7 +159,16 @@ Package: libcryptsetup-dev
 Section: libdevel
 Architecture: linux-any
 Multi-Arch: same
-Depends: libcryptsetup12 (= ${binary:Version}), ${misc:Depends}
+# XXX [#1025065] ideal we would have "Depends: libcryptsetup12
+# (= ${binary:Version}), ${misc:Depends}, ${pkgconf:Depends}"
+Depends: libargon2-dev,
+         libblkid-dev,
+         libcryptsetup12 (= ${binary:Version}),
+         libdevmapper-dev,
+         libjson-c-dev,
+         libssl-dev,
+         uuid-dev,
+         ${misc:Depends}
 Description: disk encryption support - development files
  Cryptsetup provides an interface for configuring encryption on block
  devices (such as /home or swap partitions), using the Linux kernel
