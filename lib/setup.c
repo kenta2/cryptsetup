@@ -4897,10 +4897,10 @@ int crypt_volume_key_get_by_keyslot_context(struct crypt_device *cd,
 		return -ENOMEM;
 	}
 
-	if (kc && !kc->get_passphrase)
+	if (kc && (!kc->get_passphrase || kc->type == CRYPT_KC_TYPE_KEY))
 		return -EINVAL;
 
-	if (kc && kc->get_passphrase) {
+	if (kc) {
 		r = kc->get_passphrase(cd, kc, &passphrase, &passphrase_size);
 		if (r < 0)
 			return r;
@@ -6491,8 +6491,7 @@ int crypt_activate_by_keyring(struct crypt_device *cd,
 
 	r = _activate_by_passphrase(cd, name, keyslot, passphrase, passphrase_size, flags);
 
-	crypt_safe_memzero(passphrase, passphrase_size);
-	free(passphrase);
+	crypt_safe_free(passphrase);
 
 	return r;
 }
