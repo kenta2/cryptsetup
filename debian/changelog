@@ -1,3 +1,9 @@
+cryptsetup (2:2.6.0-1) unstable; urgency=low
+
+  * New upstream release 2.6.0.
+
+ -- Guilhem Moulin <guilhem@debian.org>  Tue, 29 Nov 2022 01:20:38 +0100
+
 cryptsetup (2:2.6.0~rc0-1) experimental; urgency=medium
 
   * New upstream release candidate 2.6.0, introducing support for handling
