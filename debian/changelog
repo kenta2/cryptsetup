@@ -1,3 +1,11 @@
+cryptsetup (2:2.6.0-2) unstable; urgency=low
+
+  * libcryptsetup-dev: Add 'Depends: libargon2-dev, libblkid-dev,
+    libdevmapper-dev, libjson-c-dev, libssl-dev, uuid-dev' to account for
+    libcryptsetup.pc's Requires.private.  Closes: #1025054.
+
+ -- Guilhem Moulin <guilhem@debian.org>  Tue, 29 Nov 2022 15:42:25 +0100
+
 cryptsetup (2:2.6.0-1) unstable; urgency=low
 
   * New upstream release 2.6.0.
