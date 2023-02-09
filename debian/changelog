@@ -1,3 +1,13 @@
+cryptsetup (2:2.6.1-1) UNRELEASED; urgency=medium
+
+  * New upstream bugfix release.
+  * d/README.Debian: Explicitly set cswap1's device type to 'plain'.
+    (Closes: #1025136)
+  * d/control: Update standards version to 4.6.2, no changes needed.
+  * d/clean: Add some gitignore(5)'d files. (Closes: #1026838)
+
+ -- Guilhem Moulin <guilhem@debian.org>  Thu, 09 Feb 2023 18:54:54 +0100
+
 cryptsetup (2:2.6.0-2) unstable; urgency=low
 
   * libcryptsetup-dev: Add 'Depends: libargon2-dev, libblkid-dev,
