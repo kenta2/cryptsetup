@@ -2,8 +2,8 @@
  * utils_wipe - wipe a device
  *
  * Copyright (C) 2004-2007 Clemens Fruhwirth <clemens@endorphin.org>
- * Copyright (C) 2009-2022 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2009-2022 Milan Broz
+ * Copyright (C) 2009-2023 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2009-2023 Milan Broz
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -150,7 +150,7 @@ static int wipe_block(struct crypt_device *cd, int devfd, crypt_wipe_pattern pat
 	if (blockdev && pattern == CRYPT_WIPE_ZERO &&
 	    !wipe_zeroout(cd, devfd, offset, wipe_block_size)) {
 		/* zeroout ioctl does not move offset */
-		if (lseek64(devfd, offset + wipe_block_size, SEEK_SET) < 0) {
+		if (lseek(devfd, offset + wipe_block_size, SEEK_SET) < 0) {
 			log_err(cd, _("Cannot seek to device offset."));
 			return -EINVAL;
 		}
@@ -221,7 +221,7 @@ int crypt_wipe_device(struct crypt_device *cd,
 	if (r)
 		goto out;
 
-	if (lseek64(devfd, offset, SEEK_SET) < 0) {
+	if (lseek(devfd, offset, SEEK_SET) < 0) {
 		log_err(cd, _("Cannot seek to device offset."));
 		r = -EINVAL;
 		goto out;

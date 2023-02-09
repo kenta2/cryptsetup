@@ -3,8 +3,8 @@
  *
  * Copyright (C) 2004 Jana Saout <jana@saout.de>
  * Copyright (C) 2004-2007 Clemens Fruhwirth <clemens@endorphin.org>
- * Copyright (C) 2009-2022 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2009-2022 Milan Broz
+ * Copyright (C) 2009-2023 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2009-2023 Milan Broz
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -997,7 +997,7 @@ static int action_benchmark_kdf(const char *kdf, const char *hash, size_t key_si
 			.time_ms = 1000,
 		};
 
-		r = crypt_benchmark_pbkdf(NULL, &pbkdf, "foo", 3, "0123456789abcdef", 16, key_size,
+		r = crypt_benchmark_pbkdf(NULL, &pbkdf, "foobarfo", 8, "0123456789abcdef", 16, key_size,
 					&benchmark_callback, &pbkdf);
 		if (r < 0)
 			log_std(_("PBKDF2-%-9s     N/A\n"), hash);
@@ -1012,7 +1012,7 @@ static int action_benchmark_kdf(const char *kdf, const char *hash, size_t key_si
 			.parallel_threads = ARG_UINT32(OPT_PBKDF_PARALLEL_ID)
 		};
 
-		r = crypt_benchmark_pbkdf(NULL, &pbkdf, "foo", 3,
+		r = crypt_benchmark_pbkdf(NULL, &pbkdf, "foobarfo", 8,
 			"0123456789abcdef0123456789abcdef", 32,
 			key_size, &benchmark_callback, &pbkdf);
 		if (r < 0)

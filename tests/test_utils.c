@@ -1,8 +1,8 @@
 /*
  * cryptsetup library API test utilities
  *
- * Copyright (C) 2009-2022 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2009-2022 Milan Broz
+ * Copyright (C) 2009-2023 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2009-2023 Milan Broz
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -683,6 +683,11 @@ int t_dm_integrity_resize_support(void)
 int t_dm_integrity_recalculate_support(void)
 {
 	return t_dm_crypt_flags & T_DM_INTEGRITY_RECALC_SUPPORTED;
+}
+
+int t_dm_capi_string_supported(void)
+{
+	return t_dm_crypt_flags & T_DM_CAPI_STRING_SUPPORTED;
 }
 
 /* loop helpers */

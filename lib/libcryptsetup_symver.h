@@ -1,7 +1,7 @@
 /*
  * Helpers for defining versioned symbols
  *
- * Copyright (C) 2021-2022 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2021-2023 Red Hat, Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -72,9 +72,9 @@
      __attribute__((__symver__(#_public_sym _ver_str #_maj "." #_min)))
 #endif
 
-#if !defined(_CRYPT_SYMVER) && defined(__GNUC__)
+#if !defined(_CRYPT_SYMVER) && (defined(__GNUC__) || defined(__clang__))
 #  define _CRYPT_SYMVER(_local_sym, _public_sym, _ver_str, _maj, _min)         \
-     asm(".symver " #_local_sym "," #_public_sym _ver_str #_maj "." #_min);
+     __asm__(".symver " #_local_sym "," #_public_sym _ver_str #_maj "." #_min);
 #endif
 
 #define _CRYPT_FUNC(_public_sym, _prefix_str, _maj, _min, _ret, ...)                                    \

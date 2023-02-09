@@ -1,8 +1,8 @@
 /*
  * crypto backend implementation
  *
- * Copyright (C) 2010-2022 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2010-2022 Milan Broz
+ * Copyright (C) 2010-2023 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2010-2023 Milan Broz
  *
  * This file is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -41,7 +41,8 @@ struct crypt_storage;
 int crypt_backend_init(bool fips);
 void crypt_backend_destroy(void);
 
-#define CRYPT_BACKEND_KERNEL (1 << 0)	/* Crypto uses kernel part, for benchmark */
+#define CRYPT_BACKEND_KERNEL     (1 << 0) /* Crypto uses kernel part, for benchmark */
+#define CRYPT_BACKEND_PBKDF2_INT (1 << 1) /* Iteration in PBKDF2 is signed int and can overflow */
 
 uint32_t crypt_backend_flags(void);
 const char *crypt_backend_version(void);
