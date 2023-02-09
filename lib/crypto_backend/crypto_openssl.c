@@ -1,8 +1,8 @@
 /*
  * OPENSSL crypto backend implementation
  *
- * Copyright (C) 2010-2022 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2010-2022 Milan Broz
+ * Copyright (C) 2010-2023 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2010-2023 Milan Broz
  *
  * This file is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -30,6 +30,7 @@
 
 #include <string.h>
 #include <errno.h>
+#include <limits.h>
 #include <openssl/crypto.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
@@ -231,7 +232,11 @@ void crypt_backend_destroy(void)
 
 uint32_t crypt_backend_flags(void)
 {
+#if OPENSSL_VERSION_MAJOR >= 3
 	return 0;
+#else
+	return CRYPT_BACKEND_PBKDF2_INT;
+#endif
 }
 
 const char *crypt_backend_version(void)
@@ -572,6 +577,10 @@ static int openssl_pbkdf2(const char *password, size_t password_length,
 #else
 	const EVP_MD *hash_id = EVP_get_digestbyname(crypt_hash_compat_name(hash));
 	if (!hash_id)
+		return -EINVAL;
+
+	/* OpenSSL2 has iteration as signed int, avoid overflow */
+	if (iterations > INT_MAX)
 		return -EINVAL;
 
 	r = PKCS5_PBKDF2_HMAC(password, (int)password_length, (const unsigned char *)salt,

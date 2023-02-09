@@ -1,8 +1,8 @@
 /*
  * libcryptsetup - cryptsetup library, cipher benchmark
  *
- * Copyright (C) 2012-2022 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2012-2022 Milan Broz
+ * Copyright (C) 2012-2023 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2012-2023 Milan Broz
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -187,7 +187,7 @@ int crypt_benchmark_pbkdf_internal(struct crypt_device *cd,
 		pbkdf->parallel_threads = 0; /* N/A in PBKDF2 */
 		pbkdf->max_memory_kb = 0; /* N/A in PBKDF2 */
 
-		r = crypt_benchmark_pbkdf(cd, pbkdf, "foo", 3, "01234567890abcdef", 16,
+		r = crypt_benchmark_pbkdf(cd, pbkdf, "foobarfo", 8, "01234567890abcdef", 16,
 					volume_key_size, &benchmark_callback, &u);
 		pbkdf->time_ms = ms_tmp;
 		if (r < 0) {
@@ -207,7 +207,7 @@ int crypt_benchmark_pbkdf_internal(struct crypt_device *cd,
 			return 0;
 		}
 
-		r = crypt_benchmark_pbkdf(cd, pbkdf, "foo", 3,
+		r = crypt_benchmark_pbkdf(cd, pbkdf, "foobarfo", 8,
 			"0123456789abcdef0123456789abcdef", 32,
 			volume_key_size, &benchmark_callback, &u);
 		if (r < 0)

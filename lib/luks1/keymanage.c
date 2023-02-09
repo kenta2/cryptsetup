@@ -2,8 +2,8 @@
  * LUKS - Linux Unified Key Setup
  *
  * Copyright (C) 2004-2006 Clemens Fruhwirth <clemens@endorphin.org>
- * Copyright (C) 2009-2022 Red Hat, Inc. All rights reserved.
- * Copyright (C) 2013-2022 Milan Broz
+ * Copyright (C) 2009-2023 Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2013-2023 Milan Broz
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -29,6 +29,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <uuid/uuid.h>
+#include <limits.h>
 
 #include "luks.h"
 #include "af.h"
@@ -924,8 +925,12 @@ int LUKS_set_key(unsigned int keyIndex,
 			hdr->keyblock[keyIndex].passwordSalt, LUKS_SALTSIZE,
 			derived_key->key, hdr->keyBytes,
 			hdr->keyblock[keyIndex].passwordIterations, 0, 0);
-	if (r < 0)
+	if (r < 0) {
+		if ((crypt_backend_flags() & CRYPT_BACKEND_PBKDF2_INT) &&
+		     hdr->keyblock[keyIndex].passwordIterations > INT_MAX)
+			log_err(ctx, _("PBKDF2 iteration value overflow."));
 		goto out;
+	}
 
 	/*
 	 * AF splitting, the volume key stored in vk->key is split to AfKey
