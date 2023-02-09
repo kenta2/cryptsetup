@@ -1,12 +1,15 @@
-cryptsetup (2:2.6.1-1) UNRELEASED; urgency=medium
+cryptsetup (2:2.6.1-1) unstable; urgency=medium
 
   * New upstream bugfix release.
   * d/README.Debian: Explicitly set cswap1's device type to 'plain'.
     (Closes: #1025136)
   * d/control: Update standards version to 4.6.2, no changes needed.
   * d/clean: Add some gitignore(5)'d files. (Closes: #1026838)
+  * cryptgnupg-sc hook: Look terminfo file in /usr/share/terminfo in adition
+    to /lib/terminfo, see #1028202. (Closes: 1028234)
+  * d/copyright: Bump copyright years.
 
- -- Guilhem Moulin <guilhem@debian.org>  Thu, 09 Feb 2023 18:54:54 +0100
+ -- Guilhem Moulin <guilhem@debian.org>  Fri, 10 Feb 2023 00:50:42 +0100
 
 cryptsetup (2:2.6.0-2) unstable; urgency=low
 
