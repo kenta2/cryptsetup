@@ -6,8 +6,8 @@ Upstream-Name: cryptsetup
 Files: *
 Copyright: © 2004      Christophe Saout <christophe@saout.de>
            © 2004-2008 Clemens Fruhwirth <clemens@endorphin.org>
-           © 2008-2022 Red Hat, Inc.
-           © 2008-2022 Milan Broz <gmazyland@gmail.com>
+           © 2008-2023 Red Hat, Inc.
+           © 2008-2023 Milan Broz <gmazyland@gmail.com>
 License: GPL-2+ with OpenSSL exception
 
 Files: debian/*
@@ -15,7 +15,7 @@ Copyright: © 2004-2005 Wesley W. Terpstra <terpstra@debian.org>
            © 2005-2006 Michael Gebetsroither <michael.geb@gmx.at>
            © 2006-2008 David Härdeman <david@hardeman.nu>
            © 2005-2015 Jonas Meurer <jonas@freesources.org>
-           © 2016-2022 Guilhem Moulin <guilhem@debian.org>
+           © 2016-2023 Guilhem Moulin <guilhem@debian.org>
 License: GPL-2+
 
 Files: debian/scripts/suspend/cryptsetup-suspend.c
@@ -61,45 +61,45 @@ Copyright: © 2021-2022 Guilhem Moulin <guilhem@debian.org>
 License: GPL-3+
 
 Files: docs/examples/* tests/all-symbols-test.c
-Copyright: © 2011-2022 Red Hat, Inc.
+Copyright: © 2011-2023 Red Hat, Inc.
 License: LGPL-2.1+
 
 Files: lib/bitlk/*
-Copyright: © 2019-2022 Red Hat, Inc.
-           © 2019-2022 Milan Broz <gmazyland@gmail.com>
-           © 2019-2022 Vojtech Trefny
+Copyright: © 2019-2023 Red Hat, Inc.
+           © 2019-2023 Milan Broz <gmazyland@gmail.com>
+           © 2019-2023 Vojtech Trefny
 License: LGPL-2.1+
 
 Files: tokens/ssh/*
-Copyright: © 2016-2022 Milan Broz <gmazyland@gmail.com>
-           © 2020-2022 Vojtech Trefny
+Copyright: © 2016-2023 Milan Broz <gmazyland@gmail.com>
+           © 2020-2023 Vojtech Trefny
 License: LGPL-2.1+
 
 Files: tokens/ssh/cryptsetup-ssh.c
-Copyright: © 2016-2022 Milan Broz <gmazyland@gmail.com>
-           © 2021-2022 Vojtech Trefny
+Copyright: © 2016-2023 Milan Broz <gmazyland@gmail.com>
+           © 2021-2023 Vojtech Trefny
 License: GPL-2+
 
 Files: lib/crypto_backend/* lib/integrity/* lib/loopaes/* lib/tcrypt/* lib/verity/*
-Copyright: © 2009-2022 Red Hat, Inc.
-           © 2010-2022 Milan Broz <gmazyland@gmail.com>
+Copyright: © 2009-2023 Red Hat, Inc.
+           © 2010-2023 Milan Broz <gmazyland@gmail.com>
 License: LGPL-2.1+
 
 Files: lib/crypto_backend/base64.c
 Copyright: © 2010 Lennart Poettering
-           © 2021-2022 Milan Broz <gmazyland@gmail.com>
+           © 2021-2023 Milan Broz <gmazyland@gmail.com>
 License: LGPL-2.1+
 
 Files: lib/crypto_backend/utf8.c
 Copyright: © 2010 Lennart Poettering
-           © 2021-2022 Vojtech Trefny
+           © 2021-2023 Vojtech Trefny
            © 1999 Tom Tromey
            © 2000 Red Hat, Inc.
 License: GPL-2+
 
 Files: lib/crypto_backend/crypto_openssl.c
-Copyright: © 2009-2022 Red Hat, Inc.
-           © 2010-2022 Milan Broz <gmazyland@gmail.com>
+Copyright: © 2009-2023 Red Hat, Inc.
+           © 2010-2023 Milan Broz <gmazyland@gmail.com>
 License: LGPL-2.1+ with OpenSSL exception
 
 Files: lib/fvault2/fvault2.c lib/fvault2/fvault2.h
@@ -107,8 +107,8 @@ Copyright: © 2021-2022 Pavel Tobias
 License: LGPL-2.1+ with OpenSSL exception
 
 Files: lib/keyslot_context.c lib/keyslot_context.h
-Copyright: © 2022 Red Hat, Inc.
-           © 2022 Ondrej Kozina <okozina@redhat.com>
+Copyright: © 2022-2023 Red Hat, Inc.
+           © 2022-2023 Ondrej Kozina <okozina@redhat.com>
 License: GPL-2+
 
 Files: lib/crypto_backend/argon2/*
