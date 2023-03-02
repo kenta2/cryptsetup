@@ -110,9 +110,10 @@ copy_exec /sbin/dmsetup
 copy_exec /usr/bin/dpkg-deb
 copy_exec /bin/tar
 
-# assume ossl-modules/legacy.so is relative to the linked libcrypto.so
-libcryptodir="$(env --unset=LD_PRELOAD ldd /sbin/cryptsetup | sed -nr '/.*=>\s*(\S+)\/libcrypto\.so\..*/ {s//\1/p;q}')"
-copy_exec "$libcryptodir/ossl-modules/legacy.so" || true
+# assume ossl-modules/legacy.so and libgcc_s.so are relative to the linked libcryptsetup.so
+libdir="$(env --unset=LD_PRELOAD ldd /sbin/cryptsetup | sed -nr '/.*=>\s*(\S+)\/libcryptsetup\.so\..*/ {s//\1/p;q}')"
+copy_exec "$libdir/ossl-modules/legacy.so" || true
+copy_libgcc "$libdir"
 
 for p in /sbin/cryptsetup /sbin/lvm /sbin/mdadm /sbin/mke2fs /sbin/mkfs.btrfs /bin/btrfs; do
     if [ -x "$p" ]; then
