@@ -1,3 +1,13 @@
+cryptsetup (2:2.6.1-2) unstable; urgency=medium
+
+  * initramfs hook: Explicitly call copy_libgcc().  The recent libargon2-1
+    upgrade is built with glibc ≥2.34 hence no longer links libpthread.  This
+    in turns means that initramfs-tool's copy_exec() is no longer able to
+    detect pthread_*() need and thus doesn't copy libgcc_s.so anymore.  So we
+    need to do it manually instead.  Closes: #1032221
+
+ -- Guilhem Moulin <guilhem@debian.org>  Thu, 02 Mar 2023 05:01:53 +0100
+
 cryptsetup (2:2.6.1-1) unstable; urgency=medium
 
   * New upstream bugfix release.
