@@ -319,11 +319,19 @@ copy_libssl_legacy_library() {
 # doesn't copy libgcc_s.so anymore.  So we need to do it manually
 # instead.
 copy_libgcc_argon2() {
-    local libdir
+    local libdir rv=0
     libdir="$(env --unset=LD_PRELOAD ldd /sbin/cryptsetup | sed -nr '/.*=>\s*(\S+)\/libargon2\.so\..*/ {s//\1/p;q}')"
-    if [ -d "$libdir" ]; then
-        copy_libgcc "$libdir"
+    copy_libgcc "$libdir" || rv=$?
+    if [ $rv -ne 0 ]; then
+        # merged-/usr mismatch, see #1032518
+        if [ "${libdir#/usr/}" != "$libdir" ]; then
+            libdir="${libdir#/usr}"
+        else
+            libdir="/usr/${libdir#/}"
+        fi
+        copy_libgcc "$libdir" && rv=0 || rv=$?
     fi
+    return $rv
 }
 
 
