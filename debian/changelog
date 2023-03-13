@@ -1,3 +1,19 @@
+cryptsetup (2:2.6.1-3) unstable; urgency=medium
+
+  [ Guilhem Moulin ]
+  * initramfs hook: Fix copy_libgcc_argon2() on non merged-/usr systems.
+    (Closes: #1032518)
+  * Backport upstream MR !490, see #1028250:
+    + 27f8e5c0: Try to avoid OOM killer on low-memory systems without swap
+    + 899bad8c: Print warning when keyslot requires more memory than available
+  * d/t/initramfs-hook: Pass `-xdev` to `find "$INITRD_DIR"` in order to solve
+    a race condition in that autopkgtest.
+
+  [ Remus-Gabriel Chelu ]
+  * Add Romanian debconf templates translation. (Closes: #1031497)
+
+ -- Guilhem Moulin <guilhem@debian.org>  Mon, 13 Mar 2023 23:43:50 +0100
+
 cryptsetup (2:2.6.1-2) unstable; urgency=medium
 
   * initramfs hook: Explicitly call copy_libgcc().  The recent libargon2-1
