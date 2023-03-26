@@ -1,3 +1,13 @@
+cryptsetup (2:2.6.1-3~deb12u1) bookworm; urgency=medium
+
+  * Rebuild for Bookworm.
+  * d/gbp.conf: Set 'debian-branch = debian/bookworm'.
+  * #1032221 can't be fixed via unstable since libcryptsetup12-udeb 2:2.6.1-3
+    has "Depends: libargon2-1-udeb (>= 0~20190702)" which won't transition to
+    testing, so instead the release team asked for a t-p-u upload.
+
+ -- Guilhem Moulin <guilhem@debian.org>  Sun, 26 Mar 2023 19:18:59 +0200
+
 cryptsetup (2:2.6.1-3) unstable; urgency=medium
 
   [ Guilhem Moulin ]
