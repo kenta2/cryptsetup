@@ -1,3 +1,9 @@
+cryptsetup (2:2.6.1-4~deb12u1) bookworm; urgency=medium
+
+  * Rebuild for Bookworm.
+
+ -- Guilhem Moulin <guilhem@debian.org>  Fri, 21 Apr 2023 00:54:29 +0200
+
 cryptsetup (2:2.6.1-4) unstable; urgency=medium
 
   * Backport upstream MR !498, see #1028250:
