@@ -266,8 +266,8 @@ populate_CRYPTO_MODULES() {
 add_modules() {
     local glob="$1" found=n
     shift
-    for mod in $(find -H "$@" -name "$glob.ko" -type f -printf '%f\n'); do
-        manual_add_modules "${mod%.ko}"
+    for mod in $(find -H "$@" -name "$glob.ko*" -type f -printf '%f\n'); do
+        manual_add_modules "${mod%.ko*}"
         found=y
     done
     [ "$found" = y ] && return 0 || return 1
