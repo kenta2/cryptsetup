@@ -3,6 +3,7 @@ include:
   - https://salsa.debian.org/salsa-ci-team/pipeline/raw/master/recipes/debian.yml
 
 variables:
+  RELEASE: 'bookworm'
   # Skip all DEP-8 tests except 'cryptroot-lvm': each 'cryptroot-*' test
   # takes 20-30min on Salsa CI runners as they don't support KVM acceleration
   # cf. https://salsa.debian.org/salsa-ci-team/pipeline/-/issues/266 ,
