@@ -1,3 +1,21 @@
+cryptsetup (2:2.6.1-4~deb12u2) bookworm; urgency=medium
+
+  [ Michael Biebl ]
+  * cryptsetup-suspend-wrapper: Don't error out on missing
+    /lib/systemd/system-sleep directory as systemd 254.1-3 and later no longer
+    ship empty directories. (Closes: #1050606)
+
+  [ Kevin Locke ]
+  * cryptsetup-initramfs: Add support for compressed kernel modules, which is
+    the default as linux-image 6.6.4-1~exp1. (Closes: #1036049, #1057441)
+
+  [ Guilhem Moulin ]
+  * add_modules(): Change suffix drop logic to match initramfs-tools.
+  * Fix DEP-8 tests with kernels shipping compressed modules.
+  * d/salsa-ci.yml: Set RELEASE=bookworm.
+
+ -- Guilhem Moulin <guilhem@debian.org>  Mon, 18 Dec 2023 03:41:04 +0100
+
 cryptsetup (2:2.6.1-4~deb12u1) bookworm; urgency=medium
 
   * Rebuild for Bookworm.
